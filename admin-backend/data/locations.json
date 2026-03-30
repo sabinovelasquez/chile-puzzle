@@ -1,40 +1,18 @@
 [
   {
-    "id": "torres_del_paine",
+    "id": "el_trapiche_1",
     "name": {
-      "es": "Torres del Paine",
-      "en": "Torres del Paine"
-    },
-    "region": "Magallanes",
-    "latitude": -50.9423,
-    "longitude": -73.4068,
-    "image": "https://images.unsplash.com/photo-1598254246995-15aae0cfee3c",
-    "thumbnail": "https://images.unsplash.com/photo-1598254246995-15aae0cfee3c?w=200",
-    "tip": {
-      "es": "El Parque Nacional Torres del Paine es mundialmente famoso por sus majestuosas montañas y paisajes glaciares.",
-      "en": "Torres del Paine National Park is world-famous for its majestic mountains and glacial landscapes."
-    },
-    "difficulty": [
-      3,
-      4,
-      5,
-      6
-    ]
-  },
-  {
-    "id": "valparaiso",
-    "name": {
-      "es": "Valparaíso",
-      "en": "Valparaiso"
+      "en": "El Trapiche",
+      "es": "El Trapiche"
     },
     "region": "Valparaíso",
-    "latitude": -33.0472,
-    "longitude": -71.6127,
-    "image": "https://images.unsplash.com/photo-1590130600863-71a2a8656123",
-    "thumbnail": "https://images.unsplash.com/photo-1590130600863-71a2a8656123?w=200",
+    "latitude": -33.4569,
+    "longitude": -70.6483,
+    "image": "/uploads/741dde686ebc0e3876b3bbd16fc23d48.jpg",
+    "thumbnail": "/uploads/741dde686ebc0e3876b3bbd16fc23d48.jpg",
     "tip": {
-      "es": "Valparaíso es una ciudad Patrimonio de la Humanidad por la UNESCO, famosa por sus cerros coloridos, arte callejero y ascensores históricos.",
-      "en": "Valparaíso is a UNESCO World Heritage city famous for its colorful hills, street art, and historic funicular elevators."
+      "en": "El Trapiche is a rural town located in the commune of La Ligua, Valparaíso Region, Chile, known for its agricultural environment in the Longotoma valley.",
+      "es": "El Trapiche es una localidad rural situada en la comuna de La Ligua, Región de Valparaíso, Chile, conocida por su entorno agrícola en el valle de Longotoma."
     },
     "difficulty": [
       3,

@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:math';
 import 'puzzle_piece.dart';
+import 'package:chile_puzzle/features/ads/ad_service.dart';
+import 'package:chile_puzzle/core/models/location_model.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class PuzzleEngine extends StatefulWidget {
-  final String imageUrl;
+  final LocationModel location;
   final int rows;
   final int cols;
 
   const PuzzleEngine({
     super.key,
-    required this.imageUrl,
+    required this.location,
     required this.rows,
     required this.cols,
   });
@@ -101,7 +104,38 @@ class _PuzzleEngineState extends State<PuzzleEngine> {
       setState(() {
         isCompleted = true;
       });
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        _showTipDialog();
+      });
     }
+  }
+
+  void _showTipDialog() {
+    final langCode = Localizations.localeOf(context).languageCode;
+    final l10n = AppLocalizations.of(context);
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text(l10n?.puzzleCompleted ?? 'Puzzle Completed!'),
+        content: Text(widget.location.getLocalizedTip(langCode)),
+        actions: [
+          TextButton(
+            onPressed: () {
+               Navigator.of(context).pop();
+               AdService.showInterstitial(
+                 onAdDismissed: () {
+                   if (mounted) Navigator.of(context).pop();
+                 }
+               );
+            },
+            child: Text(l10n?.unlockNext ?? 'Continue'),
+          )
+        ],
+      )
+    );
   }
 
   Widget _buildPieceWidget(PuzzlePieceModel piece) {
@@ -114,7 +148,7 @@ class _PuzzleEngineState extends State<PuzzleEngine> {
         widthFactor: 1.0 / widget.cols,
         heightFactor: 1.0 / widget.rows,
         child: CachedNetworkImage(
-          imageUrl: widget.imageUrl,
+          imageUrl: widget.location.image,
           width: boardWidth,
           height: boardHeight,
           fit: BoxFit.cover,
@@ -155,7 +189,7 @@ class _PuzzleEngineState extends State<PuzzleEngine> {
               child: Opacity(
                 opacity: 0.15,
                 child: CachedNetworkImage(
-                  imageUrl: widget.imageUrl,
+                  imageUrl: widget.location.image,
                   fit: BoxFit.cover,
                 ),
               ),
@@ -171,27 +205,6 @@ class _PuzzleEngineState extends State<PuzzleEngine> {
                 painter: GridPainter(widget.rows, widget.cols),
               ),
             ),
-
-            if (isCompleted)
-               Positioned(
-                 bottom: 20,
-                 left: 0,
-                 right: 0,
-                 child: Center(
-                   child: AnimatedContainer(
-                     duration: const Duration(seconds: 1),
-                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                     decoration: BoxDecoration(
-                       color: Colors.green,
-                       borderRadius: BorderRadius.circular(20),
-                     ),
-                     child: const Text(
-                       'Puzzle Completed!', 
-                       style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)
-                     ),
-                   ),
-                 )
-               ),
 
             // Snapped static pieces
             ...pieces.where((p) => p.isSnapped).map((piece) {

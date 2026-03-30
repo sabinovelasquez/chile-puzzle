@@ -1,3 +1,5 @@
+import 'dart:io';
+
 class LocationModel {
   final String id;
   final Map<String, String> name;
@@ -28,8 +30,8 @@ class LocationModel {
       region: json['region'] as String,
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
-      image: json['image'] as String,
-      thumbnail: json['thumbnail'] as String,
+      image: _fixUrl(json['image'] as String),
+      thumbnail: _fixUrl(json['thumbnail'] as String),
       tip: Map<String, String>.from(json['tip'] as Map),
       difficultyLevels: List<int>.from(json['difficulty'] as List),
     );
@@ -41,5 +43,13 @@ class LocationModel {
 
   String getLocalizedTip(String langCode) {
     return tip[langCode] ?? tip['en'] ?? '';
+  }
+
+  static String _fixUrl(String url) {
+    if (url.startsWith('/uploads/')) {
+       final base = Platform.isAndroid ? 'http://10.0.2.2:3000' : 'http://127.0.0.1:3000';
+       return '$base$url';
+    }
+    return url;
   }
 }

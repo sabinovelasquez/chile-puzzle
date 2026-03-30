@@ -31,7 +31,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
       ),
       body: SafeArea(
         child: PuzzleEngine(
-          imageUrl: widget.location.image,
+          location: widget.location,
           rows: widget.gridRows,
           cols: widget.gridCols,
         ),

@@ -16,6 +16,44 @@ const fThumb = document.getElementById('locThumbnail');
 const fTipEn = document.getElementById('locTipEn');
 const fTipEs = document.getElementById('locTipEs');
 
+const fImageUpload = document.getElementById('locImageUpload');
+const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+const imagePreview = document.getElementById('imagePreview');
+
+fImage.addEventListener('input', () => updatePreview(fImage.value));
+
+fImageUpload.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        const formData = new FormData();
+        formData.append('image', file);
+        try {
+            const upRes = await fetch('/api/upload', { method: 'POST', body: formData });
+            const upData = await upRes.json();
+            if (upData.url) {
+                fImage.value = upData.url;
+                if (!fThumb.value || fThumb.value.startsWith('/uploads')) {
+                    fThumb.value = upData.url;
+                }
+                updatePreview(fImage.value);
+            }
+        } catch(err) {
+            console.error('Upload error:', err);
+            alert('Error al subir la imagen');
+        }
+    }
+});
+
+function updatePreview(url) {
+    if (url) {
+        imagePreview.src = url.startsWith('/') ? url : url; 
+        imagePreviewContainer.style.display = 'block';
+    } else {
+        imagePreviewContainer.style.display = 'none';
+        imagePreview.src = '';
+    }
+}
+
 async function loadData() {
     try {
         const res = await fetch('/api/locations');
@@ -70,6 +108,9 @@ function openEditor(id) {
     fTipEn.value = loc.tip.en || '';
     fTipEs.value = loc.tip.es || '';
     
+    updatePreview(fImage.value);
+    fImageUpload.value = '';
+    
     renderList();
 }
 
@@ -90,6 +131,9 @@ document.getElementById('addLocationBtn').onclick = () => {
     fTipEn.value = '';
     fTipEs.value = '';
     
+    updatePreview('');
+    fImageUpload.value = '';
+    
     renderList();
 };
 
@@ -104,7 +148,7 @@ document.getElementById('deleteLocationBtn').onclick = () => {
     }
 };
 
-editorForm.onsubmit = (e) => {
+editorForm.onsubmit = async (e) => {
     e.preventDefault();
     
     let isNew = !fId.disabled;

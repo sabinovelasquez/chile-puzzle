@@ -4,6 +4,7 @@ import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/services/mock_backend.dart';
 import 'package:chile_puzzle/features/puzzle/puzzle_screen.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:chile_puzzle/features/auth/auth_service.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -24,6 +25,14 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _loadLocations();
+    _initAuth();
+  }
+
+  Future<void> _initAuth() async {
+    bool signedIn = await AuthService.isSignedIn();
+    if (!signedIn) {
+      await AuthService.signIn();
+    }
   }
 
   Future<void> _loadLocations() async {
@@ -62,13 +71,14 @@ class _MapScreenState extends State<MapScreen> {
           title: loc.getLocalizedName(langCode),
           snippet: '${l10n.playButton} • ${loc.region}',
           onTap: () {
+            int difficulty = (loc.difficultyLevels.isNotEmpty) ? loc.difficultyLevels.first : 4;
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => PuzzleScreen(
                   location: loc,
-                  gridRows: 4,
-                  gridCols: 4,
+                  gridRows: difficulty,
+                  gridCols: difficulty,
                 ),
               ),
             );
