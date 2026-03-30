@@ -1,0 +1,14 @@
+{
+  "appTitle": "Chile Puzzle Explorer",
+  "playButton": "Play",
+  "difficultyBeginner": "Beginner (3x3)",
+  "difficultyEasy": "Easy (4x4)",
+  "difficultyMedium": "Medium (5x5)",
+  "difficultyHard": "Hard (6x6)",
+  "difficultyExpert": "Expert (8x8)",
+  "difficultyMaster": "Master (10x10)",
+  "unlockNext": "Unlock Next",
+  "returnToMap": "Return to map",
+  "loading": "Loading...",
+  "puzzleCompleted": "Puzzle Completed!"
+}

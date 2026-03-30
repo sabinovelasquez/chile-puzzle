@@ -1,0 +1,14 @@
+{
+  "appTitle": "Explorador Puzzles Chile",
+  "playButton": "Jugar",
+  "difficultyBeginner": "Principiante (3x3)",
+  "difficultyEasy": "Fácil (4x4)",
+  "difficultyMedium": "Medio (5x5)",
+  "difficultyHard": "Difícil (6x6)",
+  "difficultyExpert": "Experto (8x8)",
+  "difficultyMaster": "Maestro (10x10)",
+  "unlockNext": "Desbloquear Siguiente",
+  "returnToMap": "Volver al mapa",
+  "loading": "Cargando...",
+  "puzzleCompleted": "¡Puzzle completado!"
+}
