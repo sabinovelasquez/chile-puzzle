@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 
 import 'package:chile_puzzle/features/puzzle/puzzle_engine.dart';
 

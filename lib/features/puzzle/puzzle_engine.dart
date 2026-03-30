@@ -4,7 +4,7 @@ import 'dart:math';
 import 'puzzle_piece.dart';
 import 'package:chile_puzzle/features/ads/ad_service.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 
 class PuzzleEngine extends StatefulWidget {
   final LocationModel location;
@@ -139,34 +139,31 @@ class _PuzzleEngineState extends State<PuzzleEngine> {
   }
 
   Widget _buildPieceWidget(PuzzlePieceModel piece) {
-    double alignX = widget.cols > 1 ? -1.0 + (piece.correctCol * 2.0 / (widget.cols - 1)) : 0;
-    double alignY = widget.rows > 1 ? -1.0 + (piece.correctRow * 2.0 / (widget.rows - 1)) : 0;
-
-    Widget clippedImage = ClipRect(
-      child: Align(
-        alignment: Alignment(alignX, alignY),
-        widthFactor: 1.0 / widget.cols,
-        heightFactor: 1.0 / widget.rows,
-        child: CachedNetworkImage(
-          imageUrl: widget.location.image,
-          width: boardWidth,
-          height: boardHeight,
-          fit: BoxFit.cover,
-          errorWidget: (context, url, err) => Container(color: Colors.grey),
-        ),
-      ),
-    );
-
     return Container(
       width: piece.width,
       height: piece.height,
       decoration: BoxDecoration(
-        color: Colors.black26,
-        border: piece.isSnapped 
-            ? null 
+        border: piece.isSnapped
+            ? null
             : Border.all(color: Colors.white.withOpacity(0.5), width: 1),
       ),
-      child: clippedImage,
+      child: ClipRect(
+        child: OverflowBox(
+          maxWidth: boardWidth,
+          maxHeight: boardHeight,
+          alignment: Alignment(
+            widget.cols > 1 ? -1.0 + (piece.correctCol * 2.0 / (widget.cols - 1)) : 0,
+            widget.rows > 1 ? -1.0 + (piece.correctRow * 2.0 / (widget.rows - 1)) : 0,
+          ),
+          child: CachedNetworkImage(
+            imageUrl: widget.location.image,
+            width: boardWidth,
+            height: boardHeight,
+            fit: BoxFit.cover,
+            errorWidget: (context, url, err) => Container(color: Colors.grey),
+          ),
+        ),
+      ),
     );
   }
 

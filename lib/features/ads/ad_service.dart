@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'dart:io';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class AdService {
@@ -7,13 +6,16 @@ class AdService {
   static bool _isAdLoaded = false;
 
   static void initialize() {
+    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) return;
     MobileAds.instance.initialize();
   }
 
   static void loadInterstitial() {
-    String adUnitId = Platform.isAndroid
-        ? 'ca-app-pub-3940256099942544/1033173712' // Default Test Android string
-        : 'ca-app-pub-3940256099942544/4411468910'; // Default Test iOS string
+    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) return;
+
+    String adUnitId = (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
+        ? 'ca-app-pub-3940256099942544/1033173712' 
+        : 'ca-app-pub-3940256099942544/4411468910'; 
 
     InterstitialAd.load(
       adUnitId: adUnitId,
@@ -34,6 +36,11 @@ class AdService {
   }
 
   static void showInterstitial({required Function onAdDismissed}) {
+    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) {
+      onAdDismissed();
+      return;
+    }
+    
     if (_isAdLoaded && _interstitialAd != null) {
       _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
         onAdDismissedFullScreenContent: (ad) {

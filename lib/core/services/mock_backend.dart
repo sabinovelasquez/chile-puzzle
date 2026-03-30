@@ -1,14 +1,13 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:chile_puzzle/core/models/location_model.dart';
 
 class MockBackend {
   static Future<List<LocationModel>> fetchLocations() async {
     try {
-      // Use 10.0.2.2 for Android emulator to reach macOS localhost, otherwise 127.0.0.1 (iOS sim)
       String baseUrl = 'http://127.0.0.1:3000';
-      if (Platform.isAndroid) {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
         baseUrl = 'http://10.0.2.2:3000';
       }
       

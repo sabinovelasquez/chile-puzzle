@@ -2,17 +2,17 @@
   {
     "id": "el_trapiche_1",
     "name": {
-      "en": "El Trapiche",
-      "es": "El Trapiche"
+      "en": " Ruins of the Church of Santa Ana",
+      "es": "Ruinas de la Iglesia Santa Ana"
     },
     "region": "Valparaíso",
-    "latitude": -33.4569,
-    "longitude": -70.6483,
+    "latitude": -32.3224559,
+    "longitude": -71.292468,
     "image": "/uploads/741dde686ebc0e3876b3bbd16fc23d48.jpg",
     "thumbnail": "/uploads/741dde686ebc0e3876b3bbd16fc23d48.jpg",
     "tip": {
-      "en": "El Trapiche is a rural town located in the commune of La Ligua, Valparaíso Region, Chile, known for its agricultural environment in the Longotoma valley.",
-      "es": "El Trapiche es una localidad rural situada en la comuna de La Ligua, Región de Valparaíso, Chile, conocida por su entorno agrícola en el valle de Longotoma."
+      "en": "The 18th-century church has been declared a National Monument of Chile due to its heritage and architectural value.",
+      "es": "Iglesia del siglo XVIII, ha sido declarada Monumento Nacional de Chile debido a su valor patrimonial y arquitectónico."
     },
     "difficulty": [
       3,

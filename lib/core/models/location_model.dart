@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 class LocationModel {
   final String id;
@@ -47,7 +47,7 @@ class LocationModel {
 
   static String _fixUrl(String url) {
     if (url.startsWith('/uploads/')) {
-       final base = Platform.isAndroid ? 'http://10.0.2.2:3000' : 'http://127.0.0.1:3000';
+       final base = (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) ? 'http://10.0.2.2:3000' : 'http://127.0.0.1:3000';
        return '$base$url';
     }
     return url;
