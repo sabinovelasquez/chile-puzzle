@@ -149,7 +149,7 @@ abstract class AppLocalizations {
   /// No description provided for @unlockNext.
   ///
   /// In en, this message translates to:
-  /// **'Unlock Next'**
+  /// **'Continue'**
   String get unlockNext;
 
   /// No description provided for @returnToMap.
@@ -169,6 +169,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Puzzle Completed!'**
   String get puzzleCompleted;
+
+  /// No description provided for @totalPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'Points'**
+  String get totalPoints;
+
+  /// No description provided for @pointsEarned.
+  ///
+  /// In en, this message translates to:
+  /// **'Points Earned'**
+  String get pointsEarned;
+
+  /// No description provided for @timeBonus.
+  ///
+  /// In en, this message translates to:
+  /// **'Time Bonus'**
+  String get timeBonus;
+
+  /// No description provided for @efficiencyBonus.
+  ///
+  /// In en, this message translates to:
+  /// **'Efficiency Bonus'**
+  String get efficiencyBonus;
+
+  /// No description provided for @trophies.
+  ///
+  /// In en, this message translates to:
+  /// **'Trophies'**
+  String get trophies;
+
+  /// No description provided for @profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get profile;
+
+  /// No description provided for @zoneLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get zoneLocked;
+
+  /// No description provided for @zoneUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked'**
+  String get zoneUnlocked;
+
+  /// No description provided for @share.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get share;
+
+  /// No description provided for @moves.
+  ///
+  /// In en, this message translates to:
+  /// **'Moves'**
+  String get moves;
+
+  /// No description provided for @time.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get time;
+
+  /// No description provided for @completed.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get completed;
+
+  /// No description provided for @newTrophy.
+  ///
+  /// In en, this message translates to:
+  /// **'New Trophy!'**
+  String get newTrophy;
+
+  /// No description provided for @puzzlesCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Puzzles'**
+  String get puzzlesCompleted;
+
+  /// No description provided for @bestTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Best Time'**
+  String get bestTime;
 }
 
 class _AppLocalizationsDelegate

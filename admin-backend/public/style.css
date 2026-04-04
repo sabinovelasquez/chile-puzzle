@@ -59,6 +59,37 @@ header p {
     font-size: 0.9rem;
 }
 
+.tab-bar {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 1rem;
+}
+
+.tab {
+    padding: 0.5rem 1.2rem;
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.tab:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+
+.tab.active {
+    color: var(--accent);
+    background: rgba(88, 166, 255, 0.1);
+    border-color: var(--glass-border);
+}
+
+.tab-content { display: none !important; }
+.tab-content.active { display: flex !important; }
+
 .dashboard {
     display: flex;
     flex: 1;
@@ -75,7 +106,7 @@ header p {
     background: rgba(0,0,0,0.1);
 }
 
-.location-list {
+.item-list {
     flex: 1;
     overflow-y: auto;
     display: flex;
@@ -83,7 +114,7 @@ header p {
     gap: 0.5rem;
 }
 
-.location-item {
+.item {
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
     padding: 1rem;
@@ -94,14 +125,25 @@ header p {
     flex-direction: column;
 }
 
-.location-item:hover {
+.item:hover {
     background: rgba(255, 255, 255, 0.1);
     transform: translateY(-2px);
 }
 
-.location-item.active {
+.item.active {
     border-color: var(--accent);
     background: rgba(88, 166, 255, 0.15);
+}
+
+select {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-border);
+    color: white;
+    padding: 0.8rem;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1rem;
 }
 
 .editor-area {

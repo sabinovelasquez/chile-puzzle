@@ -5,7 +5,7 @@
       "en": " Ruins of the Church of Santa Ana",
       "es": "Ruinas de la Iglesia Santa Ana"
     },
-    "region": "Valparaíso",
+    "region": "valparaiso",
     "latitude": -32.3224559,
     "longitude": -71.292468,
     "image": "/uploads/741dde686ebc0e3876b3bbd16fc23d48.jpg",
@@ -13,6 +13,94 @@
     "tip": {
       "en": "The 18th-century church has been declared a National Monument of Chile due to its heritage and architectural value.",
       "es": "Iglesia del siglo XVIII, ha sido declarada Monumento Nacional de Chile debido a su valor patrimonial y arquitectónico."
+    },
+    "difficulty": [
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "id": "sacred_heart_of_jesus_pto_varas",
+    "name": {
+      "en": "Sacred Heart of Jesus Church",
+      "es": "Iglesia del Sagrado Corazón de Jesús"
+    },
+    "region": "los_lagos",
+    "latitude": -41.3204051,
+    "longitude": -72.9863308,
+    "image": "/uploads/5d28ae58e7f99e28804809b14effcb5a.jpg",
+    "thumbnail": "/uploads/5d28ae58e7f99e28804809b14effcb5a.jpg",
+    "tip": {
+      "en": "Neo-Romanesque church with Baroque touches (1915–1918), ulmo/oak structure, mañío/laurel interior, iron and larch exterior; inspired by Baden-Württemberg.",
+      "es": "Iglesia neorrománica con toques barrocos (1915–1918), en ulmo y roble, interior de mañío y laurel, exterior de fierro y alerce; inspirada en Baden-Wurtemberg."
+    },
+    "difficulty": [
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "id": "parque_cerro_philippi_trees",
+    "name": {
+      "en": "Philippi Hill Park",
+      "es": "Parque Cerro Philippi"
+    },
+    "region": "los_lagos",
+    "latitude": -41.3100666,
+    "longitude": -72.9786874,
+    "image": "/uploads/5e3c830dd9aa039fcb94718050d85fcf.jpg",
+    "thumbnail": "/uploads/5e3c830dd9aa039fcb94718050d85fcf.jpg",
+    "tip": {
+      "en": "“He who plants trees knowing he will never sit in their shade has begun to understand the meaning of life”.",
+      "es": "\"El que planta árboles sabiendo que nunca se sentará a su sombra, ha empezado a comprender el significado de la vida\"."
+    },
+    "difficulty": [
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "id": "corner_biblioteca_nacional",
+    "name": {
+      "en": "National Library of Chile",
+      "es": "Biblioteca Nacional de Chile"
+    },
+    "region": "metropolitana",
+    "latitude": -33.4415722,
+    "longitude": -70.6459372,
+    "image": "/uploads/b94ae38dd9575fe2d7af66b3fdc2c960.jpg",
+    "thumbnail": "/uploads/b94ae38dd9575fe2d7af66b3fdc2c960.jpg",
+    "tip": {
+      "en": "Founded in 1813, it preserves the nation’s memory through books and archives that shaped its history and thought.",
+      "es": "Fundada en 1813, resguarda la memoria del país en libros y archivos que han dado forma a su historia y pensamiento."
+    },
+    "difficulty": [
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "id": "fuente_neptuno_sta_lucia",
+    "name": {
+      "en": "Neptune Fountain",
+      "es": "Fuente de Neptuno"
+    },
+    "region": "metropolitana",
+    "latitude": -33.4417477,
+    "longitude": -70.6439495,
+    "image": "/uploads/15554b22a9d3f4a02ca6648501d9d256.jpg",
+    "thumbnail": "/uploads/15554b22a9d3f4a02ca6648501d9d256.jpg",
+    "tip": {
+      "en": "Early 1900s monumental fountain in Cerro Santa Lucía, neoclassical in style with a bronze statue of Neptune, symbolizing power and connection to water.",
+      "es": "Fuente monumental de inicios del 1900 en Cerro Santa Lucía, de estilo neoclásico con estatua de bronce de Neptuno, símbolo de poder y conexión con el agua."
     },
     "difficulty": [
       3,

@@ -3,91 +3,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chile Puzzle Explorer - Admin panel</title>
+    <title>Chile Puzzle Explorer - Admin</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="glass-container">
         <header>
-            <h1>Chile Puzzle Content Admin</h1>
-            <p>Manage in-game locations and dynamic content (ES / EN)</p>
+            <h1>Chile Puzzle Admin</h1>
+            <nav class="tab-bar">
+                <button class="tab active" data-tab="locations">Locations</button>
+                <button class="tab" data-tab="zones">Zones</button>
+                <button class="tab" data-tab="trophies">Trophies</button>
+                <button class="tab" data-tab="scoring">Scoring</button>
+            </nav>
         </header>
-        
-        <div class="dashboard">
+
+        <!-- LOCATIONS TAB -->
+        <div class="dashboard tab-content active" data-tab="locations">
             <aside class="sidebar">
-                <button id="addLocationBtn" class="btn primary">Add New Location</button>
-                <div id="locationList" class="location-list">
-                    <!-- Loaded dynamically -->
-                </div>
+                <button id="addLocationBtn" class="btn primary">+ Add Location</button>
+                <div id="locationList" class="item-list"></div>
             </aside>
-            
             <main class="editor-area">
                 <form id="editorForm" class="hidden">
                     <h2>Edit Location</h2>
-                    
                     <div class="form-group">
-                        <label>ID (Unique string)</label>
+                        <label>ID (unique)</label>
                         <input type="text" id="locId" placeholder="ej: valle_de_la_luna" required>
                     </div>
-
                     <div class="grid-2">
-                        <div class="form-group">
-                            <label>Name (English)</label>
-                            <input type="text" id="locNameEn" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Name (Spanish)</label>
-                            <input type="text" id="locNameEs" required>
-                        </div>
+                        <div class="form-group"><label>Name (EN)</label><input type="text" id="locNameEn" required></div>
+                        <div class="form-group"><label>Name (ES)</label><input type="text" id="locNameEs" required></div>
                     </div>
-                    
                     <div class="form-group">
-                        <label>Region</label>
-                        <input type="text" id="locRegion" required>
+                        <label>Zone</label>
+                        <select id="locZone" required></select>
                     </div>
-
                     <div class="grid-2">
-                        <div class="form-group">
-                            <label>Latitude</label>
-                            <input type="number" step="any" id="locLat" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Longitude</label>
-                            <input type="number" step="any" id="locLng" required>
-                        </div>
+                        <div class="form-group"><label>Latitude</label><input type="number" step="any" id="locLat" required></div>
+                        <div class="form-group"><label>Longitude</label><input type="number" step="any" id="locLng" required></div>
                     </div>
-
                     <div class="form-group">
-                        <label>Image (Upload or paste URL)</label>
-                        <input type="file" id="locImageUpload" accept="image/*" style="margin-bottom:10px; background: rgba(0,0,0,0.5);">
+                        <label>Image</label>
+                        <input type="file" id="locImageUpload" accept="image/*" style="margin-bottom:10px;background:rgba(0,0,0,0.5);">
                         <input type="text" id="locImage" placeholder="Or enter URL" required>
-                        <div id="imagePreviewContainer" style="margin-top: 10px; display: none;">
-                            <img id="imagePreview" src="" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: 8px;">
+                        <div id="imagePreviewContainer" style="margin-top:10px;display:none;">
+                            <img id="imagePreview" src="" alt="Preview" style="max-width:100%;max-height:200px;border-radius:8px;">
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Thumbnail URL</label>
-                        <input type="text" id="locThumbnail" required>
+                    <div class="form-group"><label>Thumbnail URL</label><input type="text" id="locThumbnail" required></div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Tip (EN)</label><textarea id="locTipEn" rows="2" maxlength="200" required></textarea></div>
+                        <div class="form-group"><label>Tip (ES)</label><textarea id="locTipEs" rows="2" maxlength="200" required></textarea></div>
                     </div>
-
-                    <div class="form-group">
-                        <label>Post-Puzzle Tip (English)</label>
-                        <textarea id="locTipEn" rows="2" maxlength="200" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Post-Puzzle Tip (Spanish)</label>
-                        <textarea id="locTipEs" rows="2" maxlength="200" required></textarea>
-                    </div>
-
                     <div class="actions">
-                        <button type="submit" class="btn success">Save Location</button>
+                        <button type="submit" class="btn success">Save</button>
                         <button type="button" id="deleteLocationBtn" class="btn danger">Delete</button>
                     </div>
                 </form>
-                <div id="emptyState" class="empty-state">
-                    <p>Select a location from the sidebar or add a new one to begin editing.</p>
-                </div>
+                <div id="emptyState" class="empty-state"><p>Select or add a location.</p></div>
+            </main>
+        </div>
+
+        <!-- ZONES TAB -->
+        <div class="dashboard tab-content" data-tab="zones">
+            <aside class="sidebar">
+                <button id="addZoneBtn" class="btn primary">+ Add Zone</button>
+                <div id="zoneList" class="item-list"></div>
+            </aside>
+            <main class="editor-area">
+                <form id="zoneForm" class="hidden">
+                    <h2>Edit Zone</h2>
+                    <div class="form-group"><label>ID</label><input type="text" id="zoneId" required></div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Name (EN)</label><input type="text" id="zoneNameEn" required></div>
+                        <div class="form-group"><label>Name (ES)</label><input type="text" id="zoneNameEs" required></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Required Points</label><input type="number" id="zonePoints" value="0" required></div>
+                        <div class="form-group"><label>Order</label><input type="number" id="zoneOrder" value="1" required></div>
+                    </div>
+                    <div class="form-group"><label>Icon (Material icon name)</label><input type="text" id="zoneIcon" value="landscape"></div>
+                    <div class="actions">
+                        <button type="submit" class="btn success">Save</button>
+                        <button type="button" id="deleteZoneBtn" class="btn danger">Delete</button>
+                    </div>
+                </form>
+                <div id="zoneEmpty" class="empty-state"><p>Select or add a zone.</p></div>
+            </main>
+        </div>
+
+        <!-- TROPHIES TAB -->
+        <div class="dashboard tab-content" data-tab="trophies">
+            <aside class="sidebar">
+                <button id="addTrophyBtn" class="btn primary">+ Add Trophy</button>
+                <div id="trophyList" class="item-list"></div>
+            </aside>
+            <main class="editor-area">
+                <form id="trophyForm" class="hidden">
+                    <h2>Edit Trophy</h2>
+                    <div class="form-group"><label>ID</label><input type="text" id="trophyId" required></div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Name (EN)</label><input type="text" id="trophyNameEn" required></div>
+                        <div class="form-group"><label>Name (ES)</label><input type="text" id="trophyNameEs" required></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Description (EN)</label><textarea id="trophyDescEn" rows="2" required></textarea></div>
+                        <div class="form-group"><label>Description (ES)</label><textarea id="trophyDescEs" rows="2" required></textarea></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Icon</label><input type="text" id="trophyIcon" value="emoji_events"></div>
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select id="trophyType">
+                                <option value="milestone">Milestone</option>
+                                <option value="zone_complete">Zone Complete</option>
+                                <option value="speed">Speed</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="conditionFields">
+                        <div class="grid-2">
+                            <div class="form-group"><label>Metric</label>
+                                <select id="trophyMetric">
+                                    <option value="totalCompleted">totalCompleted</option>
+                                    <option value="totalPoints">totalPoints</option>
+                                    <option value="fastestTime">fastestTime</option>
+                                    <option value="zoneAllCompleted">zoneAllCompleted</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label>Threshold / Zone ID</label><input type="text" id="trophyThreshold"></div>
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <button type="submit" class="btn success">Save</button>
+                        <button type="button" id="deleteTrophyBtn" class="btn danger">Delete</button>
+                    </div>
+                </form>
+                <div id="trophyEmpty" class="empty-state"><p>Select or add a trophy.</p></div>
+            </main>
+        </div>
+
+        <!-- SCORING TAB -->
+        <div class="dashboard tab-content" data-tab="scoring">
+            <main class="editor-area" style="max-width:600px;margin:0 auto;">
+                <form id="scoringForm">
+                    <h2>Scoring Config</h2>
+                    <p style="color:var(--text-secondary);margin-bottom:1.5rem;">Points awarded per difficulty level and bonus rules.</p>
+                    <div class="grid-2">
+                        <div class="form-group"><label>3-col puzzle</label><input type="number" id="score3" required></div>
+                        <div class="form-group"><label>4-col puzzle</label><input type="number" id="score4" required></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>5-col puzzle</label><input type="number" id="score5" required></div>
+                        <div class="form-group"><label>6-col puzzle</label><input type="number" id="score6" required></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Time bonus threshold (secs)</label><input type="number" id="scoreTimeThreshold" required></div>
+                        <div class="form-group"><label>Time bonus points</label><input type="number" id="scoreTimeBonus" required></div>
+                    </div>
+                    <div class="form-group"><label>Move efficiency bonus (%)</label><input type="number" id="scoreMoveBonus" required></div>
+                    <div class="actions">
+                        <button type="submit" class="btn success">Save Scoring</button>
+                    </div>
+                </form>
             </main>
         </div>
     </div>

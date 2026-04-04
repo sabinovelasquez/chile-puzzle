@@ -1,58 +1,46 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
+import 'package:chile_puzzle/core/theme/app_theme.dart';
+import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'features/map/map_screen.dart';
 import 'features/ads/ad_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   AdService.initialize();
   AdService.loadInterstitial();
+  await GameProgressService.initialize();
   runApp(const ChilePuzzleApp());
 }
 
-class ChilePuzzleApp extends StatelessWidget {
+class ChilePuzzleApp extends StatefulWidget {
   const ChilePuzzleApp({super.key});
+
+  static void setLocale(BuildContext context, Locale locale) {
+    context.findAncestorStateOfType<_ChilePuzzleAppState>()?._setLocale(locale);
+  }
+
+  @override
+  State<ChilePuzzleApp> createState() => _ChilePuzzleAppState();
+}
+
+class _ChilePuzzleAppState extends State<ChilePuzzleApp> {
+  Locale? _locale;
+
+  void _setLocale(Locale locale) {
+    setState(() => _locale = locale);
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Chile Puzzle Explorer', // Fallback, use AppLocalizations dynamically
+      title: 'Chile Puzzle Explorer',
       onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1E88E5)),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
+      locale: _locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: const MapScreen(),
-    );
-  }
-}
-
-class MainMenuScreen extends StatelessWidget {
-  const MainMenuScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.appTitle),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(l10n.loading),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {},
-              child: Text(l10n.playButton),
-            )
-          ],
-        ),
-      ),
     );
   }
 }

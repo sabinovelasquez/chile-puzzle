@@ -33,7 +33,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get difficultyMaster => 'Master (10x10)';
 
   @override
-  String get unlockNext => 'Unlock Next';
+  String get unlockNext => 'Continue';
 
   @override
   String get returnToMap => 'Return to map';
@@ -43,4 +43,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get puzzleCompleted => 'Puzzle Completed!';
+
+  @override
+  String get totalPoints => 'Points';
+
+  @override
+  String get pointsEarned => 'Points Earned';
+
+  @override
+  String get timeBonus => 'Time Bonus';
+
+  @override
+  String get efficiencyBonus => 'Efficiency Bonus';
+
+  @override
+  String get trophies => 'Trophies';
+
+  @override
+  String get profile => 'Profile';
+
+  @override
+  String get zoneLocked => 'Locked';
+
+  @override
+  String get zoneUnlocked => 'Unlocked';
+
+  @override
+  String get share => 'Share';
+
+  @override
+  String get moves => 'Moves';
+
+  @override
+  String get time => 'Time';
+
+  @override
+  String get completed => 'Completed';
+
+  @override
+  String get newTrophy => 'New Trophy!';
+
+  @override
+  String get puzzlesCompleted => 'Puzzles';
+
+  @override
+  String get bestTime => 'Best Time';
 }

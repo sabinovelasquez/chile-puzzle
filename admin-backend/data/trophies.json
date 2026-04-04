@@ -1,0 +1,42 @@
+[
+  {
+    "id": "first_puzzle",
+    "name": { "en": "First Steps", "es": "Primeros Pasos" },
+    "description": { "en": "Complete your first puzzle", "es": "Completa tu primer puzzle" },
+    "icon": "emoji_events",
+    "type": "milestone",
+    "condition": { "metric": "totalCompleted", "threshold": 1 }
+  },
+  {
+    "id": "five_puzzles",
+    "name": { "en": "Getting Started", "es": "En Marcha" },
+    "description": { "en": "Complete 5 puzzles", "es": "Completa 5 puzzles" },
+    "icon": "star",
+    "type": "milestone",
+    "condition": { "metric": "totalCompleted", "threshold": 5 }
+  },
+  {
+    "id": "speed_demon",
+    "name": { "en": "Speed Demon", "es": "Demonio de Velocidad" },
+    "description": { "en": "Complete a puzzle in under 30 seconds", "es": "Completa un puzzle en menos de 30 segundos" },
+    "icon": "bolt",
+    "type": "speed",
+    "condition": { "metric": "fastestTime", "threshold": 30 }
+  },
+  {
+    "id": "zone_valparaiso",
+    "name": { "en": "Valparaíso Master", "es": "Maestro de Valparaíso" },
+    "description": { "en": "Complete all puzzles in Valparaíso", "es": "Completa todos los puzzles de Valparaíso" },
+    "icon": "military_tech",
+    "type": "zone_complete",
+    "condition": { "metric": "zoneAllCompleted", "zoneId": "valparaiso" }
+  },
+  {
+    "id": "century",
+    "name": { "en": "Century", "es": "Centenario" },
+    "description": { "en": "Accumulate 100 points", "es": "Acumula 100 puntos" },
+    "icon": "workspace_premium",
+    "type": "milestone",
+    "condition": { "metric": "totalPoints", "threshold": 100 }
+  }
+]
