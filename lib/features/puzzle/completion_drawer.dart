@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/features/ads/ad_service.dart';
-import 'package:chile_puzzle/features/puzzle/icon_mapping.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 
 class CompletionDrawer extends StatefulWidget {
@@ -23,36 +23,24 @@ class CompletionDrawer extends StatefulWidget {
 }
 
 class _CompletionDrawerState extends State<CompletionDrawer> {
-  bool _drawerOpen = false;
+  bool _visible = false;
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (mounted) setState(() => _drawerOpen = true);
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) setState(() => _visible = true);
     });
   }
 
-  void _openFullMap(LatLng latLng, String title) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(
-            title: Text(title, style: const TextStyle(fontSize: 14)),
-            leading: IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-          body: GoogleMap(
-            initialCameraPosition: CameraPosition(target: latLng, zoom: 15),
-            markers: {Marker(markerId: const MarkerId('loc'), position: latLng)},
-            myLocationButtonEnabled: false,
-            mapToolbarEnabled: true,
-          ),
-        ),
-      ),
+  Future<void> _openInGoogleMaps() async {
+    final loc = widget.location;
+    final url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=${loc.latitude},${loc.longitude}',
     );
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
   }
 
   @override
@@ -61,218 +49,210 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
     final l10n = AppLocalizations.of(context);
     final loc = widget.location;
     final result = widget.result;
-    final latLng = LatLng(loc.latitude, loc.longitude);
-    final screenHeight = MediaQuery.of(context).size.height;
-    final drawerHeight = screenHeight * 0.55;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
-    return Stack(
-      children: [
-        // Tap anywhere to reopen
-        if (!_drawerOpen)
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () => setState(() => _drawerOpen = true),
-              behavior: HitTestBehavior.translucent,
-            ),
-          ),
-
-        AnimatedPositioned(
+    return AnimatedOpacity(
+      opacity: _visible ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 400),
+      child: Center(
+        child: AnimatedScale(
+          scale: _visible ? 1.0 : 0.9,
           duration: const Duration(milliseconds: 400),
           curve: Curves.easeOutCubic,
-          left: 0,
-          right: 0,
-          bottom: _drawerOpen ? 0 : -drawerHeight,
-          child: GestureDetector(
-            onVerticalDragEnd: (details) {
-              setState(() {
-                _drawerOpen = details.velocity.pixelsPerSecond.dy <= 0;
-              });
-            },
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xF0FFFFFF),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, -4))],
-              ),
-              child: SingleChildScrollView(
-                physics: const NeverScrollableScrollPhysics(),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Handle — tap to toggle
-                    GestureDetector(
-                      onTap: () => setState(() => _drawerOpen = !_drawerOpen),
-                      child: Container(
-                        width: double.infinity,
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Container(
-                          width: 36,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
+          child: Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, 24, 20, 16 + bottomPadding.clamp(0, 16)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                    // Celebration icon
+                    Icon(PhosphorIconsFill.confetti, size: 48, color: AppTheme.trophyGold),
+                    const SizedBox(height: 12),
+
+                    // Title
+                    Text(
+                      l10n?.puzzleCompleted ?? 'Puzzle solved!',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 22, fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      loc.getLocalizedName(langCode),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14, color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
 
-                    // Points
+                    // Points breakdown card
                     if (result != null) ...[
-                      Text(
-                        '+${result.totalPoints}',
-                        style: TextStyle(
-                          color: AppTheme.trophyGold,
-                          fontSize: 36,
-                          fontWeight: FontWeight.w800,
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        [
-                          '${result.basePoints} base',
-                          if (result.timeBonus > 0) '+${result.timeBonus} time',
-                          if (result.efficiencyBonus > 0) '+${result.efficiencyBonus} efficiency',
-                        ].join('  ·  '),
-                        style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-                      ),
-                    ],
-
-                    // New trophies
-                    if (result != null && result.newTrophies.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        alignment: WrapAlignment.center,
-                        children: result.newTrophies.map((t) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppTheme.trophyGold.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
+                        child: Column(
+                          children: [
+                            _PointsRow(
+                              icon: PhosphorIconsBold.star,
+                              iconColor: AppTheme.trophyGold,
+                              label: langCode == 'es' ? 'Puntos base' : 'Base points',
+                              value: '+${result.basePoints}',
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                            if (result.timeBonus > 0) ...[
+                              const SizedBox(height: 10),
+                              _PointsRow(
+                                icon: PhosphorIconsBold.timer,
+                                iconColor: AppTheme.accentBlue,
+                                label: langCode == 'es' ? 'Bonus de tiempo' : 'Time bonus',
+                                value: '+${result.timeBonus}',
+                              ),
+                            ],
+                            if (result.efficiencyBonus > 0) ...[
+                              const SizedBox(height: 10),
+                              _PointsRow(
+                                icon: PhosphorIconsBold.lightning,
+                                iconColor: AppTheme.accentOrange,
+                                label: langCode == 'es' ? 'Bonus eficiencia' : 'Efficiency bonus',
+                                value: '+${result.efficiencyBonus}',
+                              ),
+                            ],
+                            const SizedBox(height: 10),
+                            Divider(color: Colors.grey.shade200, height: 1),
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Icon(mapIcon(t.icon), size: 18, color: AppTheme.trophyGold),
-                                const SizedBox(width: 6),
+                                Text('Total', style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 16, fontWeight: FontWeight.w700,
+                                )),
                                 Text(
-                                  t.getLocalizedName(langCode),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey.shade800,
+                                  '${result.totalPoints} pts',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 18, fontWeight: FontWeight.w800,
+                                    color: AppTheme.trophyGold,
                                   ),
                                 ),
                               ],
                             ),
-                          );
-                        }).toList(),
+                          ],
+                        ),
                       ),
-                    ],
+                      const SizedBox(height: 16),
 
-                    const SizedBox(height: 16),
+                      ],
 
-                    // Location name + region
-                    Text(
-                      loc.getLocalizedName(langCode),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1B3A4B),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      loc.region,
-                      style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Map — larger
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: GestureDetector(
-                        onTap: () => _openFullMap(latLng, loc.getLocalizedName(langCode)),
-                        child: ClipRRect(
+                    // Tip card
+                    if (loc.getLocalizedTip(langCode).isNotEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppTheme.trophyGold.withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(12),
-                          child: SizedBox(
-                            height: 160,
-                            child: IgnorePointer(
-                              child: GoogleMap(
-                                initialCameraPosition: CameraPosition(target: latLng, zoom: 14),
-                                markers: {Marker(markerId: const MarkerId('loc'), position: latLng)},
-                                zoomControlsEnabled: false,
-                                scrollGesturesEnabled: false,
-                                rotateGesturesEnabled: false,
-                                tiltGesturesEnabled: false,
-                                zoomGesturesEnabled: false,
-                                myLocationButtonEnabled: false,
-                                mapToolbarEnabled: false,
-                                liteModeEnabled: true,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              langCode == 'es' ? 'Sabias que?' : 'Did you know?',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 13, fontWeight: FontWeight.w700,
+                                color: AppTheme.trophyGold,
                               ),
                             ),
-                          ),
+                            const SizedBox(height: 6),
+                            Text(
+                              loc.getLocalizedTip(langCode),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13, color: Colors.grey.shade800, height: 1.4,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
                     const SizedBox(height: 12),
 
-                    // Tip
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Text(
-                        loc.getLocalizedTip(langCode),
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 13,
-                          height: 1.4,
+                    // Google Maps link
+                    GestureDetector(
+                      onTap: _openInGoogleMaps,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Actions
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
-                      child: Row(
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(12),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36, height: 36,
+                              decoration: BoxDecoration(
+                                color: AppTheme.accentBlue.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(PhosphorIconsBold.mapPin, size: 18, color: AppTheme.accentBlue),
                             ),
-                            child: IconButton(
-                              onPressed: () {
-                                final pts = result?.totalPoints ?? 0;
-                                Share.share('${loc.getLocalizedName(langCode)} — $pts pts! #ChilePuzzleExplorer');
-                              },
-                              icon: Icon(Icons.share_outlined, color: Colors.grey.shade600, size: 22),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: SizedBox(
-                              height: 48,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  AdService.showInterstitial(
-                                    onAdDismissed: () {
-                                      if (context.mounted) {
-                                        Navigator.of(context).pop(result);
-                                      }
-                                    },
-                                  );
-                                },
-                                child: Text(l10n?.unlockNext ?? 'Continue'),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    loc.getLocalizedName(langCode),
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13, fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    langCode == 'es' ? 'Ver en Google Maps' : 'See on Google Maps',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11, color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                        ],
+                            Icon(PhosphorIconsBold.arrowRight, size: 16, color: Colors.grey.shade400),
+                          ],
+                        ),
                       ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Action buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              setState(() => _visible = false);
+                            },
+                            icon: const Icon(PhosphorIconsBold.eye, size: 18),
+                            label: Text(langCode == 'es' ? 'Ver puzzle' : 'View puzzle'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              AdService.showInterstitial(
+                                onAdDismissed: () {
+                                  if (context.mounted) {
+                                    Navigator.of(context).pop(result);
+                                  }
+                                },
+                              );
+                            },
+                            icon: const Icon(PhosphorIconsBold.arrowRight, size: 18),
+                            label: Text(l10n?.unlockNext ?? 'Continue'),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -280,6 +260,33 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
             ),
           ),
         ),
+    );
+  }
+}
+
+class _PointsRow extends StatelessWidget {
+  final PhosphorIconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+
+  const _PointsRow({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: iconColor),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade600)),
+        ),
+        Text(value, style: GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.w700)),
       ],
     );
   }

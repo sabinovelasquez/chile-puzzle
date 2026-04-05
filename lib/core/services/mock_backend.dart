@@ -5,9 +5,17 @@ import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/models/game_config.dart';
 
 class MockBackend {
+  // For physical device testing, use your Mac's local IP.
+  // For emulator, use 10.0.2.2. For web/desktop, use localhost.
+  static const _devServerIp = '192.168.0.7';
+
   static String get _baseUrl {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:3000';
+    if (kIsWeb) return 'http://127.0.0.1:3000';
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      // Emulator uses 10.0.2.2, physical device uses LAN IP
+      return kDebugMode
+          ? 'http://$_devServerIp:3000'
+          : 'http://$_devServerIp:3000';
     }
     return 'http://127.0.0.1:3000';
   }

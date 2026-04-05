@@ -56,6 +56,6 @@ app.get('/api/config', (req, res) => {
     .then(([zones, scoring, trophies]) => res.json({ zones, scoring, trophies }));
 });
 
-app.listen(PORT, () => {
-  console.log(`✨ Admin server running at http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✨ Admin server running at http://0.0.0.0:${PORT}`);
 });

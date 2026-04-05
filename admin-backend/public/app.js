@@ -32,13 +32,16 @@ const fZone = document.getElementById('locZone');
 const fLat = document.getElementById('locLat'), fLng = document.getElementById('locLng');
 const fImage = document.getElementById('locImage'), fThumb = document.getElementById('locThumbnail');
 const fTipEn = document.getElementById('locTipEn'), fTipEs = document.getElementById('locTipEs');
+const fRequiredPoints = document.getElementById('locRequiredPoints');
+const fCropX = document.getElementById('locCropX'), fCropY = document.getElementById('locCropY');
+const fCropW = document.getElementById('locCropW'), fCropH = document.getElementById('locCropH');
 const fImageUpload = document.getElementById('locImageUpload');
 const imgPreviewC = document.getElementById('imagePreviewContainer');
 const imgPreview = document.getElementById('imagePreview');
 
 fImage.addEventListener('input', () => {
-  if (fImage.value) { imgPreview.src = fImage.value; imgPreviewC.style.display = 'block'; }
-  else { imgPreviewC.style.display = 'none'; }
+  if (fImage.value) { imgPreview.src = fImage.value; imgPreviewC.style.display = 'block'; cropToolLoad(fImage.value); }
+  else { imgPreviewC.style.display = 'none'; cropToolHide(); }
 });
 
 fImageUpload.addEventListener('change', async (e) => {
@@ -52,6 +55,7 @@ fImageUpload.addEventListener('change', async (e) => {
       fImage.value = d.url;
       if (!fThumb.value || fThumb.value.startsWith('/uploads')) fThumb.value = d.url;
       imgPreview.src = d.url; imgPreviewC.style.display = 'block';
+      cropToolLoad(d.url);
     }
   } catch { alert('Error uploading image'); }
 });
@@ -80,11 +84,15 @@ function openLocEditor(id) {
   fId.value = loc.id; fId.disabled = true;
   fNameEn.value = loc.name.en || ''; fNameEs.value = loc.name.es || '';
   fZone.value = loc.region || '';
+  fRequiredPoints.value = loc.requiredPoints || 0;
   fLat.value = loc.latitude || 0; fLng.value = loc.longitude || 0;
   fImage.value = loc.image || ''; fThumb.value = loc.thumbnail || '';
   fTipEn.value = loc.tip.en || ''; fTipEs.value = loc.tip.es || '';
-  if (fImage.value) { imgPreview.src = fImage.value; imgPreviewC.style.display = 'block'; }
-  else imgPreviewC.style.display = 'none';
+  const crop = loc.crop || {};
+  fCropX.value = crop.x ?? 0.15; fCropY.value = crop.y ?? 0.15;
+  fCropW.value = crop.w ?? 0.7; fCropH.value = crop.h ?? 0.7;
+  if (fImage.value) { imgPreview.src = fImage.value; imgPreviewC.style.display = 'block'; cropToolLoad(fImage.value); }
+  else { imgPreviewC.style.display = 'none'; cropToolHide(); }
   fImageUpload.value = '';
   renderLocList();
 }
@@ -95,9 +103,12 @@ document.getElementById('addLocationBtn').onclick = () => {
   fId.value = ''; fId.disabled = false;
   fNameEn.value = ''; fNameEs.value = '';
   fZone.value = zones.length ? zones[0].id : '';
+  fRequiredPoints.value = 0;
   fLat.value = -33.4569; fLng.value = -70.6483;
   fImage.value = ''; fThumb.value = ''; fTipEn.value = ''; fTipEs.value = '';
+  fCropX.value = 0.15; fCropY.value = 0.15; fCropW.value = 0.7; fCropH.value = 0.7;
   imgPreviewC.style.display = 'none'; fImageUpload.value = '';
+  cropToolHide();
   renderLocList();
 };
 
@@ -116,9 +127,11 @@ locForm.onsubmit = async (e) => {
   const obj = {
     id, name: { en: fNameEn.value, es: fNameEs.value },
     region: fZone.value,
+    requiredPoints: parseInt(fRequiredPoints.value) || 0,
     latitude: parseFloat(fLat.value), longitude: parseFloat(fLng.value),
     image: fImage.value, thumbnail: fThumb.value,
     tip: { en: fTipEn.value, es: fTipEs.value },
+    crop: { x: parseFloat(fCropX.value), y: parseFloat(fCropY.value), w: parseFloat(fCropW.value), h: parseFloat(fCropH.value) },
     difficulty: [3, 4, 5, 6]
   };
   if (isNew) {
@@ -143,7 +156,7 @@ function renderZoneList() {
   zones.sort((a, b) => a.order - b.order).forEach(z => {
     const div = document.createElement('div');
     div.className = `item ${currentZoneId === z.id ? 'active' : ''}`;
-    div.innerHTML = `<strong>${z.name.es || z.id}</strong><small>${z.requiredPoints} pts</small>`;
+    div.innerHTML = `<strong>${z.name.es || z.id}</strong><small>Order: ${z.order}</small>`;
     div.onclick = () => openZoneEditor(z.id);
     el.appendChild(div);
   });
@@ -158,7 +171,6 @@ function openZoneEditor(id) {
   document.getElementById('zoneId').disabled = true;
   document.getElementById('zoneNameEn').value = z.name.en || '';
   document.getElementById('zoneNameEs').value = z.name.es || '';
-  document.getElementById('zonePoints').value = z.requiredPoints;
   document.getElementById('zoneOrder').value = z.order;
   document.getElementById('zoneIcon').value = z.icon || 'landscape';
   renderZoneList();
@@ -171,7 +183,6 @@ document.getElementById('addZoneBtn').onclick = () => {
   zId.value = ''; zId.disabled = false;
   document.getElementById('zoneNameEn').value = '';
   document.getElementById('zoneNameEs').value = '';
-  document.getElementById('zonePoints').value = 0;
   document.getElementById('zoneOrder').value = zones.length + 1;
   document.getElementById('zoneIcon').value = 'landscape';
   renderZoneList();
@@ -192,7 +203,6 @@ zoneForm.onsubmit = async (e) => {
   const id = zId.value.trim();
   const obj = {
     id, name: { en: document.getElementById('zoneNameEn').value, es: document.getElementById('zoneNameEs').value },
-    requiredPoints: parseInt(document.getElementById('zonePoints').value),
     order: parseInt(document.getElementById('zoneOrder').value),
     icon: document.getElementById('zoneIcon').value
   };
@@ -324,6 +334,279 @@ scoringForm.onsubmit = async (e) => {
   await postJSON('/api/scoring', scoring);
   alert('Scoring saved!');
 };
+
+// ============================================================
+// VISUAL CROP TOOL + DIFFICULTY PREVIEWS
+// ============================================================
+const cropCanvas = document.getElementById('cropCanvas');
+const cropCtx = cropCanvas.getContext('2d');
+const cropContainer = document.getElementById('cropToolContainer');
+const cropNoImage = document.getElementById('cropNoImage');
+const cropPreviews = document.getElementById('cropPreviews');
+let cropImg = null;
+let cropScale = 1;
+let cropDrag = null;
+
+// Difficulty interpolation (mirrors Flutter getCropForDifficulty)
+// t=0 → admin crop (easy), t=1 → full image (expert)
+function interpolateCrop(t) {
+  const cx = parseFloat(fCropX.value) || 0;
+  const cy = parseFloat(fCropY.value) || 0;
+  const cw = parseFloat(fCropW.value) || 0.7;
+  const ch = parseFloat(fCropH.value) || 0.7;
+  return {
+    x: cx * (1 - t),
+    y: cy * (1 - t),
+    w: cw + (1 - cw) * t,
+    h: ch + (1 - ch) * t,
+  };
+}
+
+function cropToolHide() {
+  cropContainer.style.display = 'none';
+  cropPreviews.style.display = 'none';
+  cropNoImage.style.display = 'block';
+  cropImg = null;
+}
+
+function cropToolLoad(url) {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    cropImg = img;
+    cropNoImage.style.display = 'none';
+    cropContainer.style.display = 'block';
+    cropPreviews.style.display = 'block';
+    cropToolResize();
+    cropToolDraw();
+  };
+  img.onerror = () => cropToolHide();
+  img.src = url;
+}
+
+function cropToolResize() {
+  if (!cropImg) return;
+  const maxW = cropContainer.clientWidth || 500;
+  const ratio = cropImg.naturalHeight / cropImg.naturalWidth;
+  const dpr = window.devicePixelRatio || 1;
+  cropCanvas.style.width = maxW + 'px';
+  cropCanvas.style.height = (maxW * ratio) + 'px';
+  cropCanvas.width = maxW * dpr;
+  cropCanvas.height = maxW * ratio * dpr;
+  cropScale = dpr;
+  cropCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function cropGetRect() {
+  const cw = cropCanvas.width / cropScale;
+  const ch = cropCanvas.height / cropScale;
+  const x = parseFloat(fCropX.value) || 0;
+  const y = parseFloat(fCropY.value) || 0;
+  const w = parseFloat(fCropW.value) || 0.5;
+  const h = parseFloat(fCropH.value) || 0.5;
+  return { px: x * cw, py: y * ch, pw: w * cw, ph: h * ch, cw, ch };
+}
+
+function cropToolDraw() {
+  if (!cropImg) return;
+  const cw = cropCanvas.width / cropScale;
+  const ch = cropCanvas.height / cropScale;
+  cropCtx.clearRect(0, 0, cw, ch);
+  cropCtx.drawImage(cropImg, 0, 0, cw, ch);
+
+  const r = cropGetRect();
+  // Dim outside
+  cropCtx.fillStyle = 'rgba(0,0,0,0.55)';
+  cropCtx.fillRect(0, 0, cw, r.py);
+  cropCtx.fillRect(0, r.py + r.ph, cw, ch - r.py - r.ph);
+  cropCtx.fillRect(0, r.py, r.px, r.ph);
+  cropCtx.fillRect(r.px + r.pw, r.py, cw - r.px - r.pw, r.ph);
+
+  // Border
+  cropCtx.strokeStyle = '#238636';
+  cropCtx.lineWidth = 2;
+  cropCtx.strokeRect(r.px, r.py, r.pw, r.ph);
+
+  // Corner handles
+  const hs = 8;
+  cropCtx.fillStyle = '#238636';
+  for (const [cx, cy] of [[r.px, r.py], [r.px + r.pw, r.py], [r.px, r.py + r.ph], [r.px + r.pw, r.py + r.ph]]) {
+    cropCtx.fillRect(cx - hs / 2, cy - hs / 2, hs, hs);
+  }
+
+  // Rule-of-thirds
+  cropCtx.strokeStyle = 'rgba(255,255,255,0.2)';
+  cropCtx.lineWidth = 0.5;
+  for (let i = 1; i <= 2; i++) {
+    cropCtx.beginPath();
+    cropCtx.moveTo(r.px + r.pw * i / 3, r.py);
+    cropCtx.lineTo(r.px + r.pw * i / 3, r.py + r.ph);
+    cropCtx.stroke();
+    cropCtx.beginPath();
+    cropCtx.moveTo(r.px, r.py + r.ph * i / 3);
+    cropCtx.lineTo(r.px + r.pw, r.py + r.ph * i / 3);
+    cropCtx.stroke();
+  }
+
+  // "EASY" label
+  cropCtx.fillStyle = '#238636';
+  cropCtx.font = 'bold 11px Outfit, sans-serif';
+  cropCtx.fillText('EASY', r.px + 6, r.py + 16);
+
+  // Draw difficulty preview thumbnails
+  drawCropPreviews();
+}
+
+function drawCropPreviews() {
+  if (!cropImg) return;
+  const diffs = [
+    { id: 'prevEasy',   t: 0,     color: '#238636' },
+    { id: 'prevNormal', t: 1 / 3, color: '#d29922' },
+    { id: 'prevHard',   t: 2 / 3, color: '#58a6ff' },
+    { id: 'prevExpert', t: 1,     color: '#bc8cff' },
+  ];
+  const natW = cropImg.naturalWidth;
+  const natH = cropImg.naturalHeight;
+
+  for (const d of diffs) {
+    const canvas = document.getElementById(d.id);
+    if (!canvas) continue;
+    const crop = interpolateCrop(d.t);
+    // Source rect in image pixels
+    const sx = crop.x * natW;
+    const sy = crop.y * natH;
+    const sw = crop.w * natW;
+    const sh = crop.h * natH;
+    // Canvas size: fit into ~120px wide, maintain crop aspect ratio
+    const prevW = canvas.parentElement.clientWidth || 120;
+    const aspect = sh / sw;
+    const prevH = prevW * aspect;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.style.width = prevW + 'px';
+    canvas.style.height = prevH + 'px';
+    canvas.width = prevW * dpr;
+    canvas.height = prevH * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, prevW, prevH);
+    ctx.drawImage(cropImg, sx, sy, sw, sh, 0, 0, prevW, prevH);
+    // Border overlay
+    ctx.strokeStyle = d.color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, prevW - 2, prevH - 2);
+  }
+}
+
+function cropHitTest(mx, my) {
+  const r = cropGetRect();
+  const edge = 12;
+  const onLeft = Math.abs(mx - r.px) < edge;
+  const onRight = Math.abs(mx - (r.px + r.pw)) < edge;
+  const onTop = Math.abs(my - r.py) < edge;
+  const onBottom = Math.abs(my - (r.py + r.ph)) < edge;
+  const inX = mx > r.px + edge && mx < r.px + r.pw - edge;
+  const inY = my > r.py + edge && my < r.py + r.ph - edge;
+
+  if (onTop && onLeft) return 'nw';
+  if (onTop && onRight) return 'ne';
+  if (onBottom && onLeft) return 'sw';
+  if (onBottom && onRight) return 'se';
+  if (onTop && inX) return 'n';
+  if (onBottom && inX) return 's';
+  if (onLeft && inY) return 'w';
+  if (onRight && inY) return 'e';
+  if (mx > r.px && mx < r.px + r.pw && my > r.py && my < r.py + r.ph) return 'move';
+  return null;
+}
+
+function cropCursorFor(type) {
+  if (!type) return 'crosshair';
+  if (type === 'move') return 'grab';
+  if (type === 'nw' || type === 'se') return 'nwse-resize';
+  if (type === 'ne' || type === 'sw') return 'nesw-resize';
+  if (type === 'n' || type === 's') return 'ns-resize';
+  return 'ew-resize';
+}
+
+function cropCanvasXY(e) {
+  const rect = cropCanvas.getBoundingClientRect();
+  const touch = e.touches ? e.touches[0] : e;
+  return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+}
+
+function cropSetValues(x, y, w, h) {
+  w = Math.max(0.08, Math.min(1, w));
+  h = Math.max(0.08, Math.min(1, h));
+  x = Math.max(0, Math.min(1 - w, x));
+  y = Math.max(0, Math.min(1 - h, y));
+  fCropX.value = x.toFixed(2);
+  fCropY.value = y.toFixed(2);
+  fCropW.value = w.toFixed(2);
+  fCropH.value = h.toFixed(2);
+  cropToolDraw();
+}
+
+function cropStartDrag(e) {
+  e.preventDefault();
+  const { x, y } = cropCanvasXY(e);
+  const hit = cropHitTest(x, y);
+  if (!hit) {
+    const cw = cropCanvas.width / cropScale;
+    const ch = cropCanvas.height / cropScale;
+    cropDrag = {
+      type: 'se', startX: x, startY: y,
+      origCrop: { x: x / cw, y: y / ch, w: 0.01, h: 0.01 }
+    };
+    cropSetValues(x / cw, y / ch, 0.08, 0.08);
+    return;
+  }
+  cropDrag = {
+    type: hit, startX: x, startY: y,
+    origCrop: {
+      x: parseFloat(fCropX.value), y: parseFloat(fCropY.value),
+      w: parseFloat(fCropW.value), h: parseFloat(fCropH.value),
+    }
+  };
+  if (hit === 'move') cropCanvas.style.cursor = 'grabbing';
+}
+
+function cropMoveDrag(e) {
+  if (!cropImg) return;
+  const { x, y } = cropCanvasXY(e);
+  if (!cropDrag) {
+    cropCanvas.style.cursor = cropCursorFor(cropHitTest(x, y));
+    return;
+  }
+  e.preventDefault();
+  const cw = cropCanvas.width / cropScale;
+  const ch = cropCanvas.height / cropScale;
+  const dx = (x - cropDrag.startX) / cw;
+  const dy = (y - cropDrag.startY) / ch;
+  const o = cropDrag.origCrop;
+
+  let nx = o.x, ny = o.y, nw = o.w, nh = o.h;
+  const t = cropDrag.type;
+  if (t === 'move') { nx = o.x + dx; ny = o.y + dy; }
+  else {
+    if (t.includes('w')) { nx = o.x + dx; nw = o.w - dx; }
+    if (t.includes('e')) { nw = o.w + dx; }
+    if (t.includes('n')) { ny = o.y + dy; nh = o.h - dy; }
+    if (t.includes('s')) { nh = o.h + dy; }
+  }
+  cropSetValues(nx, ny, nw, nh);
+}
+
+function cropEndDrag() {
+  if (cropDrag && cropDrag.type === 'move') cropCanvas.style.cursor = 'grab';
+  cropDrag = null;
+}
+
+cropCanvas.addEventListener('mousedown', cropStartDrag);
+window.addEventListener('mousemove', cropMoveDrag);
+window.addEventListener('mouseup', cropEndDrag);
+cropCanvas.addEventListener('touchstart', cropStartDrag, { passive: false });
+window.addEventListener('touchmove', cropMoveDrag, { passive: false });
+window.addEventListener('touchend', cropEndDrag);
 
 // ============================================================
 // INIT

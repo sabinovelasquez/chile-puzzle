@@ -1,6 +1,6 @@
 {
   "appTitle": "Chile Puzzle Explorer",
-  "playButton": "Play",
+  "playButton": "Begin",
   "difficultyBeginner": "Beginner (3x3)",
   "difficultyEasy": "Easy (4x4)",
   "difficultyMedium": "Medium (5x5)",

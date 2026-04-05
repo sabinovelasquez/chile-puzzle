@@ -12,7 +12,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get appTitle => 'Explorador Puzzles Chile';
 
   @override
-  String get playButton => 'Jugar';
+  String get playButton => 'Comenzar';
 
   @override
   String get difficultyBeginner => 'Principiante (3x3)';

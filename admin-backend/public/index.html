@@ -36,9 +36,15 @@
                         <div class="form-group"><label>Name (EN)</label><input type="text" id="locNameEn" required></div>
                         <div class="form-group"><label>Name (ES)</label><input type="text" id="locNameEs" required></div>
                     </div>
-                    <div class="form-group">
-                        <label>Zone</label>
-                        <select id="locZone" required></select>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Zone</label>
+                            <select id="locZone" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Required Points to Unlock</label>
+                            <input type="number" id="locRequiredPoints" min="0" value="0" required>
+                        </div>
                     </div>
                     <div class="grid-2">
                         <div class="form-group"><label>Latitude</label><input type="number" step="any" id="locLat" required></div>
@@ -56,6 +62,37 @@
                     <div class="grid-2">
                         <div class="form-group"><label>Tip (EN)</label><textarea id="locTipEn" rows="2" maxlength="200" required></textarea></div>
                         <div class="form-group"><label>Tip (ES)</label><textarea id="locTipEs" rows="2" maxlength="200" required></textarea></div>
+                    </div>
+                    <h3 style="margin-top:16px;font-size:14px;color:#888;">Crop — Easy Difficulty Focus Area</h3>
+                    <p class="crop-help">Drag to move. Drag edges/corners to resize. This defines the zoomed-in area for Easy. Other difficulties interpolate toward the full image.</p>
+                    <div id="cropToolContainer" class="crop-tool" style="display:none;">
+                        <canvas id="cropCanvas"></canvas>
+                    </div>
+                    <div id="cropNoImage" style="color:var(--text-secondary);font-size:0.85rem;padding:1rem 0;">Upload or set an image URL first to use the visual crop tool.</div>
+                    <input type="hidden" id="locCropX" value="0.15">
+                    <input type="hidden" id="locCropY" value="0.15">
+                    <input type="hidden" id="locCropW" value="0.7">
+                    <input type="hidden" id="locCropH" value="0.7">
+                    <div id="cropPreviews" style="display:none;margin-top:12px;">
+                        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">Preview per difficulty:</p>
+                        <div class="crop-preview-grid">
+                            <div class="crop-preview-item">
+                                <canvas id="prevEasy"></canvas>
+                                <span class="crop-preview-label" style="color:#238636;">Easy (3 col)</span>
+                            </div>
+                            <div class="crop-preview-item">
+                                <canvas id="prevNormal"></canvas>
+                                <span class="crop-preview-label" style="color:#d29922;">Normal (4 col)</span>
+                            </div>
+                            <div class="crop-preview-item">
+                                <canvas id="prevHard"></canvas>
+                                <span class="crop-preview-label" style="color:#58a6ff;">Hard (5 col)</span>
+                            </div>
+                            <div class="crop-preview-item">
+                                <canvas id="prevExpert"></canvas>
+                                <span class="crop-preview-label" style="color:#bc8cff;">Expert (6 col)</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="actions">
                         <button type="submit" class="btn success">Save</button>
@@ -80,10 +117,7 @@
                         <div class="form-group"><label>Name (EN)</label><input type="text" id="zoneNameEn" required></div>
                         <div class="form-group"><label>Name (ES)</label><input type="text" id="zoneNameEs" required></div>
                     </div>
-                    <div class="grid-2">
-                        <div class="form-group"><label>Required Points</label><input type="number" id="zonePoints" value="0" required></div>
-                        <div class="form-group"><label>Order</label><input type="number" id="zoneOrder" value="1" required></div>
-                    </div>
+                    <div class="form-group"><label>Order</label><input type="number" id="zoneOrder" value="1" required></div>
                     <div class="form-group"><label>Icon (Material icon name)</label><input type="text" id="zoneIcon" value="landscape"></div>
                     <div class="actions">
                         <button type="submit" class="btn success">Save</button>

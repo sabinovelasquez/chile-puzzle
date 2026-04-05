@@ -1,79 +1,90 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const _fontFamily = 'Montserrat';
-  static const _seedColor = Color(0xFF1B3A4B);
+  static const seedColor = Color(0xFF1B3A4B);
   static const trophyGold = Color(0xFFC9A961);
+  static const accentGreen = Color(0xFF4CAF50);
+  static const accentOrange = Color(0xFFE67E22);
+  static const accentBlue = Color(0xFF3B82F6);
+  static const accentPurple = Color(0xFF8B5CF6);
+  static const surfaceGrey = Color(0xFFF5F5F7);
+
+  static TextTheme get _textTheme {
+    final body = GoogleFonts.plusJakartaSansTextTheme();
+    final headings = GoogleFonts.spaceGroteskTextTheme();
+    return body.copyWith(
+      displayLarge: headings.displayLarge,
+      displayMedium: headings.displayMedium,
+      displaySmall: headings.displaySmall,
+      headlineLarge: headings.headlineLarge,
+      headlineMedium: headings.headlineMedium,
+      headlineSmall: headings.headlineSmall,
+      titleLarge: headings.titleLarge,
+      titleMedium: headings.titleMedium,
+    );
+  }
 
   static ThemeData get light {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: _seedColor,
+      seedColor: seedColor,
       brightness: Brightness.light,
+      surface: Colors.white,
     );
+
+    final textTheme = _textTheme;
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      fontFamily: _fontFamily,
+      textTheme: textTheme,
+      scaffoldBackgroundColor: surfaceGrey,
       appBarTheme: AppBarTheme(
-        centerTitle: true,
+        centerTitle: false,
         elevation: 0,
-        scrolledUnderElevation: 0,
-        backgroundColor: colorScheme.surface,
-        foregroundColor: colorScheme.onSurface,
-        titleTextStyle: const TextStyle(
-          fontFamily: _fontFamily,
-          fontWeight: FontWeight.w600,
-          fontSize: 16,
-          color: Color(0xFF1B3A4B),
+        scrolledUnderElevation: 0.5,
+        backgroundColor: Colors.white,
+        foregroundColor: seedColor,
+        titleTextStyle: GoogleFonts.spaceGrotesk(
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+          color: seedColor,
         ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
+        color: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(16),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: _seedColor,
+          backgroundColor: accentBlue,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: const TextStyle(
-            fontFamily: _fontFamily,
+          textStyle: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w600,
-            fontSize: 14,
+            fontSize: 15,
           ),
         ),
       ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: _seedColor,
-          textStyle: const TextStyle(
-            fontFamily: _fontFamily,
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: seedColor,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-        ),
-      ),
-      listTileTheme: const ListTileThemeData(
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        titleTextStyle: TextStyle(
-          fontFamily: _fontFamily,
-          fontWeight: FontWeight.w600,
-          fontSize: 14,
-          color: Color(0xFF1B3A4B),
-        ),
-        subtitleTextStyle: TextStyle(
-          fontFamily: _fontFamily,
-          fontWeight: FontWeight.w400,
-          fontSize: 12,
-          color: Color(0xFF6B7280),
+          side: BorderSide(color: Colors.grey.shade300),
+          textStyle: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
         ),
       ),
     );

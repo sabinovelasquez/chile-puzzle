@@ -10,6 +10,12 @@ class LocationModel {
   final String thumbnail;
   final Map<String, String> tip;
   final List<int> difficultyLevels;
+  final int requiredPoints;
+  // Crop region for easiest difficulty (normalized 0-1). Expert shows full image.
+  final double cropX;
+  final double cropY;
+  final double cropW;
+  final double cropH;
 
   const LocationModel({
     required this.id,
@@ -21,9 +27,33 @@ class LocationModel {
     required this.thumbnail,
     required this.tip,
     required this.difficultyLevels,
+    this.requiredPoints = 0,
+    this.cropX = 0.15,
+    this.cropY = 0.15,
+    this.cropW = 0.7,
+    this.cropH = 0.7,
   });
 
+  /// Returns the crop rect for a given difficulty, interpolated between
+  /// the admin-defined focus crop (easiest) and full image (hardest).
+  List<double> getCropForDifficulty(int difficulty) {
+    if (difficultyLevels.length <= 1) return [0, 0, 1, 1];
+    final sorted = List<int>.from(difficultyLevels)..sort();
+    final minD = sorted.first;
+    final maxD = sorted.last;
+    if (minD == maxD) return [0, 0, 1, 1];
+    // t=0 for easiest (tight crop), t=1 for hardest (full image)
+    final t = (difficulty - minD) / (maxD - minD);
+    return [
+      cropX * (1 - t),
+      cropY * (1 - t),
+      cropW + (1 - cropW) * t,
+      cropH + (1 - cropH) * t,
+    ];
+  }
+
   factory LocationModel.fromJson(Map<String, dynamic> json) {
+    final crop = json['crop'] as Map<String, dynamic>?;
     return LocationModel(
       id: json['id'] as String,
       name: Map<String, String>.from(json['name'] as Map),
@@ -34,6 +64,11 @@ class LocationModel {
       thumbnail: _fixUrl(json['thumbnail'] as String),
       tip: Map<String, String>.from(json['tip'] as Map),
       difficultyLevels: List<int>.from(json['difficulty'] as List),
+      requiredPoints: (json['requiredPoints'] as int?) ?? 0,
+      cropX: (crop?['x'] as num?)?.toDouble() ?? 0.15,
+      cropY: (crop?['y'] as num?)?.toDouble() ?? 0.15,
+      cropW: (crop?['w'] as num?)?.toDouble() ?? 0.7,
+      cropH: (crop?['h'] as num?)?.toDouble() ?? 0.7,
     );
   }
 
@@ -45,10 +80,19 @@ class LocationModel {
     return tip[langCode] ?? tip['en'] ?? '';
   }
 
+  static const _devServerIp = '192.168.0.7';
+
   static String _fixUrl(String url) {
     if (url.startsWith('/uploads/')) {
-       final base = (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) ? 'http://10.0.2.2:3000' : 'http://127.0.0.1:3000';
-       return '$base$url';
+      final String base;
+      if (kIsWeb) {
+        base = 'http://127.0.0.1:3000';
+      } else if (defaultTargetPlatform == TargetPlatform.android) {
+        base = 'http://$_devServerIp:3000';
+      } else {
+        base = 'http://127.0.0.1:3000';
+      }
+      return '$base$url';
     }
     return url;
   }

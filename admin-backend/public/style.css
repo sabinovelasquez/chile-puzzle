@@ -229,3 +229,48 @@ input:focus, textarea:focus {
 .btn.success:hover { filter: brightness(1.2); }
 .btn.danger { background: var(--danger); color: white; }
 .btn.danger:hover { filter: brightness(1.2); }
+
+/* Visual Crop Tool */
+.crop-tool {
+    position: relative;
+    margin-top: 10px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    background: rgba(0,0,0,0.4);
+    cursor: crosshair;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.crop-tool canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+.crop-help {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    margin-top: 6px;
+}
+.crop-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+.crop-preview-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+.crop-preview-item canvas {
+    width: 100%;
+    border-radius: 6px;
+    border: 1px solid var(--glass-border);
+    background: rgba(0,0,0,0.3);
+}
+.crop-preview-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-align: center;
+}

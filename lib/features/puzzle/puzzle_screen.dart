@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/models/game_config.dart';
+import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'package:chile_puzzle/features/puzzle/puzzle_engine.dart';
 import 'package:chile_puzzle/features/puzzle/completion_drawer.dart';
@@ -42,6 +45,33 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
       _result = result;
       _completed = true;
     });
+
+    // Show trophies as snackbars
+    if (result.newTrophies.isNotEmpty && mounted) {
+      final langCode = Localizations.localeOf(context).languageCode;
+      for (final trophy in result.newTrophies) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(PhosphorIconsFill.trophy, size: 20, color: AppTheme.trophyGold),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    trophy.getLocalizedName(langCode),
+                    style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF1B3A4B),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   @override

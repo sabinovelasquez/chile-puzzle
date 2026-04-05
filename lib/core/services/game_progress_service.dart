@@ -35,6 +35,11 @@ class GameProgressService {
         : PlayerProgress();
   }
 
+  static Future<void> reset() async {
+    _progress = PlayerProgress();
+    await _save();
+  }
+
   static Future<void> _save() async {
     await _prefs.setString(_key, _progress.toJsonString());
   }
@@ -125,11 +130,12 @@ class GameProgressService {
     return newlyEarned;
   }
 
-  static List<String> getUnlockedZoneIds(List<dynamic> zones) {
-    return zones
-        .where((z) => _progress.totalPoints >= z.requiredPoints)
-        .map((z) => z.id as String)
-        .toList();
+  static bool isLocationUnlocked(LocationModel loc) {
+    return _progress.totalPoints >= loc.requiredPoints;
+  }
+
+  static int getPointsToUnlock(LocationModel loc) {
+    return (loc.requiredPoints - _progress.totalPoints).clamp(0, 999999);
   }
 
   static int get totalPoints => _progress.totalPoints;

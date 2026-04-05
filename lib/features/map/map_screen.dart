@@ -1,17 +1,28 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/models/game_config.dart';
-import 'package:chile_puzzle/core/models/zone_model.dart';
 import 'package:chile_puzzle/core/services/mock_backend.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/features/puzzle/puzzle_screen.dart';
-import 'package:chile_puzzle/features/puzzle/icon_mapping.dart';
 import 'package:chile_puzzle/features/profile/profile_screen.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 import 'package:chile_puzzle/features/auth/auth_service.dart';
 import 'package:chile_puzzle/main.dart';
+
+// Difficulty label helpers
+const _diffLabels = {3: 'easy', 4: 'normal', 5: 'hard', 6: 'expert'};
+const _diffLabelsEs = {3: 'Facil', 4: 'Normal', 5: 'Dificil', 6: 'Experto'};
+const _diffLabelsEn = {3: 'Easy', 4: 'Normal', 5: 'Hard', 6: 'Expert'};
+const _diffColors = {
+  3: AppTheme.accentGreen,
+  4: AppTheme.accentOrange,
+  5: AppTheme.accentBlue,
+  6: AppTheme.accentPurple,
+};
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -59,8 +70,280 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  Future<void> _openPuzzle(LocationModel loc) async {
-    final difficulty = loc.difficultyLevels.isNotEmpty ? loc.difficultyLevels.first : 3;
+  void _toggleLanguage() {
+    final currentLocale = Localizations.localeOf(context);
+    final newLocale = currentLocale.languageCode == 'es'
+        ? const Locale('en')
+        : const Locale('es');
+    ChilePuzzleApp.setLocale(context, newLocale);
+  }
+
+  bool _isLocationUnlocked(LocationModel loc) {
+    return GameProgressService.isLocationUnlocked(loc);
+  }
+
+  int _getPointsToUnlock(LocationModel loc) {
+    return GameProgressService.getPointsToUnlock(loc);
+  }
+
+  void _showDifficultyDialog(LocationModel loc) {
+    final langCode = Localizations.localeOf(context).languageCode;
+    final progress = GameProgressService.progress;
+    final difficulties = loc.difficultyLevels.isNotEmpty ? loc.difficultyLevels : [3];
+    final labels = langCode == 'es' ? _diffLabelsEs : _diffLabelsEn;
+    final allDone = difficulties.every(
+      (d) => progress.completedPuzzles.containsKey('${loc.id}_$d'),
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        clipBehavior: Clip.antiAlias,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header image
+            Stack(
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 7,
+                  child: Image.network(
+                    loc.image,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade300),
+                  ),
+                ),
+                // Gradient overlay
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Colors.black54],
+                      ),
+                    ),
+                  ),
+                ),
+                // Close button
+                Positioned(
+                  top: 8, right: 8,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Container(
+                      width: 32, height: 32,
+                      decoration: BoxDecoration(
+                        color: Colors.black38,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(PhosphorIconsBold.x, size: 16, color: Colors.white),
+                    ),
+                  ),
+                ),
+                // Title
+                Positioned(
+                  left: 16, bottom: 12,
+                  right: 48,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        langCode == 'es' ? 'UBICACION REVELADA' : 'LOCATION REVEALED',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10, fontWeight: FontWeight.w600,
+                          color: AppTheme.trophyGold, letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        loc.getLocalizedName(langCode),
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            // Difficulty grid
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  allDone
+                      ? (langCode == 'es' ? 'TODAS COMPLETADAS' : 'ALL COMPLETED')
+                      : (langCode == 'es' ? 'ELIGE DIFICULTAD' : 'CHOOSE DIFFICULTY'),
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 12, fontWeight: FontWeight.w700,
+                    color: allDone ? AppTheme.accentGreen : Colors.grey.shade700, letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 1.5,
+                children: difficulties.map((diff) {
+                  final key = '${loc.id}_$diff';
+                  final result = progress.completedPuzzles[key];
+                  final isCompleted = result != null;
+                  final color = _diffColors[diff] ?? AppTheme.accentBlue;
+                  final label = labels[diff] ?? '$diff col';
+                  final pts = _config.scoring.basePoints[diff] ?? 50;
+                  final icon = _diffIcon(diff);
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _launchPuzzle(loc, diff);
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isCompleted ? color.withValues(alpha: 0.12) : color.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(14),
+                        border: isCompleted ? Border.all(color: color.withValues(alpha: 0.4), width: 1.5) : null,
+                      ),
+                      child: Stack(
+                        children: [
+                          if (isCompleted)
+                            Positioned(
+                              top: 8, right: 8,
+                              child: Container(
+                                width: 20, height: 20,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(PhosphorIconsBold.check, size: 12, color: Colors.white),
+                              ),
+                            ),
+                          Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(icon, size: 24, color: color),
+                                const SizedBox(height: 6),
+                                Text(
+                                  label,
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 14, fontWeight: FontWeight.w700, color: color,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  isCompleted ? '${result.points} pts' : '$diff cols · $pts pts',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11, color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
+            // View photo button (only when all completed)
+            if (allDone)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _showFullPhoto(loc, langCode);
+                  },
+                  icon: const Icon(PhosphorIconsBold.image, size: 18),
+                  label: Text(langCode == 'es' ? 'Ver foto completa' : 'View full photo'),
+                ),
+              ),
+
+            // Cancel
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + MediaQuery.of(ctx).padding.bottom.clamp(0, 16)),
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(
+                  langCode == 'es' ? 'Cerrar' : 'Close',
+                  style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade600),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  PhosphorIconData _diffIcon(int diff) {
+    switch (diff) {
+      case 3: return PhosphorIconsBold.plant;
+      case 4: return PhosphorIconsBold.flame;
+      case 5: return PhosphorIconsBold.lightning;
+      case 6: return PhosphorIconsBold.skull;
+      default: return PhosphorIconsBold.puzzlePiece;
+    }
+  }
+
+  void _showFullPhoto(LocationModel loc, String langCode) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        clipBehavior: Clip.antiAlias,
+        insetPadding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.network(loc.image, fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(height: 200, color: Colors.grey.shade300),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Text(
+                    loc.getLocalizedName(langCode),
+                    style: GoogleFonts.spaceGrotesk(fontSize: 16, fontWeight: FontWeight.w700),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (loc.getLocalizedTip(langCode).isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      loc.getLocalizedTip(langCode),
+                      style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey.shade600, height: 1.4),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(langCode == 'es' ? 'Cerrar' : 'Close'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _launchPuzzle(LocationModel loc, int difficulty) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -75,120 +358,59 @@ class _MapScreenState extends State<MapScreen> {
     if (mounted) setState(() {});
   }
 
-  void _toggleLanguage() {
-    // Cycle locale between EN and ES
-    final currentLocale = Localizations.localeOf(context);
-    final newLocale = currentLocale.languageCode == 'es'
-        ? const Locale('en')
-        : const Locale('es');
-    // Force rebuild via the app-level locale
-    ChilePuzzleApp.setLocale(context, newLocale);
-  }
-
-  void _showScoringHelp() {
-    final scoring = _config.scoring;
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 36, height: 4,
-                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text('Scoring', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 16),
-            _helpRow(Icons.grid_view, 'Base points',
-              scoring.basePoints.entries.map((e) => '${e.key}-col: ${e.value} pts').join(', ')),
-            const SizedBox(height: 10),
-            _helpRow(Icons.timer_outlined, 'Time bonus',
-              '${scoring.timeBonusPoints} pts if under ${scoring.timeBonusThresholdSecs}s'),
-            const SizedBox(height: 10),
-            _helpRow(Icons.bolt_outlined, 'Efficiency bonus',
-              '+${scoring.moveEfficiencyBonusPercent}% if few moves'),
-            const SizedBox(height: 10),
-            _helpRow(Icons.lock_open_outlined, 'Unlock zones',
-              'Accumulate points to unlock new regions'),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _helpRow(IconData icon, String title, String desc) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: const Color(0xFF1B3A4B)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              Text(desc, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final langCode = Localizations.localeOf(context).languageCode;
     final progress = GameProgressService.progress;
-    final unlockedZoneIds = GameProgressService.getUnlockedZoneIds(_config.zones);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.appTitle),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('\u{1F1E8}\u{1F1F1} ', style: TextStyle(fontSize: 20)),
+            Text('Chile Puzzle', style: GoogleFonts.spaceGrotesk(
+              fontWeight: FontWeight.w700, fontSize: 18, color: AppTheme.seedColor,
+            )),
+          ],
+        ),
         actions: [
-          // Help
-          IconButton(
-            onPressed: _showScoringHelp,
-            icon: Icon(Icons.help_outline, size: 22, color: Colors.grey.shade500),
-            tooltip: 'Scoring help',
+          // Points pill
+          _AppBarPill(
+            icon: PhosphorIconsBold.star,
+            iconColor: AppTheme.trophyGold,
+            label: '${progress.totalPoints}',
+            labelColor: AppTheme.trophyGold,
+          ),
+          // Trophies pill
+          _AppBarPill(
+            icon: PhosphorIconsBold.trophy,
+            iconColor: AppTheme.accentGreen,
+            label: '${progress.earnedTrophyIds.length}',
+            labelColor: AppTheme.accentGreen,
           ),
           // Language toggle
           IconButton(
             onPressed: _toggleLanguage,
-            icon: Text(
-              langCode.toUpperCase(),
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: Colors.grey.shade600,
-              ),
+            icon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(PhosphorIconsBold.globe, size: 16, color: Colors.grey.shade600),
+                const SizedBox(width: 2),
+                Text(langCode.toUpperCase(), style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade500,
+                )),
+              ],
             ),
-            tooltip: 'Change language',
           ),
-          // Points → profile
-          TextButton.icon(
+          // Profile
+          IconButton(
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => ProfileScreen(config: _config)),
+              MaterialPageRoute(builder: (_) => ProfileScreen(config: _config, allLocations: _locations)),
             ).then((_) { if (mounted) setState(() {}); }),
-            icon: Icon(Icons.emoji_events, size: 20, color: AppTheme.trophyGold),
-            label: Text(
-              '${progress.totalPoints}',
-              style: TextStyle(
-                color: AppTheme.trophyGold,
-                fontWeight: FontWeight.w700,
-                fontSize: 15,
-              ),
-            ),
+            icon: Icon(PhosphorIconsBold.userCircle, size: 24, color: Colors.grey.shade600),
           ),
         ],
       ),
@@ -196,7 +418,7 @@ class _MapScreenState extends State<MapScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? _buildError()
-              : _buildZoneList(langCode, unlockedZoneIds, progress),
+              : _buildBody(langCode, progress, l10n),
     );
   }
 
@@ -205,7 +427,7 @@ class _MapScreenState extends State<MapScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.cloud_off, size: 56, color: Colors.grey.shade400),
+          Icon(PhosphorIconsBold.cloudSlash, size: 56, color: Colors.grey.shade600),
           const SizedBox(height: 16),
           Text('Could not load locations', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 16),
@@ -221,171 +443,269 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  Widget _buildZoneList(String langCode, List<String> unlockedZoneIds, dynamic progress) {
-    final zones = List<ZoneModel>.from(_config.zones)..sort((a, b) => a.order.compareTo(b.order));
-    final locsByZone = <String, List<LocationModel>>{};
-    for (final loc in _locations) {
-      locsByZone.putIfAbsent(loc.region, () => []).add(loc);
-    }
+  Widget _buildBody(String langCode, dynamic progress, AppLocalizations l10n) {
+    // Compute stats
+    final totalDifficulties = _locations.fold<int>(
+      0, (sum, loc) => sum + (loc.difficultyLevels.isNotEmpty ? loc.difficultyLevels.length : 1),
+    );
+    final completedCount = progress.completedPuzzles.length as int;
+    final unlockedCount = _locations.where((l) => _isLocationUnlocked(l)).length;
+    final progressPercent = totalDifficulties > 0
+        ? (completedCount / totalDifficulties * 100).round()
+        : 0;
 
-    if (zones.isEmpty) {
-      return ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        children: _locations.map((loc) => _buildLocationCard(loc, langCode, progress)).toList(),
-      );
-    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      children: [
+        // Title
+        Text(
+          langCode == 'es' ? 'Descubre Chile' : 'Discover Chile',
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 26, fontWeight: FontWeight.w700, color: AppTheme.seedColor,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          langCode == 'es'
+              ? '$unlockedCount de ${_locations.length} ubicaciones desbloqueadas'
+              : '$unlockedCount of ${_locations.length} locations unlocked',
+          style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey.shade600),
+        ),
+        const SizedBox(height: 16),
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 32),
-      itemCount: zones.length,
-      itemBuilder: (context, index) {
-        final zone = zones[index];
-        final isUnlocked = unlockedZoneIds.contains(zone.id);
-        final zoneLocs = locsByZone[zone.id] ?? [];
-        final pointsNeeded = zone.requiredPoints - GameProgressService.totalPoints;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Zone header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-              child: Row(
+        // Progress card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    width: 32, height: 32,
-                    decoration: BoxDecoration(
-                      color: isUnlocked
-                          ? const Color(0xFF1B3A4B).withOpacity(0.08)
-                          : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      isUnlocked ? mapIcon(zone.icon) : Icons.lock_outline,
-                      size: 18,
-                      color: isUnlocked ? const Color(0xFF1B3A4B) : Colors.grey,
+                  Text(
+                    langCode == 'es' ? 'Progreso total' : 'Total progress',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                  Text(
+                    '$progressPercent%',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.accentBlue,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      zone.getLocalizedName(langCode),
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: isUnlocked ? const Color(0xFF1B3A4B) : Colors.grey,
-                      ),
-                    ),
-                  ),
-                  if (!isUnlocked)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '$pointsNeeded pts',
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w600),
-                      ),
-                    ),
                 ],
               ),
-            ),
-
-            if (!isUnlocked)
-              GestureDetector(
-                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('$pointsNeeded more points to unlock'), duration: const Duration(seconds: 2)),
-                ),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${zoneLocs.length} locations locked',
-                      style: TextStyle(color: Colors.grey.shade400, fontSize: 13, fontWeight: FontWeight.w500),
-                    ),
-                  ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: totalDifficulties > 0 ? completedCount / totalDifficulties : 0,
+                  minHeight: 6,
+                  backgroundColor: Colors.grey.shade200,
+                  valueColor: const AlwaysStoppedAnimation(AppTheme.accentBlue),
                 ),
               ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    langCode == 'es'
+                        ? '$completedCount niveles hechos'
+                        : '$completedCount levels done',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade600),
+                  ),
+                  Text(
+                    '$totalDifficulties total',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
 
-            if (isUnlocked)
-              ...zoneLocs.map((loc) => _buildLocationCard(loc, langCode, progress)),
-          ],
-        );
-      },
+        // Location grid
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.72,
+          ),
+          itemCount: _locations.length,
+          itemBuilder: (context, index) {
+            return _buildLocationCard(_locations[index], langCode, progress);
+          },
+        ),
+      ],
     );
   }
 
   Widget _buildLocationCard(LocationModel loc, String langCode, dynamic progress) {
-    final isCompleted = progress.isLocationCompleted(loc.id);
+    final difficulties = loc.difficultyLevels.isNotEmpty ? loc.difficultyLevels : [3];
+    final completedDiffs = difficulties.where(
+      (d) => progress.completedPuzzles.containsKey('${loc.id}_$d'),
+    ).toList();
+    final allCompleted = completedDiffs.length == difficulties.length;
+    final isUnlocked = _isLocationUnlocked(loc);
+    final labels = langCode == 'es' ? _diffLabelsEs : _diffLabelsEn;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => _openPuzzle(loc),
+    // B&W progressive: 1.0 = full color, 0.0 = full grayscale
+    final double saturation = allCompleted
+        ? 1.0
+        : completedDiffs.length / difficulties.length;
+
+    return GestureDetector(
+      onTap: () {
+        if (!isUnlocked) {
+          final pts = _getPointsToUnlock(loc);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(langCode == 'es'
+                  ? '$pts puntos mas para desbloquear'
+                  : '$pts more points to unlock'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
+        _showDifficultyDialog(loc);
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Image — blur if not completed
-            Stack(
-              children: [
-                AspectRatio(
-                  aspectRatio: 16 / 7,
-                  child: ImageFiltered(
-                    imageFilter: isCompleted
-                        ? ImageFilter.blur(sigmaX: 0, sigmaY: 0)
-                        : ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                    child: Image.network(
-                      loc.image,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey.shade100,
-                        child: Icon(Icons.landscape, size: 40, color: Colors.grey.shade400),
-                      ),
-                    ),
+            // Image area
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Image with B&W / blur filter
+                  _LocationImage(
+                    imageUrl: loc.image,
+                    isUnlocked: isUnlocked,
+                    saturation: saturation,
                   ),
-                ),
-                if (isCompleted)
+                  // Gradient at bottom for text
                   Positioned(
-                    top: 8, right: 8,
-                    child: Container(
-                      width: 28, height: 28,
+                    left: 0, right: 0, bottom: 0, height: 50,
+                    child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
-                      ),
-                      child: const Icon(Icons.check, size: 16, color: Color(0xFF4CAF50)),
-                    ),
-                  ),
-                if (!isCompleted)
-                  Positioned.fill(
-                    child: Center(
-                      child: Container(
-                        width: 44, height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
-                          shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Colors.black54],
                         ),
-                        child: const Icon(Icons.play_arrow, size: 24, color: Color(0xFF1B3A4B)),
                       ),
                     ),
                   ),
-              ],
+                  // Progress dots top right
+                  if (isUnlocked)
+                    Positioned(
+                      top: 8, right: 8,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: difficulties.map((d) {
+                          final done = completedDiffs.contains(d);
+                          return Padding(
+                            padding: const EdgeInsets.only(left: 3),
+                            child: Container(
+                              width: 8, height: 8,
+                              decoration: BoxDecoration(
+                                color: done ? AppTheme.accentGreen : Colors.white38,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  // Lock overlay for locked
+                  if (!isUnlocked)
+                    Positioned.fill(
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(PhosphorIconsBold.lock, size: 22, color: Colors.white70),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${_getPointsToUnlock(loc)} pts',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Name
+                  Positioned(
+                    left: 10, bottom: 8, right: 10,
+                    child: Text(
+                      isUnlocked ? loc.getLocalizedName(langCode) : '???',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
+                      ),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
+            // Difficulty pills
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-              child: Text(
-                loc.getLocalizedName(langCode),
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Row(
+                children: difficulties.map((d) {
+                  final done = completedDiffs.contains(d);
+                  final label = labels[d] ?? '$d';
+                  final color = _diffColors[d] ?? AppTheme.accentBlue;
+
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(
+                          color: done
+                              ? color.withValues(alpha: 0.1)
+                              : isUnlocked ? Colors.grey.shade100 : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Center(
+                          child: Text(
+                            done ? '$label \u2713' : label,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: done ? FontWeight.w700 : FontWeight.w500,
+                              color: done ? color : isUnlocked ? Colors.grey.shade700 : Colors.grey.shade500,
+                            ),
+                            maxLines: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
             ),
           ],
@@ -395,3 +715,108 @@ class _MapScreenState extends State<MapScreen> {
   }
 }
 
+/// Applies grayscale or blur filter to location image
+class _LocationImage extends StatelessWidget {
+  final String imageUrl;
+  final bool isUnlocked;
+  final double saturation; // 0.0 = B&W, 1.0 = full color
+
+  const _LocationImage({
+    required this.imageUrl,
+    required this.isUnlocked,
+    required this.saturation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget image = Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) return child;
+        return Container(
+          color: Colors.grey.shade200,
+          child: const Center(
+            child: SizedBox(width: 20, height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        );
+      },
+      errorBuilder: (_, __, ___) => Container(
+        color: Colors.grey.shade200,
+        child: Icon(PhosphorIconsBold.image, size: 32, color: Colors.grey.shade600),
+      ),
+    );
+
+    if (!isUnlocked) {
+      // Locked: blur + grayscale
+      return ColorFiltered(
+        colorFilter: const ColorFilter.matrix(<double>[
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0,      0,      0,      1, 0,
+        ]),
+        child: ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+          child: image,
+        ),
+      );
+    }
+
+    if (saturation >= 1.0) return image;
+
+    // Progressive B&W: interpolate between grayscale and color
+    final s = saturation;
+    final r = 0.2126, g = 0.7152, b = 0.0722;
+    return ColorFiltered(
+      colorFilter: ColorFilter.matrix(<double>[
+        r + (1 - r) * s,  g * (1 - s),      b * (1 - s),      0, 0,
+        r * (1 - s),      g + (1 - g) * s,  b * (1 - s),      0, 0,
+        r * (1 - s),      g * (1 - s),      b + (1 - b) * s,  0, 0,
+        0,                0,                0,                 1, 0,
+      ]),
+      child: image,
+    );
+  }
+}
+
+class _AppBarPill extends StatelessWidget {
+  final PhosphorIconData icon;
+  final Color iconColor;
+  final String label;
+  final Color labelColor;
+
+  const _AppBarPill({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.labelColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: iconColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: iconColor),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 13, fontWeight: FontWeight.w700, color: labelColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

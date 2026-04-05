@@ -107,7 +107,7 @@ abstract class AppLocalizations {
   /// No description provided for @playButton.
   ///
   /// In en, this message translates to:
-  /// **'Play'**
+  /// **'Begin'**
   String get playButton;
 
   /// No description provided for @difficultyBeginner.

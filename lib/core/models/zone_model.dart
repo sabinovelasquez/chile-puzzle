@@ -1,14 +1,12 @@
 class ZoneModel {
   final String id;
   final Map<String, String> name;
-  final int requiredPoints;
   final int order;
   final String icon;
 
   const ZoneModel({
     required this.id,
     required this.name,
-    required this.requiredPoints,
     required this.order,
     required this.icon,
   });
@@ -17,7 +15,6 @@ class ZoneModel {
     return ZoneModel(
       id: json['id'] as String,
       name: Map<String, String>.from(json['name'] as Map),
-      requiredPoints: json['requiredPoints'] as int,
       order: json['order'] as int,
       icon: json['icon'] as String? ?? 'landscape',
     );

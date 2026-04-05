@@ -188,6 +188,21 @@ class _PuzzleEngineState extends State<PuzzleEngine>
 
   Widget _buildPieceWidget(PuzzlePieceModel piece, double borderOpacity) {
     final showBorder = !piece.isCorrect && borderOpacity > 0.01;
+
+    // Crop: interpolated from focus region (easiest) to full image (hardest)
+    final crop = widget.location.getCropForDifficulty(widget.difficulty);
+    final cX = crop[0], cY = crop[1], cW = crop[2], cH = crop[3];
+    final imgW = boardWidth / cW;
+    final imgH = boardHeight / cH;
+
+    // Alignment to position this piece's portion of the cropped image
+    final ax = cols > 1
+        ? 2 * (cX * imgW + piece.correctCol * pieceWidth) / (imgW - pieceWidth) - 1
+        : 0.0;
+    final ay = rows > 1
+        ? 2 * (cY * imgH + piece.correctRow * pieceHeight) / (imgH - pieceHeight) - 1
+        : 0.0;
+
     return Container(
       width: pieceWidth,
       height: pieceHeight,
@@ -201,16 +216,13 @@ class _PuzzleEngineState extends State<PuzzleEngine>
           : null,
       child: ClipRect(
         child: OverflowBox(
-          maxWidth: boardWidth,
-          maxHeight: boardHeight,
-          alignment: Alignment(
-            cols > 1 ? -1.0 + (piece.correctCol * 2.0 / (cols - 1)) : 0,
-            rows > 1 ? -1.0 + (piece.correctRow * 2.0 / (rows - 1)) : 0,
-          ),
+          maxWidth: imgW,
+          maxHeight: imgH,
+          alignment: Alignment(ax, ay),
           child: CachedNetworkImage(
             imageUrl: widget.location.image,
-            width: boardWidth,
-            height: boardHeight,
+            width: imgW,
+            height: imgH,
             fit: BoxFit.cover,
             errorWidget: (context, url, err) => Container(color: Colors.grey),
           ),

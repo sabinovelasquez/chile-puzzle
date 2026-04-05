@@ -5,7 +5,6 @@
       "en": "Valparaíso Region",
       "es": "Región de Valparaíso"
     },
-    "requiredPoints": 0,
     "order": 1,
     "icon": "landscape"
   },
@@ -15,7 +14,6 @@
       "en": "Los Lagos Region",
       "es": "Región de Los Lagos"
     },
-    "requiredPoints": 0,
     "order": 2,
     "icon": "landscape"
   },
@@ -25,7 +23,6 @@
       "en": "Metropolitan Region",
       "es": "Región Metropolitana"
     },
-    "requiredPoints": 0,
     "order": 3,
     "icon": "landscape"
   }
