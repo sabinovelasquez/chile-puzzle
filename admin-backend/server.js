@@ -28,13 +28,31 @@ function jsonFileRoute(routePath, filePath) {
   });
 }
 
-// File upload
+// File upload (converts HEIC/HEIF to JPEG via heif-convert)
+const { execSync } = require('child_process');
+let heifConvert = false;
+try { execSync('which heif-convert', { stdio: 'ignore' }); heifConvert = true; } catch {}
+
 app.post('/api/upload', upload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
-  const ext = path.extname(req.file.originalname);
-  const newPath = req.file.path + ext;
-  fs.renameSync(req.file.path, newPath);
-  res.json({ url: `/uploads/${path.basename(newPath)}` });
+  const ext = path.extname(req.file.originalname).toLowerCase();
+  const isHeic = ext === '.heic' || ext === '.heif';
+  if (heifConvert && isHeic) {
+    const jpgPath = req.file.path + '.jpg';
+    try {
+      execSync(`heif-convert -q 90 "${req.file.path}" "${jpgPath}"`);
+      fs.unlinkSync(req.file.path);
+      res.json({ url: `/uploads/${path.basename(jpgPath)}` });
+    } catch (e) {
+      const newPath = req.file.path + ext;
+      fs.renameSync(req.file.path, newPath);
+      res.json({ url: `/uploads/${path.basename(newPath)}` });
+    }
+  } else {
+    const newPath = req.file.path + ext;
+    fs.renameSync(req.file.path, newPath);
+    res.json({ url: `/uploads/${path.basename(newPath)}` });
+  }
 });
 
 // CRUD routes

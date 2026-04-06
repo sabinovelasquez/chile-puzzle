@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:math';
 import 'puzzle_piece.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
+import 'package:chile_puzzle/core/services/audio_service.dart';
 
 class PuzzleEngine extends StatefulWidget {
   final LocationModel location;
@@ -61,6 +62,8 @@ class _PuzzleEngineState extends State<PuzzleEngine>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
+    // Start timer only after image loads
+    widget.imageLoaded.addListener(_onImageLoaded);
     // Preload image
     final imageProvider = CachedNetworkImageProvider(widget.location.image);
     imageProvider.resolve(ImageConfiguration.empty).addListener(
@@ -75,8 +78,15 @@ class _PuzzleEngineState extends State<PuzzleEngine>
     );
   }
 
+  void _onImageLoaded() {
+    if (widget.imageLoaded.value && !_stopwatch.isRunning && !isCompleted) {
+      _stopwatch.start();
+    }
+  }
+
   @override
   void dispose() {
+    widget.imageLoaded.removeListener(_onImageLoaded);
     _fadeController.dispose();
     super.dispose();
   }
@@ -124,8 +134,6 @@ class _PuzzleEngineState extends State<PuzzleEngine>
       pieces[1].currentRow = tmpRow;
       pieces[1].currentCol = tmpCol;
     }
-
-    _stopwatch.start();
   }
 
   void _onDragStart(PuzzlePieceModel piece, DragStartDetails details) {
@@ -172,6 +180,9 @@ class _PuzzleEngineState extends State<PuzzleEngine>
         target.currentCol = tmpCol;
       });
       _moveCount++;
+      if (piece.isCorrect || target.isCorrect) {
+        AudioService.playPiecePlaced();
+      }
     }
 
     setState(() {

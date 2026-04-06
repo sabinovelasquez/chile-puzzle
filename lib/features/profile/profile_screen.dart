@@ -7,6 +7,7 @@ import 'package:chile_puzzle/core/models/trophy_model.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatelessWidget {
   final GameConfig config;
@@ -212,10 +213,212 @@ class ProfileScreen extends StatelessWidget {
               );
             },
           ),
+          const SizedBox(height: 24),
+
+          // New locations banner
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppTheme.accentBlue.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(PhosphorIconsFill.mapTrifold, size: 22, color: AppTheme.accentBlue),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n?.newLocationsWeekly ?? 'New locations every week — keep exploring!',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12, color: AppTheme.accentBlue, fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // About button
+          OutlinedButton.icon(
+            onPressed: () => _showAboutDialog(context, l10n, langCode),
+            icon: const Icon(PhosphorIconsBold.info, size: 18),
+            label: Text(l10n?.about ?? 'About'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 44),
+              foregroundColor: Colors.grey.shade700,
+              side: BorderSide(color: Colors.grey.shade300),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Clear progress button
+          TextButton.icon(
+            onPressed: () => _showClearProgressDialog(context, l10n, langCode),
+            icon: const Icon(PhosphorIconsBold.trash, size: 16),
+            label: Text(l10n?.clearProgress ?? 'Clear progress'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red.shade400,
+              textStyle: GoogleFonts.plusJakartaSans(fontSize: 13),
+            ),
+          ),
           const SizedBox(height: 32),
         ],
       ),
     );
+  }
+}
+
+void _showClearProgressDialog(BuildContext context, AppLocalizations? l10n, String langCode) {
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(
+        l10n?.clearProgress ?? 'Clear progress',
+        style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700),
+      ),
+      content: Text(
+        l10n?.clearProgressWarning ?? 'This will delete all your points, trophies and progress. Are you sure?',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: Text(l10n?.cancel ?? 'Cancel'),
+        ),
+        TextButton(
+          onPressed: () async {
+            await GameProgressService.reset();
+            if (ctx.mounted) Navigator.pop(ctx);
+            if (context.mounted) Navigator.pop(context);
+          },
+          child: Text(
+            l10n?.delete ?? 'Delete',
+            style: const TextStyle(color: Colors.red),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langCode) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (ctx) => DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.5,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (_, controller) => ListView(
+        controller: controller,
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 24),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Center(
+            child: Text(
+              'Zoom-In Chile',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 22, fontWeight: FontWeight.w800, color: AppTheme.seedColor,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            l10n?.aboutDescription ?? '',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14, height: 1.6, color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () => launchUrl(Uri.parse('https://sabino.cl'), mode: LaunchMode.externalApplication),
+            child: Text(
+              l10n?.aboutSignature ?? '— Sabino',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.seedColor,
+                decoration: TextDecoration.underline, decorationColor: AppTheme.seedColor,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Divider(color: Colors.grey.shade200),
+          const SizedBox(height: 16),
+          _CreditRow(
+            icon: PhosphorIconsFill.camera,
+            iconColor: AppTheme.accentBlue,
+            text: l10n?.photoCredits ?? 'Photography: Sabino & Ximena',
+            url: 'https://sabino.cl',
+          ),
+          const SizedBox(height: 12),
+          _CreditRow(
+            icon: PhosphorIconsFill.musicNote,
+            iconColor: AppTheme.accentOrange,
+            text: l10n?.soundCredits ?? 'Sound effects: Vilkas Sound — CC BY 4.0',
+            url: 'https://www.youtube.com/channel/UC3fQ3k55Hyi2bcRJo_gdAnA',
+          ),
+          const SizedBox(height: 24),
+          Center(
+            child: Text(
+              'v1.0.0',
+              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade400),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _CreditRow extends StatelessWidget {
+  final PhosphorIconData icon;
+  final Color iconColor;
+  final String text;
+  final String? url;
+
+  const _CreditRow({required this.icon, required this.iconColor, required this.text, this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    final row = Row(
+      children: [
+        Icon(icon, size: 18, color: iconColor),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              color: url != null ? AppTheme.accentBlue : Colors.grey.shade600,
+              decoration: url != null ? TextDecoration.underline : null,
+              decorationColor: AppTheme.accentBlue,
+            ),
+          ),
+        ),
+        if (url != null)
+          Icon(PhosphorIconsBold.arrowSquareOut, size: 14, color: Colors.grey.shade400),
+      ],
+    );
+    if (url != null) {
+      return GestureDetector(
+        onTap: () => launchUrl(Uri.parse(url!), mode: LaunchMode.externalApplication),
+        child: row,
+      );
+    }
+    return row;
   }
 }
 

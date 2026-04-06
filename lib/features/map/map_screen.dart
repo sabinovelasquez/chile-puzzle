@@ -11,6 +11,7 @@ import 'package:chile_puzzle/features/puzzle/puzzle_screen.dart';
 import 'package:chile_puzzle/features/profile/profile_screen.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 import 'package:chile_puzzle/features/auth/auth_service.dart';
+import 'package:chile_puzzle/core/services/audio_service.dart';
 import 'package:chile_puzzle/main.dart';
 
 // Difficulty label helpers
@@ -398,6 +399,15 @@ class _MapScreenState extends State<MapScreen> {
               ],
             ),
           ),
+          // Sound toggle
+          IconButton(
+            onPressed: () => setState(() => AudioService.toggleMute()),
+            icon: Icon(
+              AudioService.isMuted ? PhosphorIconsBold.speakerSlash : PhosphorIconsBold.speakerHigh,
+              size: 20, color: Colors.grey.shade600,
+            ),
+            visualDensity: VisualDensity.compact,
+          ),
           // Profile
           IconButton(
             onPressed: () => Navigator.push(
@@ -438,20 +448,32 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildBody(String langCode, dynamic progress, AppLocalizations l10n) {
-    // Compute stats
-    final totalDifficulties = _locations.fold<int>(
-      0, (sum, loc) => sum + (loc.difficultyLevels.isNotEmpty ? loc.difficultyLevels.length : 1),
-    );
-    final completedCount = progress.completedPuzzles.length as int;
-    final unlockedCount = _locations.where((l) => _isLocationUnlocked(l)).length;
-    final progressPercent = totalDifficulties > 0
-        ? (completedCount / totalDifficulties * 100).round()
-        : 0;
+    // Sort: new unlocks first, then in-progress, then completed, then locked
+    final sorted = List<LocationModel>.from(_locations);
+    sorted.sort((a, b) {
+      final aUnlocked = _isLocationUnlocked(a);
+      final bUnlocked = _isLocationUnlocked(b);
+      final aDiffs = a.difficultyLevels.isNotEmpty ? a.difficultyLevels : [3];
+      final bDiffs = b.difficultyLevels.isNotEmpty ? b.difficultyLevels : [3];
+      final aDone = aDiffs.where((d) => progress.completedPuzzles.containsKey('${a.id}_$d')).length;
+      final bDone = bDiffs.where((d) => progress.completedPuzzles.containsKey('${b.id}_$d')).length;
+
+      int bucket(bool unlocked, int done, int total) {
+        if (!unlocked) return 3; // locked
+        if (done == 0) return 0; // new unlock
+        if (done < total) return 1; // in progress
+        return 2; // all completed
+      }
+
+      final aBucket = bucket(aUnlocked, aDone, aDiffs.length);
+      final bBucket = bucket(bUnlocked, bDone, bDiffs.length);
+      if (aBucket != bBucket) return aBucket.compareTo(bBucket);
+      return 0; // preserve original order within same bucket
+    });
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
-        // Location grid
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -461,9 +483,9 @@ class _MapScreenState extends State<MapScreen> {
             mainAxisSpacing: 12,
             childAspectRatio: 0.72,
           ),
-          itemCount: _locations.length,
+          itemCount: sorted.length,
           itemBuilder: (context, index) {
-            return _buildLocationCard(_locations[index], langCode, progress);
+            return _buildLocationCard(sorted[index], langCode, progress);
           },
         ),
       ],

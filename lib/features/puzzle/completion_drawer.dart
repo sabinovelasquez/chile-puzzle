@@ -12,12 +12,14 @@ class CompletionDrawer extends StatefulWidget {
   final LocationModel location;
   final CompletionResult? result;
   final VoidCallback? onHide;
+  final bool animate;
 
   const CompletionDrawer({
     super.key,
     required this.location,
     this.result,
     this.onHide,
+    this.animate = true,
   });
 
   @override
@@ -25,14 +27,16 @@ class CompletionDrawer extends StatefulWidget {
 }
 
 class _CompletionDrawerState extends State<CompletionDrawer> {
-  bool _visible = false;
+  late bool _visible = !widget.animate;
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) setState(() => _visible = true);
-    });
+    if (widget.animate) {
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (mounted) setState(() => _visible = true);
+      });
+    }
   }
 
   Future<void> _openInGoogleMaps() async {

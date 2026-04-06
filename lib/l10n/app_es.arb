@@ -25,5 +25,15 @@
   "completed": "Completado",
   "newTrophy": "¡Nuevo Trofeo!",
   "puzzlesCompleted": "Puzzles",
-  "bestTime": "Mejor Tiempo"
+  "bestTime": "Mejor Tiempo",
+  "newLocationsWeekly": "Nuevas ubicaciones cada semana — ¡sigue explorando!",
+  "clearProgress": "Borrar progreso",
+  "clearProgressWarning": "Esto borrará todos tus puntos, trofeos y progreso. ¿Estás seguro?",
+  "cancel": "Cancelar",
+  "delete": "Borrar",
+  "about": "Acerca de",
+  "aboutDescription": "Zoom-In Chile nació del amor por recorrer y descubrir. Lo hicimos juntos, Ximena y yo, movidos por la curiosidad de conocer cada rincón, su arquitectura, su historia y esos detalles que solo se ven cuando uno se detiene a mirar.\n\nTodas las fotografías fueron tomadas por nosotros durante nuestros viajes. Este juego es nuestra forma de compartir esos lugares y la alegría de explorarlos.\n\nEsperamos que disfrutes descubriendo Chile tanto como nosotros disfrutamos recorriéndolo.",
+  "aboutSignature": "— Sabino",
+  "photoCredits": "Fotografía: Sabino & Ximena",
+  "soundCredits": "Efectos de sonido: Vilkas Sound — CC BY 4.0"
 }

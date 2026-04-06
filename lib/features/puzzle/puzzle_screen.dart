@@ -7,6 +7,8 @@ import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/models/game_config.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
+import 'package:flutter_confetti/flutter_confetti.dart';
+import 'package:chile_puzzle/core/services/audio_service.dart';
 import 'package:chile_puzzle/features/puzzle/puzzle_engine.dart';
 import 'package:chile_puzzle/features/puzzle/completion_drawer.dart';
 
@@ -32,6 +34,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
   CompletionResult? _result;
   bool _completed = false;
   bool _showDrawer = true;
+  bool _firstDrawerShow = true;
 
   final Stopwatch _stopwatch = Stopwatch();
   final ValueNotifier<int> _moveCount = ValueNotifier(0);
@@ -56,7 +59,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
   }
 
   Future<bool> _onWillPop() async {
-    if (_completed) return true;
+    if (_completed) return false; // Force exit through "Seguir" button (triggers ad)
     final langCode = Localizations.localeOf(context).languageCode;
     final shouldExit = await showDialog<bool>(
       context: context,
@@ -99,6 +102,13 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
       allTrophies: widget.gameConfig.trophies,
       allLocations: widget.allLocations,
     );
+    if (mounted) {
+      Confetti.launch(context,
+        options: const ConfettiOptions(particleCount: 100, spread: 70, y: 0.6),
+      );
+      AudioService.playPuzzleComplete();
+    }
+
     setState(() {
       _result = result;
       _completed = true;
@@ -149,6 +159,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
         }
       },
       child: Scaffold(
+        backgroundColor: AppTheme.seedColor,
         body: Column(
           children: [
             // Top bar — hidden on completion via AnimatedContainer
@@ -231,57 +242,69 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                       return const Center(child: CircularProgressIndicator());
                     },
                   ),
+                  // Bottom stats bar — always visible when completed, fixed height
+                  if (_completed)
+                    Positioned(
+                      bottom: 0, left: 0, right: 0,
+                      child: Container(
+                        padding: EdgeInsets.fromLTRB(16, 12, 12, 12 + MediaQuery.of(context).padding.bottom),
+                        color: AppTheme.seedColor,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    widget.location.getLocalizedName(langCode),
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white,
+                                    ),
+                                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  ValueListenableBuilder<int>(
+                                    valueListenable: _moveCount,
+                                    builder: (_, moves, __) => Text(
+                                      langCode == 'es'
+                                          ? '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}  ·  $moves movimientos'
+                                          : '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}  ·  $moves moves',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12, color: Colors.white70,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            AnimatedOpacity(
+                              opacity: _showDrawer ? 0.0 : 1.0,
+                              duration: const Duration(milliseconds: 200),
+                              child: IgnorePointer(
+                                ignoring: _showDrawer,
+                                child: FloatingActionButton.small(
+                                  onPressed: () => setState(() => _showDrawer = true),
+                                  backgroundColor: AppTheme.accentBlue,
+                                  child: const Icon(PhosphorIconsBold.trophy, size: 20, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   // Completion drawer
                   if (_completed && _showDrawer)
                     CompletionDrawer(
                       location: widget.location,
                       result: _result,
-                      onHide: () => setState(() => _showDrawer = false),
-                    ),
-                  // Bottom stats bar + FAB when viewing completed photo
-                  if (_completed && !_showDrawer)
-                    Positioned(
-                      bottom: 0, left: 0, right: 0,
-                      child: Container(
-                        padding: EdgeInsets.fromLTRB(16, 10, 8, 10 + MediaQuery.of(context).padding.bottom),
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, Colors.black54],
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(PhosphorIconsBold.timer, size: 14, color: Colors.white70),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13, color: Colors.white, fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Icon(PhosphorIconsBold.swatches, size: 14, color: Colors.white70),
-                            const SizedBox(width: 6),
-                            ValueListenableBuilder<int>(
-                              valueListenable: _moveCount,
-                              builder: (_, moves, __) => Text(
-                                '$moves mov',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13, color: Colors.white, fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-                            FloatingActionButton.small(
-                              onPressed: () => setState(() => _showDrawer = true),
-                              backgroundColor: AppTheme.accentBlue,
-                              child: const Icon(PhosphorIconsBold.trophy, size: 20, color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
+                      animate: _firstDrawerShow,
+                      onHide: () => setState(() {
+                        _showDrawer = false;
+                        _firstDrawerShow = false;
+                      }),
                     ),
                 ],
               ),

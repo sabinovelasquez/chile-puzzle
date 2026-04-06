@@ -259,6 +259,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Best Time'**
   String get bestTime;
+
+  /// No description provided for @newLocationsWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'New locations every week — keep exploring!'**
+  String get newLocationsWeekly;
+
+  /// No description provided for @clearProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear progress'**
+  String get clearProgress;
+
+  /// No description provided for @clearProgressWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This will delete all your points, trophies and progress. Are you sure?'**
+  String get clearProgressWarning;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @about.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get about;
+
+  /// No description provided for @aboutDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom-In Chile was born from our love of traveling and discovering. We built it together, Ximena and I, driven by curiosity to explore every corner — the architecture, the history, the little details you only notice when you stop and look.\n\nEvery photograph was taken by us during our travels. This game is our way of sharing those places and the joy of exploring them.\n\nWe hope you enjoy discovering Chile as much as we enjoyed traveling it.'**
+  String get aboutDescription;
+
+  /// No description provided for @aboutSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'— Sabino'**
+  String get aboutSignature;
+
+  /// No description provided for @photoCredits.
+  ///
+  /// In en, this message translates to:
+  /// **'Photography: Sabino & Ximena'**
+  String get photoCredits;
+
+  /// No description provided for @soundCredits.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound effects: Vilkas Sound — CC BY 4.0'**
+  String get soundCredits;
 }
 
 class _AppLocalizationsDelegate

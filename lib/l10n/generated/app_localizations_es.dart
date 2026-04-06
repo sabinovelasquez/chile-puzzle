@@ -88,4 +88,37 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get bestTime => 'Mejor Tiempo';
+
+  @override
+  String get newLocationsWeekly =>
+      'Nuevas ubicaciones cada semana — ¡sigue explorando!';
+
+  @override
+  String get clearProgress => 'Borrar progreso';
+
+  @override
+  String get clearProgressWarning =>
+      'Esto borrará todos tus puntos, trofeos y progreso. ¿Estás seguro?';
+
+  @override
+  String get cancel => 'Cancelar';
+
+  @override
+  String get delete => 'Borrar';
+
+  @override
+  String get about => 'Acerca de';
+
+  @override
+  String get aboutDescription =>
+      'Zoom-In Chile nació del amor por recorrer y descubrir. Lo hicimos juntos, Ximena y yo, movidos por la curiosidad de conocer cada rincón, su arquitectura, su historia y esos detalles que solo se ven cuando uno se detiene a mirar.\n\nTodas las fotografías fueron tomadas por nosotros durante nuestros viajes. Este juego es nuestra forma de compartir esos lugares y la alegría de explorarlos.\n\nEsperamos que disfrutes descubriendo Chile tanto como nosotros disfrutamos recorriéndolo.';
+
+  @override
+  String get aboutSignature => '— Sabino';
+
+  @override
+  String get photoCredits => 'Fotografía: Sabino & Ximena';
+
+  @override
+  String get soundCredits => 'Efectos de sonido: Vilkas Sound — CC BY 4.0';
 }
