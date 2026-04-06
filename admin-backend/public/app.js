@@ -1,3 +1,6 @@
+// --- API base (auto-detect /zoominchile prefix from URL) ---
+const API_BASE = window.location.pathname.replace(/\/(admin\/?)?$/, '');
+
 // --- State ---
 let locations = [], zones = [], trophies = [], scoring = {};
 let currentEditId = null, currentZoneId = null, currentTrophyId = null;
@@ -101,7 +104,7 @@ fImageUpload.addEventListener('change', async (e) => {
   if (!file) return;
   const fd = new FormData(); fd.append('image', file);
   try {
-    const r = await fetch('/api/upload', { method: 'POST', body: fd });
+    const r = await fetch(API_BASE + '/api/upload', { method: 'POST', body: fd });
     const d = await r.json();
     if (d.url) {
       fImage.value = d.url;
@@ -173,7 +176,7 @@ document.getElementById('deleteLocationBtn').onclick = () => {
   locations = locations.filter(l => l.id !== currentEditId);
   currentEditId = null;
   locForm.classList.add('hidden'); locEmpty.classList.remove('hidden');
-  postJSON('/api/locations', locations); renderLocList();
+  postJSON(API_BASE + '/api/locations', locations); renderLocList();
 };
 
 locForm.onsubmit = async (e) => {
@@ -197,7 +200,7 @@ locForm.onsubmit = async (e) => {
     const idx = locations.findIndex(l => l.id === id);
     if (idx > -1) locations[idx] = obj;
   }
-  await postJSON('/api/locations', locations); renderLocList();
+  await postJSON(API_BASE + '/api/locations', locations); renderLocList();
 };
 
 // ============================================================
@@ -249,7 +252,7 @@ document.getElementById('deleteZoneBtn').onclick = () => {
   zones = zones.filter(z => z.id !== currentZoneId);
   currentZoneId = null;
   zoneForm.classList.add('hidden'); zoneEmpty.classList.remove('hidden');
-  postJSON('/api/zones', zones); renderZoneList(); populateZoneDropdown();
+  postJSON(API_BASE + '/api/zones', zones); renderZoneList(); populateZoneDropdown();
 };
 
 zoneForm.onsubmit = async (e) => {
@@ -269,7 +272,7 @@ zoneForm.onsubmit = async (e) => {
     const idx = zones.findIndex(z => z.id === id);
     if (idx > -1) zones[idx] = obj;
   }
-  await postJSON('/api/zones', zones); renderZoneList(); populateZoneDropdown();
+  await postJSON(API_BASE + '/api/zones', zones); renderZoneList(); populateZoneDropdown();
 };
 
 // ============================================================
@@ -329,7 +332,7 @@ document.getElementById('deleteTrophyBtn').onclick = () => {
   trophies = trophies.filter(t => t.id !== currentTrophyId);
   currentTrophyId = null;
   trophyForm.classList.add('hidden'); trophyEmpty.classList.remove('hidden');
-  postJSON('/api/trophies', trophies); renderTrophyList();
+  postJSON(API_BASE + '/api/trophies', trophies); renderTrophyList();
 };
 
 trophyForm.onsubmit = async (e) => {
@@ -356,7 +359,7 @@ trophyForm.onsubmit = async (e) => {
     const idx = trophies.findIndex(t => t.id === id);
     if (idx > -1) trophies[idx] = obj;
   }
-  await postJSON('/api/trophies', trophies); renderTrophyList();
+  await postJSON(API_BASE + '/api/trophies', trophies); renderTrophyList();
 };
 
 // ============================================================
@@ -387,7 +390,7 @@ scoringForm.onsubmit = async (e) => {
     timeBonusPoints: parseInt(document.getElementById('scoreTimeBonus').value),
     moveEfficiencyBonusPercent: parseInt(document.getElementById('scoreMoveBonus').value),
   };
-  await postJSON('/api/scoring', scoring);
+  await postJSON(API_BASE + '/api/scoring', scoring);
   alert('Scoring saved!');
 };
 
@@ -690,10 +693,10 @@ window.addEventListener('touchend', cropEndDrag);
 // ============================================================
 async function init() {
   [locations, zones, trophies, scoring] = await Promise.all([
-    fetchJSON('/api/locations'),
-    fetchJSON('/api/zones'),
-    fetchJSON('/api/trophies'),
-    fetchJSON('/api/scoring'),
+    fetchJSON(API_BASE + '/api/locations'),
+    fetchJSON(API_BASE + '/api/zones'),
+    fetchJSON(API_BASE + '/api/trophies'),
+    fetchJSON(API_BASE + '/api/scoring'),
   ]);
   renderLocList(); renderZoneList(); renderTrophyList();
   populateZoneDropdown(); populateScoring();
