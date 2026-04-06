@@ -35,9 +35,53 @@ const fTipEn = document.getElementById('locTipEn'), fTipEs = document.getElement
 const fRequiredPoints = document.getElementById('locRequiredPoints');
 const fCropX = document.getElementById('locCropX'), fCropY = document.getElementById('locCropY');
 const fCropW = document.getElementById('locCropW'), fCropH = document.getElementById('locCropH');
+const fGmapsLink = document.getElementById('locGmapsLink');
 const fImageUpload = document.getElementById('locImageUpload');
 const imgPreviewC = document.getElementById('imagePreviewContainer');
 const imgPreview = document.getElementById('imagePreview');
+
+// --- Map picker (Leaflet + OpenStreetMap) ---
+let locMap = null, locMarker = null;
+
+function initMap() {
+  if (locMap) return;
+  locMap = L.map('locMap').setView([-33.45, -70.65], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap',
+    maxZoom: 19
+  }).addTo(locMap);
+  locMarker = L.marker([-33.45, -70.65], { draggable: true }).addTo(locMap);
+  locMap.on('click', (e) => {
+    locMarker.setLatLng(e.latlng);
+    fLat.value = e.latlng.lat.toFixed(7);
+    fLng.value = e.latlng.lng.toFixed(7);
+    updateGmapsLink();
+  });
+  locMarker.on('dragend', () => {
+    const pos = locMarker.getLatLng();
+    fLat.value = pos.lat.toFixed(7);
+    fLng.value = pos.lng.toFixed(7);
+    updateGmapsLink();
+  });
+}
+
+function updateGmapsLink() {
+  const lat = parseFloat(fLat.value) || -33.45;
+  const lng = parseFloat(fLng.value) || -70.65;
+  fGmapsLink.href = `https://www.google.com/maps?q=${lat},${lng}`;
+}
+
+function updateMapFromFields() {
+  if (!locMap) return;
+  const lat = parseFloat(fLat.value) || -33.45;
+  const lng = parseFloat(fLng.value) || -70.65;
+  locMarker.setLatLng([lat, lng]);
+  locMap.setView([lat, lng], Math.max(locMap.getZoom(), 12));
+  updateGmapsLink();
+}
+
+fLat.addEventListener('change', updateMapFromFields);
+fLng.addEventListener('change', updateMapFromFields);
 
 fNameEn.addEventListener('input', () => {
   if (!fId.disabled) {
@@ -94,6 +138,8 @@ function openLocEditor(id) {
   fZone.value = loc.region || '';
   fRequiredPoints.value = loc.requiredPoints || 0;
   fLat.value = loc.latitude || 0; fLng.value = loc.longitude || 0;
+  initMap();
+  setTimeout(() => { locMap.invalidateSize(); updateMapFromFields(); }, 100);
   fImage.value = loc.image || ''; fThumb.value = loc.thumbnail || '';
   fTipEn.value = loc.tip.en || ''; fTipEs.value = loc.tip.es || '';
   const crop = loc.crop || {};
@@ -113,6 +159,8 @@ document.getElementById('addLocationBtn').onclick = () => {
   fZone.value = zones.length ? zones[0].id : '';
   fRequiredPoints.value = 0;
   fLat.value = -33.4569; fLng.value = -70.6483;
+  initMap();
+  setTimeout(() => { locMap.invalidateSize(); updateMapFromFields(); }, 100);
   fImage.value = ''; fThumb.value = ''; fTipEn.value = ''; fTipEs.value = '';
   fCropX.value = 0.15; fCropY.value = 0.15; fCropW.value = 0.7; fCropH.value = 0.7;
   imgPreviewC.style.display = 'none'; fImageUpload.value = '';

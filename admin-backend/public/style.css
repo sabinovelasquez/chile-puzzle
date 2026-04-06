@@ -230,6 +230,24 @@ input:focus, textarea:focus {
 .btn.danger { background: var(--danger); color: white; }
 .btn.danger:hover { filter: brightness(1.2); }
 
+/* Location Map Picker */
+#locMap {
+    height: 250px;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    margin-bottom: 0.5rem;
+    z-index: 0;
+}
+.gmaps-link {
+    display: inline-block;
+    margin-bottom: 1.2rem;
+    color: var(--accent);
+    font-size: 0.85rem;
+    text-decoration: none;
+    font-weight: 600;
+}
+.gmaps-link:hover { text-decoration: underline; }
+
 /* Visual Crop Tool */
 .crop-tool {
     position: relative;

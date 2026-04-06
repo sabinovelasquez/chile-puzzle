@@ -1,11 +1,1 @@
-{
-  "basePoints": {
-    "3": 50,
-    "4": 100,
-    "5": 200,
-    "6": 350
-  },
-  "timeBonusThresholdSecs": 60,
-  "timeBonusPoints": 50,
-  "moveEfficiencyBonusPercent": 20
-}
+{"basePoints":{"3":50,"4":100,"5":200,"6":350},"timeBonusThresholdSecs":60,"timeBonusPoints":50,"moveEfficiencyBonusPercent":20}
