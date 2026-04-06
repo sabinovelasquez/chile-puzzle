@@ -45,3 +45,10 @@ app.*.map.json
 /android/app/release
 android/key.properties
 *.jks
+
+# Admin runtime data (production state, not code)
+admin-backend/data/*.json
+admin-backend/public/uploads/
+
+# Local deploy script
+deploy.sh
