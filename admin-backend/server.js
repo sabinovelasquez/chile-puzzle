@@ -6,6 +6,8 @@ const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const BIND = process.env.BIND || '0.0.0.0';
+const URL_PREFIX = process.env.URL_PREFIX || ''; // e.g. '/zoominchile' in production
 const upload = multer({ dest: path.join(__dirname, 'public', 'uploads') });
 
 app.use(cors());
@@ -42,16 +44,16 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
     try {
       execSync(`heif-convert -q 90 "${req.file.path}" "${jpgPath}"`);
       fs.unlinkSync(req.file.path);
-      res.json({ url: `/uploads/${path.basename(jpgPath)}` });
+      res.json({ url: `${URL_PREFIX}/uploads/${path.basename(jpgPath)}` });
     } catch (e) {
       const newPath = req.file.path + ext;
       fs.renameSync(req.file.path, newPath);
-      res.json({ url: `/uploads/${path.basename(newPath)}` });
+      res.json({ url: `${URL_PREFIX}/uploads/${path.basename(newPath)}` });
     }
   } else {
     const newPath = req.file.path + ext;
     fs.renameSync(req.file.path, newPath);
-    res.json({ url: `/uploads/${path.basename(newPath)}` });
+    res.json({ url: `${URL_PREFIX}/uploads/${path.basename(newPath)}` });
   }
 });
 
@@ -74,6 +76,6 @@ app.get('/api/config', (req, res) => {
     .then(([zones, scoring, trophies]) => res.json({ zones, scoring, trophies }));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✨ Admin server running at http://0.0.0.0:${PORT}`);
+app.listen(PORT, BIND, () => {
+  console.log(`✨ Admin server running at http://${BIND}:${PORT}${URL_PREFIX}`);
 });
