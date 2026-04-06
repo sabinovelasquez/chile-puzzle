@@ -39,6 +39,14 @@ const fImageUpload = document.getElementById('locImageUpload');
 const imgPreviewC = document.getElementById('imagePreviewContainer');
 const imgPreview = document.getElementById('imagePreview');
 
+fNameEn.addEventListener('input', () => {
+  if (!fId.disabled) {
+    fId.value = fNameEn.value.toLowerCase().trim()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  }
+});
+
 fImage.addEventListener('input', () => {
   if (fImage.value) { imgPreview.src = fImage.value; imgPreviewC.style.display = 'block'; cropToolLoad(fImage.value); }
   else { imgPreviewC.style.display = 'none'; cropToolHide(); }
@@ -91,7 +99,7 @@ function openLocEditor(id) {
   const crop = loc.crop || {};
   fCropX.value = crop.x ?? 0.15; fCropY.value = crop.y ?? 0.15;
   fCropW.value = crop.w ?? 0.7; fCropH.value = crop.h ?? 0.7;
-  if (fImage.value) { imgPreview.src = fImage.value; imgPreviewC.style.display = 'block'; cropToolLoad(fImage.value); }
+  if (fImage.value) { imgPreview.src = fImage.value; cropToolLoad(fImage.value); }
   else { imgPreviewC.style.display = 'none'; cropToolHide(); }
   fImageUpload.value = '';
   renderLocList();
@@ -362,10 +370,14 @@ function interpolateCrop(t) {
   };
 }
 
+// Phone aspect ratio for crop region (9:16 portrait)
+const PHONE_RATIO = 16 / 9; // h/w in normalized coords relative to image
+
 function cropToolHide() {
   cropContainer.style.display = 'none';
   cropPreviews.style.display = 'none';
   cropNoImage.style.display = 'block';
+  imgPreviewC.style.display = 'none';
   cropImg = null;
 }
 
@@ -375,12 +387,13 @@ function cropToolLoad(url) {
   img.onload = () => {
     cropImg = img;
     cropNoImage.style.display = 'none';
+    imgPreviewC.style.display = 'none'; // hide redundant preview
     cropContainer.style.display = 'block';
     cropPreviews.style.display = 'block';
     cropToolResize();
     cropToolDraw();
   };
-  img.onerror = () => cropToolHide();
+  img.onerror = () => { cropToolHide(); if (fImage.value) { imgPreviewC.style.display = 'block'; } };
   img.src = url;
 }
 
@@ -388,11 +401,16 @@ function cropToolResize() {
   if (!cropImg) return;
   const maxW = cropContainer.clientWidth || 500;
   const ratio = cropImg.naturalHeight / cropImg.naturalWidth;
+  // Cap height at 350px
+  const maxH = 350;
+  let cssW = maxW;
+  let cssH = maxW * ratio;
+  if (cssH > maxH) { cssH = maxH; cssW = maxH / ratio; }
   const dpr = window.devicePixelRatio || 1;
-  cropCanvas.style.width = maxW + 'px';
-  cropCanvas.style.height = (maxW * ratio) + 'px';
-  cropCanvas.width = maxW * dpr;
-  cropCanvas.height = maxW * ratio * dpr;
+  cropCanvas.style.width = cssW + 'px';
+  cropCanvas.style.height = cssH + 'px';
+  cropCanvas.width = cssW * dpr;
+  cropCanvas.height = cssH * dpr;
   cropScale = dpr;
   cropCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
@@ -467,30 +485,29 @@ function drawCropPreviews() {
   ];
   const natW = cropImg.naturalWidth;
   const natH = cropImg.naturalHeight;
+  // Fixed phone-shaped preview: 80px wide, 9:16 ratio
+  const prevW = 80;
+  const prevH = Math.round(prevW * PHONE_RATIO);
+  const dpr = window.devicePixelRatio || 1;
 
   for (const d of diffs) {
     const canvas = document.getElementById(d.id);
     if (!canvas) continue;
     const crop = interpolateCrop(d.t);
-    // Source rect in image pixels
     const sx = crop.x * natW;
     const sy = crop.y * natH;
     const sw = crop.w * natW;
     const sh = crop.h * natH;
-    // Canvas size: fit into ~120px wide, maintain crop aspect ratio
-    const prevW = canvas.parentElement.clientWidth || 120;
-    const aspect = sh / sw;
-    const prevH = prevW * aspect;
-    const dpr = window.devicePixelRatio || 1;
     canvas.style.width = prevW + 'px';
     canvas.style.height = prevH + 'px';
     canvas.width = prevW * dpr;
     canvas.height = prevH * dpr;
     const ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, prevW, prevH);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, prevW, prevH);
     ctx.drawImage(cropImg, sx, sy, sw, sh, 0, 0, prevW, prevH);
-    // Border overlay
+    // Rounded border
     ctx.strokeStyle = d.color;
     ctx.lineWidth = 2;
     ctx.strokeRect(1, 1, prevW - 2, prevH - 2);
@@ -536,7 +553,16 @@ function cropCanvasXY(e) {
 
 function cropSetValues(x, y, w, h) {
   w = Math.max(0.08, Math.min(1, w));
+  // Enforce phone aspect ratio: h = w * PHONE_RATIO * (imgW / imgH)
+  if (cropImg) {
+    h = w * PHONE_RATIO * (cropImg.naturalWidth / cropImg.naturalHeight);
+  }
   h = Math.max(0.08, Math.min(1, h));
+  // If h was clamped to 1, recalculate w from h
+  if (cropImg && h >= 1) {
+    h = 1;
+    w = h / (PHONE_RATIO * (cropImg.naturalWidth / cropImg.naturalHeight));
+  }
   x = Math.max(0, Math.min(1 - w, x));
   y = Math.max(0, Math.min(1 - h, y));
   fCropX.value = x.toFixed(2);
@@ -551,13 +577,16 @@ function cropStartDrag(e) {
   const { x, y } = cropCanvasXY(e);
   const hit = cropHitTest(x, y);
   if (!hit) {
+    // Click outside = new crop centered here
     const cw = cropCanvas.width / cropScale;
     const ch = cropCanvas.height / cropScale;
+    const nx = x / cw;
+    const ny = y / ch;
     cropDrag = {
       type: 'se', startX: x, startY: y,
-      origCrop: { x: x / cw, y: y / ch, w: 0.01, h: 0.01 }
+      origCrop: { x: nx, y: ny, w: 0.08, h: 0.08 }
     };
-    cropSetValues(x / cw, y / ch, 0.08, 0.08);
+    cropSetValues(nx, ny, 0.15, 0);
     return;
   }
   cropDrag = {
@@ -584,16 +613,16 @@ function cropMoveDrag(e) {
   const dy = (y - cropDrag.startY) / ch;
   const o = cropDrag.origCrop;
 
-  let nx = o.x, ny = o.y, nw = o.w, nh = o.h;
+  let nx = o.x, ny = o.y, nw = o.w;
   const t = cropDrag.type;
   if (t === 'move') { nx = o.x + dx; ny = o.y + dy; }
   else {
+    // All resize handles → uniform scale via width delta
     if (t.includes('w')) { nx = o.x + dx; nw = o.w - dx; }
-    if (t.includes('e')) { nw = o.w + dx; }
-    if (t.includes('n')) { ny = o.y + dy; nh = o.h - dy; }
-    if (t.includes('s')) { nh = o.h + dy; }
+    else if (t.includes('e')) { nw = o.w + dx; }
+    else if (t.includes('n') || t.includes('s')) { nw = o.w - dy; } // vertical drag also scales width
   }
-  cropSetValues(nx, ny, nw, nh);
+  cropSetValues(nx, ny, nw, 0); // h is auto from aspect ratio
 }
 
 function cropEndDrag() {

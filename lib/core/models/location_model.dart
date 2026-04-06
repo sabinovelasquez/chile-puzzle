@@ -80,7 +80,7 @@ class LocationModel {
     return tip[langCode] ?? tip['en'] ?? '';
   }
 
-  static const _devServerIp = '192.168.0.7';
+  static const _devServerIp = '192.168.0.17';
 
   static String _fixUrl(String url) {
     if (url.startsWith('/uploads/')) {

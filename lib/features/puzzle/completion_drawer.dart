@@ -11,11 +11,13 @@ import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 class CompletionDrawer extends StatefulWidget {
   final LocationModel location;
   final CompletionResult? result;
+  final VoidCallback? onHide;
 
   const CompletionDrawer({
     super.key,
     required this.location,
     this.result,
+    this.onHide,
   });
 
   @override
@@ -229,9 +231,7 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () {
-                              setState(() => _visible = false);
-                            },
+                            onPressed: widget.onHide,
                             icon: const Icon(PhosphorIconsBold.eye, size: 18),
                             label: Text(langCode == 'es' ? 'Ver puzzle' : 'View puzzle'),
                           ),

@@ -7,7 +7,7 @@ import 'package:chile_puzzle/core/models/game_config.dart';
 class MockBackend {
   // For physical device testing, use your Mac's local IP.
   // For emulator, use 10.0.2.2. For web/desktop, use localhost.
-  static const _devServerIp = '192.168.0.7';
+  static const _devServerIp = '192.168.0.17';
 
   static String get _baseUrl {
     if (kIsWeb) return 'http://127.0.0.1:3000';

@@ -29,6 +29,7 @@ class PuzzleScreen extends StatefulWidget {
 class _PuzzleScreenState extends State<PuzzleScreen> {
   CompletionResult? _result;
   bool _completed = false;
+  bool _showDrawer = true;
 
   Future<void> _handleCompletion(int timeSecs, int moves, int rows, int cols) async {
     final result = await GameProgressService.recordCompletion(
@@ -95,10 +96,21 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
               difficulty: widget.difficulty,
               onCompleted: _handleCompletion,
             ),
-            if (_completed)
+            if (_completed && _showDrawer)
               CompletionDrawer(
                 location: widget.location,
                 result: _result,
+                onHide: () => setState(() => _showDrawer = false),
+              ),
+            // FAB to re-show results when drawer is hidden
+            if (_completed && !_showDrawer)
+              Positioned(
+                bottom: 16, right: 16,
+                child: FloatingActionButton.small(
+                  onPressed: () => setState(() => _showDrawer = true),
+                  backgroundColor: AppTheme.accentBlue,
+                  child: const Icon(PhosphorIconsBold.trophy, size: 20, color: Colors.white),
+                ),
               ),
           ],
         ),

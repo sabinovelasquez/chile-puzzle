@@ -253,21 +253,21 @@ input:focus, textarea:focus {
     margin-top: 6px;
 }
 .crop-preview-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
 }
 .crop-preview-item {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 6px;
+    flex-shrink: 0;
 }
 .crop-preview-item canvas {
-    width: 100%;
-    border-radius: 6px;
+    border-radius: 8px;
     border: 1px solid var(--glass-border);
-    background: rgba(0,0,0,0.3);
+    background: #111;
 }
 .crop-preview-label {
     font-size: 0.7rem;
