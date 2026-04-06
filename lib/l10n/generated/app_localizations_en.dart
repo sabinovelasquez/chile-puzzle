@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'Chile Puzzle Explorer';
+  String get appTitle => 'Zoom-In Chile';
 
   @override
   String get playButton => 'Begin';

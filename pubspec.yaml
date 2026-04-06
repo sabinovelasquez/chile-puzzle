@@ -91,6 +91,6 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/appIcon512.png"
+  image_path: "assets/Zoom-In-Chile.png"
   adaptive_icon_background: "#1B3A4B"
-  adaptive_icon_foreground: "assets/appIcon512.png"
+  adaptive_icon_foreground: "assets/Zoom-In-Chile.png"

@@ -1,4 +1,4 @@
-package cl.chilepuzzle.chile_puzzle
+package cl.depointless.zoominchile
 
 import io.flutter.embedding.android.FlutterActivity
 

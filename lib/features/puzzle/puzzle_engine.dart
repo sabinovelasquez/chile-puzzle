@@ -8,13 +8,21 @@ class PuzzleEngine extends StatefulWidget {
   final LocationModel location;
   final int difficulty;
   final void Function(int timeSecs, int moves, int rows, int cols)? onCompleted;
+  final Stopwatch stopwatch;
+  final ValueNotifier<int> moveCount;
+  final ValueNotifier<bool> imageLoaded;
 
-  const PuzzleEngine({
+  PuzzleEngine({
     super.key,
     required this.location,
     required this.difficulty,
     this.onCompleted,
-  });
+    Stopwatch? stopwatch,
+    ValueNotifier<int>? moveCount,
+    ValueNotifier<bool>? imageLoaded,
+  })  : stopwatch = stopwatch ?? Stopwatch(),
+        moveCount = moveCount ?? ValueNotifier(0),
+        imageLoaded = imageLoaded ?? ValueNotifier(false);
 
   @override
   State<PuzzleEngine> createState() => _PuzzleEngineState();
@@ -39,12 +47,12 @@ class _PuzzleEngineState extends State<PuzzleEngine>
   double _dragCurrentX = 0;
   double _dragCurrentY = 0;
 
-  // Scoring state
-  int _moveCount = 0;
-  final Stopwatch _stopwatch = Stopwatch();
-
   // Completion animation
   late AnimationController _fadeController;
+
+  Stopwatch get _stopwatch => widget.stopwatch;
+  int get _moveCount => widget.moveCount.value;
+  set _moveCount(int v) => widget.moveCount.value = v;
 
   @override
   void initState() {
@@ -52,6 +60,18 @@ class _PuzzleEngineState extends State<PuzzleEngine>
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
+    );
+    // Preload image
+    final imageProvider = CachedNetworkImageProvider(widget.location.image);
+    imageProvider.resolve(ImageConfiguration.empty).addListener(
+      ImageStreamListener(
+        (_, __) {
+          if (mounted) widget.imageLoaded.value = true;
+        },
+        onError: (_, __) {
+          if (mounted) widget.imageLoaded.value = true; // allow play even on error
+        },
+      ),
     );
   }
 
@@ -109,7 +129,7 @@ class _PuzzleEngineState extends State<PuzzleEngine>
   }
 
   void _onDragStart(PuzzlePieceModel piece, DragStartDetails details) {
-    if (isCompleted) return;
+    if (isCompleted || !widget.imageLoaded.value) return;
     setState(() {
       _draggingId = piece.id;
       _dragGlobalStart = details.globalPosition;
@@ -285,14 +305,6 @@ class _PuzzleEngineState extends State<PuzzleEngine>
                   );
                 }),
 
-                // HUD: time + moves (top right, subtle)
-                if (!isCompleted)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: _TimerDisplay(stopwatch: _stopwatch, moves: _moveCount),
-                  ),
-
                 // Tap anywhere to reopen drawer
                 if (isCompleted)
                   Positioned.fill(
@@ -306,51 +318,6 @@ class _PuzzleEngineState extends State<PuzzleEngine>
           },
         );
       },
-    );
-  }
-}
-
-/// Live timer display that rebuilds itself
-class _TimerDisplay extends StatefulWidget {
-  final Stopwatch stopwatch;
-  final int moves;
-  const _TimerDisplay({required this.stopwatch, required this.moves});
-
-  @override
-  State<_TimerDisplay> createState() => _TimerDisplayState();
-}
-
-class _TimerDisplayState extends State<_TimerDisplay> {
-  late final _ticker = Stream.periodic(const Duration(seconds: 1));
-  late final _sub = _ticker.listen((_) {
-    if (mounted && widget.stopwatch.isRunning) setState(() {});
-  });
-
-  @override
-  void dispose() {
-    _sub.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final secs = widget.stopwatch.elapsed.inSeconds;
-    final m = secs ~/ 60;
-    final s = secs % 60;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.black45,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}  ·  ${widget.moves} mov',
-        style: const TextStyle(
-          color: Colors.white70,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
     );
   }
 }

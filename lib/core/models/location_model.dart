@@ -80,12 +80,18 @@ class LocationModel {
     return tip[langCode] ?? tip['en'] ?? '';
   }
 
+  static const _prodUrl = 'https://games.sabino.cl/zoominchile';
   static const _devServerIp = '192.168.0.17';
 
   static String _fixUrl(String url) {
+    if (url.startsWith('/zoominchile/uploads/')) {
+      return 'https://games.sabino.cl$url';
+    }
     if (url.startsWith('/uploads/')) {
       final String base;
-      if (kIsWeb) {
+      if (!kDebugMode) {
+        base = _prodUrl;
+      } else if (kIsWeb) {
         base = 'http://127.0.0.1:3000';
       } else if (defaultTargetPlatform == TargetPlatform.android) {
         base = 'http://$_devServerIp:3000';

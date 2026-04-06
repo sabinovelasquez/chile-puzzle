@@ -51,8 +51,6 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
     final l10n = AppLocalizations.of(context);
     final loc = widget.location;
     final result = widget.result;
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-
     return AnimatedOpacity(
       opacity: _visible ? 1.0 : 0.0,
       duration: const Duration(milliseconds: 400),
@@ -63,9 +61,9 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
           curve: Curves.easeOutCubic,
           child: Dialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             child: Padding(
-              padding: EdgeInsets.fromLTRB(20, 24, 20, 16 + bottomPadding.clamp(0, 16)),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -87,7 +85,26 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                         fontSize: 14, color: Colors.grey.shade600,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
+
+                    // Tip card (above points)
+                    if (loc.getLocalizedTip(langCode).isNotEmpty) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppTheme.trophyGold.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          loc.getLocalizedTip(langCode),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13, color: Colors.grey.shade800, height: 1.4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
                     // Points breakdown card
                     if (result != null) ...[
@@ -145,39 +162,8 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                         ),
                       ),
                       const SizedBox(height: 16),
-
-                      ],
-
-                    // Tip card
-                    if (loc.getLocalizedTip(langCode).isNotEmpty)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppTheme.trophyGold.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              langCode == 'es' ? 'Sabias que?' : 'Did you know?',
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 13, fontWeight: FontWeight.w700,
-                                color: AppTheme.trophyGold,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              loc.getLocalizedTip(langCode),
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13, color: Colors.grey.shade800, height: 1.4,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    const SizedBox(height: 12),
+                    ],
+                    const SizedBox(height: 4),
 
                     // Google Maps link
                     GestureDetector(
@@ -232,8 +218,8 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: widget.onHide,
-                            icon: const Icon(PhosphorIconsBold.eye, size: 18),
-                            label: Text(langCode == 'es' ? 'Ver puzzle' : 'View puzzle'),
+                            icon: const Icon(PhosphorIconsBold.image, size: 18),
+                            label: Text(langCode == 'es' ? 'Ver foto' : 'View photo'),
                           ),
                         ),
                         const SizedBox(width: 12),

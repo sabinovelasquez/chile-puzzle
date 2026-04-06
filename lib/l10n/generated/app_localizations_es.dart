@@ -9,7 +9,7 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
-  String get appTitle => 'Explorador Puzzles Chile';
+  String get appTitle => 'Zoom-In Chile';
 
   @override
   String get playButton => 'Comenzar';
@@ -33,7 +33,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get difficultyMaster => 'Maestro (10x10)';
 
   @override
-  String get unlockNext => 'Continuar';
+  String get unlockNext => 'Seguir';
 
   @override
   String get returnToMap => 'Volver al mapa';

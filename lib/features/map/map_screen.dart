@@ -366,15 +366,9 @@ class _MapScreenState extends State<MapScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('\u{1F1E8}\u{1F1F1} ', style: TextStyle(fontSize: 20)),
-            Text('Chile Puzzle', style: GoogleFonts.spaceGrotesk(
-              fontWeight: FontWeight.w700, fontSize: 18, color: AppTheme.seedColor,
-            )),
-          ],
-        ),
+        title: Text('Zoom-In Chile', style: GoogleFonts.spaceGrotesk(
+          fontWeight: FontWeight.w700, fontSize: 18, color: AppTheme.seedColor,
+        )),
         actions: [
           // Points pill
           _AppBarPill(
@@ -455,79 +449,8 @@ class _MapScreenState extends State<MapScreen> {
         : 0;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
-        // Title
-        Text(
-          langCode == 'es' ? 'Descubre Chile' : 'Discover Chile',
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 26, fontWeight: FontWeight.w700, color: AppTheme.seedColor,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          langCode == 'es'
-              ? '$unlockedCount de ${_locations.length} ubicaciones desbloqueadas'
-              : '$unlockedCount of ${_locations.length} locations unlocked',
-          style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey.shade600),
-        ),
-        const SizedBox(height: 16),
-
-        // Progress card
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    langCode == 'es' ? 'Progreso total' : 'Total progress',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w500),
-                  ),
-                  Text(
-                    '$progressPercent%',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.accentBlue,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: totalDifficulties > 0 ? completedCount / totalDifficulties : 0,
-                  minHeight: 6,
-                  backgroundColor: Colors.grey.shade200,
-                  valueColor: const AlwaysStoppedAnimation(AppTheme.accentBlue),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    langCode == 'es'
-                        ? '$completedCount niveles hechos'
-                        : '$completedCount levels done',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade600),
-                  ),
-                  Text(
-                    '$totalDifficulties total',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-
         // Location grid
         GridView.builder(
           shrinkWrap: true,
@@ -671,37 +594,30 @@ class _MapScreenState extends State<MapScreen> {
                 ],
               ),
             ),
-            // Difficulty pills
+            // Difficulty icon pills
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               child: Row(
                 children: difficulties.map((d) {
                   final done = completedDiffs.contains(d);
-                  final label = labels[d] ?? '$d';
                   final color = _diffColors[d] ?? AppTheme.accentBlue;
+                  final icon = _diffIcon(d);
 
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        decoration: BoxDecoration(
-                          color: done
-                              ? color.withValues(alpha: 0.1)
-                              : isUnlocked ? Colors.grey.shade100 : Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(20),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    child: Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(
+                        color: done ? color : Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: done ? null : Border.all(
+                          color: isUnlocked ? Colors.grey.shade400 : Colors.grey.shade300,
+                          width: 1.5,
                         ),
-                        child: Center(
-                          child: Text(
-                            done ? '$label \u2713' : label,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: done ? FontWeight.w700 : FontWeight.w500,
-                              color: done ? color : isUnlocked ? Colors.grey.shade700 : Colors.grey.shade500,
-                            ),
-                            maxLines: 1,
-                          ),
-                        ),
+                      ),
+                      child: Icon(
+                        icon, size: 14,
+                        color: done ? Colors.white : (isUnlocked ? Colors.grey.shade500 : Colors.grey.shade400),
                       ),
                     ),
                   );

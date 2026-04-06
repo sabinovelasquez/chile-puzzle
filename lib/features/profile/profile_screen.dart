@@ -95,6 +95,70 @@ class ProfileScreen extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 16),
+
+          // Progress bar
+          Builder(builder: (_) {
+            final totalDifficulties = allLocations.fold<int>(
+              0, (sum, loc) => sum + (loc.difficultyLevels.isNotEmpty ? loc.difficultyLevels.length : 1),
+            );
+            final completedCount = progress.completedPuzzles.length;
+            final progressPercent = totalDifficulties > 0
+                ? (completedCount / totalDifficulties * 100).round()
+                : 0;
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        langCode == 'es' ? 'Progreso total' : 'Total progress',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                      Text(
+                        '$progressPercent%',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.accentBlue,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: totalDifficulties > 0 ? completedCount / totalDifficulties : 0,
+                      minHeight: 6,
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: const AlwaysStoppedAnimation(AppTheme.accentBlue),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        langCode == 'es'
+                            ? '$completedCount niveles hechos'
+                            : '$completedCount levels done',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade600),
+                      ),
+                      Text(
+                        '$totalDifficulties total',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
           const SizedBox(height: 28),
 
           // Trophies header
@@ -199,16 +263,36 @@ class _StatCard extends StatelessWidget {
 
 PhosphorIconData _trophyIcon(String iconName) {
   switch (iconName) {
-    case 'hiking': return PhosphorIconsFill.mountains;
-    case 'explore': return PhosphorIconsFill.compass;
-    case 'landscape': return PhosphorIconsFill.mountains;
+    case 'trophy': return PhosphorIconsFill.trophy;
     case 'emoji_events': return PhosphorIconsFill.trophy;
+    case 'star': return PhosphorIconsFill.star;
     case 'bolt': return PhosphorIconsFill.lightning;
+    case 'lightning': return PhosphorIconsFill.lightning;
     case 'timer': return PhosphorIconsFill.timer;
     case 'diamond': return PhosphorIconsFill.diamond;
     case 'flag': return PhosphorIconsFill.flag;
     case 'puzzle_piece': return PhosphorIconsFill.puzzlePiece;
-    case 'star': return PhosphorIconsFill.star;
+    case 'mountains': return PhosphorIconsFill.mountains;
+    case 'hiking': return PhosphorIconsFill.mountains;
+    case 'landscape': return PhosphorIconsFill.mountains;
+    case 'compass': return PhosphorIconsFill.compass;
+    case 'explore': return PhosphorIconsFill.compass;
+    case 'medal': return PhosphorIconsFill.medal;
+    case 'crown': return PhosphorIconsFill.crown;
+    case 'fire': return PhosphorIconsFill.fire;
+    case 'rocket': return PhosphorIconsFill.rocket;
+    case 'eye': return PhosphorIconsFill.eye;
+    case 'globe': return PhosphorIconsFill.globe;
+    case 'map_pin': return PhosphorIconsFill.mapPin;
+    case 'camera': return PhosphorIconsFill.camera;
+    case 'heart': return PhosphorIconsFill.heart;
+    case 'shield': return PhosphorIconsFill.shield;
+    case 'target': return PhosphorIconsFill.target;
+    case 'binoculars': return PhosphorIconsFill.binoculars;
+    case 'path': return PhosphorIconsFill.path;
+    case 'sun': return PhosphorIconsFill.sun;
+    case 'map_trifold': return PhosphorIconsFill.mapTrifold;
+    case 'hand_pointing': return PhosphorIconsFill.handPointing;
     default: return PhosphorIconsFill.trophy;
   }
 }

@@ -1,5 +1,5 @@
 {
-  "appTitle": "Explorador Puzzles Chile",
+  "appTitle": "Zoom-In Chile",
   "playButton": "Comenzar",
   "difficultyBeginner": "Principiante (3x3)",
   "difficultyEasy": "Fácil (4x4)",
@@ -7,7 +7,7 @@
   "difficultyHard": "Difícil (6x6)",
   "difficultyExpert": "Experto (8x8)",
   "difficultyMaster": "Maestro (10x10)",
-  "unlockNext": "Continuar",
+  "unlockNext": "Seguir",
   "returnToMap": "Volver al mapa",
   "loading": "Cargando...",
   "puzzleCompleted": "¡Puzzle completado!",

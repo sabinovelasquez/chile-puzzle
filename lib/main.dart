@@ -36,7 +36,7 @@ class _ChilePuzzleAppState extends State<ChilePuzzleApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Chile Puzzle Explorer',
+      title: 'Zoom-In Chile',
       onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
       theme: AppTheme.light,
       locale: _locale,
