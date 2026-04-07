@@ -180,8 +180,9 @@ class _PuzzleEngineState extends State<PuzzleEngine>
         target.currentCol = tmpCol;
       });
       _moveCount++;
+      AudioService.playAnyPiece();
       if (piece.isCorrect || target.isCorrect) {
-        AudioService.playPiecePlaced();
+        AudioService.playCorrectPiece();
       }
     }
 

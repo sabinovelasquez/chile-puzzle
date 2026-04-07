@@ -499,12 +499,13 @@ class _MapScreenState extends State<MapScreen> {
     ).toList();
     final allCompleted = completedDiffs.length == difficulties.length;
     final isUnlocked = _isLocationUnlocked(loc);
-    final labels = langCode == 'es' ? _diffLabelsEs : _diffLabelsEn;
 
     // B&W progressive: 1.0 = full color, 0.0 = full grayscale
     final double saturation = allCompleted
         ? 1.0
-        : completedDiffs.length / difficulties.length;
+        : completedDiffs.isEmpty
+            ? 0.0
+            : 0.4 + 0.6 * (completedDiffs.length / difficulties.length);
 
     return GestureDetector(
       onTap: () {
@@ -528,97 +529,68 @@ class _MapScreenState extends State<MapScreen> {
           borderRadius: BorderRadius.circular(16),
         ),
         clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            // Image area
-            Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Image with B&W / blur filter
-                  _LocationImage(
-                    imageUrl: loc.image,
-                    isUnlocked: isUnlocked,
-                    saturation: saturation,
+            // Image with B&W / blur filter
+            _LocationImage(
+              imageUrl: loc.image,
+              isUnlocked: isUnlocked,
+              saturation: saturation,
+            ),
+            // Gradient at bottom for text + icons
+            Positioned(
+              left: 0, right: 0, bottom: 0, height: 70,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black54],
                   ),
-                  // Gradient at bottom for text
-                  Positioned(
-                    left: 0, right: 0, bottom: 0, height: 50,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, Colors.black54],
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Progress dots top right
-                  if (isUnlocked)
-                    Positioned(
-                      top: 8, right: 8,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: difficulties.map((d) {
-                          final done = completedDiffs.contains(d);
-                          return Padding(
-                            padding: const EdgeInsets.only(left: 3),
-                            child: Container(
-                              width: 8, height: 8,
-                              decoration: BoxDecoration(
-                                color: done ? AppTheme.accentGreen : Colors.white38,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  // Lock overlay for locked
-                  if (!isUnlocked)
-                    Positioned.fill(
-                      child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(PhosphorIconsBold.lock, size: 22, color: Colors.white70),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${_getPointsToUnlock(loc)} pts',
-                                style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  // Name
-                  Positioned(
-                    left: 10, bottom: 8, right: 10,
-                    child: Text(
-                      isUnlocked ? loc.getLocalizedName(langCode) : '???',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
-                      ),
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-            // Difficulty icon pills
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            // Lock overlay for locked
+            if (!isUnlocked)
+              Positioned.fill(
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(PhosphorIconsBold.lock, size: 22, color: Colors.white70),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_getPointsToUnlock(loc)} pts',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            // Name
+            Positioned(
+              left: 10, bottom: 30, right: 10,
+              child: Text(
+                loc.getLocalizedName(langCode),
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
+                ),
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Difficulty icons over photo
+            Positioned(
+              left: 10, bottom: 6,
               child: Row(
                 children: difficulties.map((d) {
                   final done = completedDiffs.contains(d);
@@ -626,20 +598,20 @@ class _MapScreenState extends State<MapScreen> {
                   final icon = _diffIcon(d);
 
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    padding: const EdgeInsets.only(right: 6),
                     child: Container(
-                      width: 28, height: 28,
+                      width: 26, height: 26,
                       decoration: BoxDecoration(
-                        color: done ? color : Colors.transparent,
+                        color: done ? color : Colors.white24,
                         shape: BoxShape.circle,
                         border: done ? null : Border.all(
-                          color: isUnlocked ? Colors.grey.shade400 : Colors.grey.shade300,
+                          color: Colors.white38,
                           width: 1.5,
                         ),
                       ),
                       child: Icon(
-                        icon, size: 14,
-                        color: done ? Colors.white : (isUnlocked ? Colors.grey.shade500 : Colors.grey.shade400),
+                        icon, size: 13,
+                        color: done ? Colors.white : Colors.white60,
                       ),
                     ),
                   );

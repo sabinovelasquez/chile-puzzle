@@ -106,7 +106,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
       Confetti.launch(context,
         options: const ConfettiOptions(particleCount: 100, spread: 70, y: 0.6),
       );
-      AudioService.playPuzzleComplete();
+      AudioService.playVictory();
     }
 
     setState(() {
@@ -292,6 +292,23 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                    ),
+                  // Close button when viewing photo (drawer hidden)
+                  if (_completed && !_showDrawer)
+                    Positioned(
+                      top: MediaQuery.of(context).padding.top + 12,
+                      right: 12,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _showDrawer = true),
+                        child: Container(
+                          width: 40, height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.black45,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(PhosphorIconsBold.x, size: 20, color: Colors.white),
                         ),
                       ),
                     ),
