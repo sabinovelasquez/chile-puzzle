@@ -30,31 +30,69 @@ function jsonFileRoute(routePath, filePath) {
   });
 }
 
-// File upload (converts HEIC/HEIF to JPEG via heif-convert)
-const { execSync } = require('child_process');
-let heifConvert = false;
-try { execSync('which heif-convert', { stdio: 'ignore' }); heifConvert = true; } catch {}
+// Image upload + optimization via sharp
+const sharp = require('sharp');
+const uploadsDir = path.join(__dirname, 'public', 'uploads');
 
-app.post('/api/upload', upload.single('image'), (req, res) => {
+app.post('/api/upload', upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
-  const ext = path.extname(req.file.originalname).toLowerCase();
-  const isHeic = ext === '.heic' || ext === '.heif';
-  if (heifConvert && isHeic) {
-    const jpgPath = req.file.path + '.jpg';
-    try {
-      execSync(`heif-convert -q 90 "${req.file.path}" "${jpgPath}"`);
-      fs.unlinkSync(req.file.path);
-      res.json({ url: `${URL_PREFIX}/uploads/${path.basename(jpgPath)}` });
-    } catch (e) {
-      const newPath = req.file.path + ext;
-      fs.renameSync(req.file.path, newPath);
-      res.json({ url: `${URL_PREFIX}/uploads/${path.basename(newPath)}` });
-    }
-  } else {
+  try {
+    const optimized = req.file.path + '.jpg';
+    await sharp(req.file.path)
+      .rotate() // auto-rotate from EXIF
+      .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85 })
+      .toFile(optimized);
+    fs.unlinkSync(req.file.path);
+    const finalName = path.basename(req.file.path) + '.jpg';
+    res.json({ url: `${URL_PREFIX}/uploads/${finalName}` });
+  } catch (e) {
+    // Fallback: keep original
+    const ext = path.extname(req.file.originalname).toLowerCase() || '.jpg';
     const newPath = req.file.path + ext;
     fs.renameSync(req.file.path, newPath);
     res.json({ url: `${URL_PREFIX}/uploads/${path.basename(newPath)}` });
   }
+});
+
+// Optimize all existing images in-place (one-time migration)
+app.post('/api/optimize-images', async (req, res) => {
+  const files = fs.readdirSync(uploadsDir).filter(f => /\.(jpg|jpeg|png)$/i.test(f));
+  const results = [];
+  for (const file of files) {
+    const filePath = path.join(uploadsDir, file);
+    const sizeBefore = fs.statSync(filePath).size;
+    try {
+      const tmpPath = filePath + '.tmp';
+      await sharp(filePath)
+        .rotate()
+        .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toFile(tmpPath);
+      const sizeAfter = fs.statSync(tmpPath).size;
+      fs.renameSync(tmpPath, filePath);
+      results.push({ file, before: sizeBefore, after: sizeAfter, saved: sizeBefore - sizeAfter });
+    } catch (e) {
+      results.push({ file, error: e.message });
+    }
+  }
+  res.json({ optimized: results.length, results });
+});
+
+// Clean up unused uploads (not referenced by any location)
+app.post('/api/cleanup-uploads', (req, res) => {
+  const read = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return []; } };
+  const locations = read(path.join(dataDir, 'locations.json'));
+  const usedFiles = new Set();
+  locations.forEach(loc => {
+    [loc.image, loc.thumbnail].forEach(url => {
+      if (url) usedFiles.add(url.split('/').pop());
+    });
+  });
+  const allFiles = fs.readdirSync(uploadsDir).filter(f => /\.(jpg|jpeg|png|heic|heif)$/i.test(f));
+  const unused = allFiles.filter(f => !usedFiles.has(f));
+  unused.forEach(f => fs.unlinkSync(path.join(uploadsDir, f)));
+  res.json({ deleted: unused.length, files: unused, kept: allFiles.length - unused.length });
 });
 
 // CRUD routes
