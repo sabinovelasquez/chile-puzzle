@@ -83,8 +83,25 @@ function updateMapFromFields() {
   updateGmapsLink();
 }
 
-fLat.addEventListener('change', updateMapFromFields);
-fLng.addEventListener('change', updateMapFromFields);
+// --- Required points suggestions per zone ---
+const POINTS_BY_ZONE = {
+  easy:   [0, 50, 100, 150],
+  normal: [200, 500, 750, 1000],
+  hard:   [800, 1500, 2000, 3000],
+  expert: [2500, 3500, 5000, 7500],
+  insane: [5000, 7500, 10000, 15000],
+};
+
+function populatePointsDropdown(zone, currentValue) {
+  const opts = POINTS_BY_ZONE[zone] || [0, 100, 500, 1000, 2000, 5000];
+  // Include current value if not in the list
+  const values = [...new Set([...opts, ...(currentValue != null ? [currentValue] : [])])].sort((a, b) => a - b);
+  fRequiredPoints.innerHTML = values.map(v => `<option value="${v}"${v === currentValue ? ' selected' : ''}>${v} pts</option>`).join('');
+}
+
+fZone.addEventListener('change', () => {
+  populatePointsDropdown(fZone.value, parseInt(fRequiredPoints.value) || 0);
+});
 
 fNameEn.addEventListener('input', () => {
   if (!fId.disabled) {
@@ -92,11 +109,6 @@ fNameEn.addEventListener('input', () => {
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
   }
-});
-
-fImage.addEventListener('input', () => {
-  if (fImage.value) { imgPreview.src = fImage.value; imgPreviewC.style.display = 'block'; cropToolLoad(fImage.value); }
-  else { imgPreviewC.style.display = 'none'; cropToolHide(); }
 });
 
 fImageUpload.addEventListener('change', async (e) => {
@@ -139,6 +151,7 @@ function openLocEditor(id) {
   fId.value = loc.id; fId.disabled = true;
   fNameEn.value = loc.name.en || ''; fNameEs.value = loc.name.es || '';
   fZone.value = loc.region || '';
+  populatePointsDropdown(loc.region || '', loc.requiredPoints || 0);
   fRequiredPoints.value = loc.requiredPoints || 0;
   fLat.value = loc.latitude || 0; fLng.value = loc.longitude || 0;
   initMap();
@@ -160,6 +173,7 @@ document.getElementById('addLocationBtn').onclick = () => {
   fId.value = ''; fId.disabled = false;
   fNameEn.value = ''; fNameEs.value = '';
   fZone.value = zones.length ? zones[0].id : '';
+  populatePointsDropdown(fZone.value, 0);
   fRequiredPoints.value = 0;
   fLat.value = -33.4569; fLng.value = -70.6483;
   initMap();
