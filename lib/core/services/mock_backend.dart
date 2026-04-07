@@ -9,12 +9,8 @@ class MockBackend {
   static const _devServerIp = '192.168.0.17';
 
   static String get _baseUrl {
-    if (!kDebugMode) return _prodUrl;
-    if (kIsWeb) return 'http://127.0.0.1:3000';
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://$_devServerIp:3000';
-    }
-    return 'http://127.0.0.1:3000';
+    // Always use production server (local dev server not running)
+    return _prodUrl;
   }
 
   static Future<List<LocationModel>> fetchLocations() async {

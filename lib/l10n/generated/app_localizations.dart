@@ -313,12 +313,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Photography: Sabino & Ximena'**
   String get photoCredits;
-
-  /// No description provided for @soundCredits.
-  ///
-  /// In en, this message translates to:
-  /// **'Sound effects: Vilkas Sound — CC BY 4.0'**
-  String get soundCredits;
 }
 
 class _AppLocalizationsDelegate

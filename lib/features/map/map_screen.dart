@@ -301,44 +301,47 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _showFullPhoto(LocationModel loc, String langCode) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        clipBehavior: Clip.antiAlias,
-        insetPadding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.network(loc.image, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(height: 200, color: Colors.grey.shade300),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Text(
-                    loc.getLocalizedName(langCode),
-                    style: GoogleFonts.spaceGrotesk(fontSize: 16, fontWeight: FontWeight.w700),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (loc.getLocalizedTip(langCode).isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      loc.getLocalizedTip(langCode),
-                      style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey.shade600, height: 1.4),
-                      textAlign: TextAlign.center,
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        opaque: false,
+        transitionDuration: const Duration(milliseconds: 150),
+        reverseTransitionDuration: const Duration(milliseconds: 100),
+        transitionsBuilder: (ctx, animation, _, child) =>
+            FadeTransition(opacity: animation, child: child),
+        pageBuilder: (ctx, _, __) => Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              InteractiveViewer(
+                child: Center(
+                  child: Image.network(
+                    loc.image,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      PhosphorIconsBold.imageSquare, size: 48, color: Colors.white38,
                     ),
-                  ],
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: Text(langCode == 'es' ? 'Cerrar' : 'Close'),
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+              Positioned(
+                top: 12,
+                right: 12,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Container(
+                    width: 44, height: 44,
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(PhosphorIconsBold.x, size: 22, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -367,9 +370,7 @@ class _MapScreenState extends State<MapScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Zoom-In Chile', style: GoogleFonts.spaceGrotesk(
-          fontWeight: FontWeight.w700, fontSize: 18, color: AppTheme.seedColor,
-        )),
+        title: Image.asset('assets/zoom-in-chile-title.png', height: 36),
         actions: [
           // Points pill
           _AppBarPill(
@@ -401,7 +402,10 @@ class _MapScreenState extends State<MapScreen> {
           ),
           // Sound toggle
           IconButton(
-            onPressed: () => setState(() => AudioService.toggleMute()),
+            onPressed: () async {
+              await AudioService.toggleMute();
+              setState(() {});
+            },
             icon: Icon(
               AudioService.isMuted ? PhosphorIconsBold.speakerSlash : PhosphorIconsBold.speakerHigh,
               size: 20, color: Colors.grey.shade600,
@@ -540,7 +544,7 @@ class _MapScreenState extends State<MapScreen> {
             ),
             // Gradient at bottom for text + icons
             Positioned(
-              left: 0, right: 0, bottom: 0, height: 70,
+              left: 0, right: 0, bottom: 0, height: 90,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -579,13 +583,13 @@ class _MapScreenState extends State<MapScreen> {
               ),
             // Name
             Positioned(
-              left: 10, bottom: 30, right: 10,
+              left: 10, bottom: 36, right: 10,
               child: Text(
                 loc.getLocalizedName(langCode),
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
                 ),
-                maxLines: 1, overflow: TextOverflow.ellipsis,
+                maxLines: 2, overflow: TextOverflow.ellipsis,
               ),
             ),
             // Difficulty icons over photo

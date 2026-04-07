@@ -45,7 +45,6 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _timerSub = Stream.periodic(const Duration(seconds: 1)).listen((_) {
       if (mounted && _stopwatch.isRunning) setState(() {});
     });
@@ -54,7 +53,6 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
   @override
   void dispose() {
     _timerSub.cancel();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
@@ -118,28 +116,25 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
     if (result.newTrophies.isNotEmpty && mounted) {
       final langCode = Localizations.localeOf(context).languageCode;
       for (final trophy in result.newTrophies) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(PhosphorIconsFill.trophy, size: 20, color: AppTheme.trophyGold),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    trophy.getLocalizedName(langCode),
-                    style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF1B3A4B),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            duration: const Duration(seconds: 3),
-          ),
+        _showTopNotification(
+          icon: PhosphorIconsFill.trophy,
+          text: trophy.getLocalizedName(langCode),
         );
       }
     }
+  }
+
+  void _showTopNotification({required PhosphorIconData icon, required String text}) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (ctx) => _TopNotification(
+        icon: icon,
+        text: text,
+        onDismiss: () => entry.remove(),
+      ),
+    );
+    overlay.insert(entry);
   }
 
   @override
@@ -298,17 +293,17 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                   // Close button when viewing photo (drawer hidden)
                   if (_completed && !_showDrawer)
                     Positioned(
-                      top: MediaQuery.of(context).padding.top + 12,
+                      top: 12,
                       right: 12,
                       child: GestureDetector(
                         onTap: () => setState(() => _showDrawer = true),
                         child: Container(
-                          width: 40, height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.black45,
+                          width: 44, height: 44,
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(PhosphorIconsBold.x, size: 20, color: Colors.white),
+                          child: const Icon(PhosphorIconsBold.x, size: 22, color: Colors.white),
                         ),
                       ),
                     ),
@@ -327,6 +322,78 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TopNotification extends StatefulWidget {
+  final PhosphorIconData icon;
+  final String text;
+  final VoidCallback onDismiss;
+
+  const _TopNotification({required this.icon, required this.text, required this.onDismiss});
+
+  @override
+  State<_TopNotification> createState() => _TopNotificationState();
+}
+
+class _TopNotificationState extends State<_TopNotification> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _slide = Tween(begin: const Offset(0, -1), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _controller.forward();
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        _controller.reverse().then((_) => widget.onDismiss());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 12,
+      left: 24, right: 24,
+      child: SlideTransition(
+        position: _slide,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B3A4B),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 12, offset: const Offset(0, 4))],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(widget.icon, size: 28, color: AppTheme.trophyGold),
+                const SizedBox(height: 6),
+                Text(
+                  widget.text,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

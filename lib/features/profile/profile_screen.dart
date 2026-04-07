@@ -363,17 +363,10 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
             text: l10n?.photoCredits ?? 'Photography: Sabino & Ximena',
             url: 'https://sabino.cl',
           ),
-          const SizedBox(height: 12),
-          _CreditRow(
-            icon: PhosphorIconsFill.musicNote,
-            iconColor: AppTheme.accentOrange,
-            text: l10n?.soundCredits ?? 'Sound effects: Vilkas Sound — CC BY 4.0',
-            url: 'https://www.youtube.com/channel/UC3fQ3k55Hyi2bcRJo_gdAnA',
-          ),
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'v1.0.0',
+              'v1.1.0',
               style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade400),
             ),
           ),

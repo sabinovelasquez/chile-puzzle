@@ -117,7 +117,4 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get photoCredits => 'Photography: Sabino & Ximena';
-
-  @override
-  String get soundCredits => 'Sound effects: Vilkas Sound — CC BY 4.0';
 }

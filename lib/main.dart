@@ -10,6 +10,7 @@ import 'core/services/audio_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   AdService.initialize();
   AdService.loadInterstitial();
   await GameProgressService.initialize();
