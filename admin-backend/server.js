@@ -59,7 +59,26 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
 
 // CRUD routes
 const dataDir = path.join(__dirname, 'data');
-jsonFileRoute('/api/locations', path.join(dataDir, 'locations.json'));
+
+// Locations: sorted by zone order, then requiredPoints ascending
+const locFile = path.join(dataDir, 'locations.json');
+const zoneFile = path.join(dataDir, 'zones.json');
+app.get('/api/locations', (req, res) => {
+  const read = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return []; } };
+  const zones = read(zoneFile);
+  const zoneOrder = {};
+  zones.forEach(z => { zoneOrder[z.id] = z.order ?? 99; });
+  const locations = read(locFile);
+  locations.sort((a, b) => (zoneOrder[a.region] ?? 99) - (zoneOrder[b.region] ?? 99) || (a.requiredPoints || 0) - (b.requiredPoints || 0));
+  res.json(locations);
+});
+app.post('/api/locations', (req, res) => {
+  fs.writeFile(locFile, JSON.stringify(req.body, null, 2), (err) => {
+    if (err) return res.status(500).json({ error: 'Failed to write data' });
+    res.json({ success: true });
+  });
+});
+
 jsonFileRoute('/api/zones', path.join(dataDir, 'zones.json'));
 jsonFileRoute('/api/trophies', path.join(dataDir, 'trophies.json'));
 jsonFileRoute('/api/scoring', path.join(dataDir, 'scoring.json'));
