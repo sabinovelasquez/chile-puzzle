@@ -1,33 +1,34 @@
-# Chile Puzzle Explorer
+# Zoom-In Chile
 
-Juego móvil de puzzles fotográficos de lugares chilenos. Los jugadores resuelven rompecabezas, descubren datos culturales y exploran Chile desde el celular.
+Juego móvil de puzzles fotográficos de lugares reales de Chile. Los jugadores resuelven rompecabezas, descubren datos culturales y exploran Chile desde el celular.
 
 ## Stack
 
-- **App:** Flutter/Dart (Android & iOS)
-- **Admin:** Node.js/Express, vanilla HTML/JS, JSON file storage
+- **App:** Flutter/Dart, Android-only (package: `cl.depointless.zoominchile`)
+- **Admin:** Node.js/Express, vanilla HTML/JS, SQLite
+- **Server:** DigitalOcean droplet, nginx reverse proxy, PM2, SSL
 - **i18n:** ES/EN via `.arb` files
 
 ## Gameplay
 
-1. Mapa con locaciones agrupadas por zona (región)
-2. Seleccionar locación → elegir dificultad (3×3, 4×4, etc.)
-3. Resolver puzzle con mecánica de swap (arrastrar pieza → intercambia con la del destino)
-4. Al completar: puntos + bonus por tiempo y eficiencia + trofeos
-5. Acumular puntos desbloquea nuevas zonas
-6. Drawer con mapa, tip cultural y botón de compartir
+1. Grid con ubicaciones organizadas por dificultad (Fácil → Locura)
+2. Seleccionar ubicación → elegir dificultad (3 a 6 piezas)
+3. Resolver puzzle arrastrando piezas a su posición correcta
+4. Al completar: confetti + sonido + puntos (base + bonus tiempo + bonus eficiencia)
+5. Acumular puntos desbloquea nuevas ubicaciones
+6. Modal con tip cultural, link a Google Maps, agregar a favoritos
 
 ## Features
 
-- **Scoring:** Puntos base por dificultad + bonus por tiempo + bonus por eficiencia
-- **Zonas:** Regiones que se desbloquean al acumular puntos
-- **Trofeos:** Hitos como "primer puzzle", "500 puntos", "zona completa"
-- **Perfil:** Stats + grid de trofeos ganados
-- **Compartir:** Resultados y trofeos via share sheet
-- **i18n:** Toggle EN/ES en app bar
+- **27 trofeos** en 5 categorías: completados, puntos, velocidad, zonas, especiales
+- **Ranking:** Leaderboard global con iniciales estilo arcade
+- **5 zonas de dificultad:** Fácil, Normal, Difícil, Experto, Locura
+- **Filtros:** Todos, Nuevos, En progreso, Completados, Favoritos + por zona
+- **Perfil:** Stats, trofeos en modal dedicado, progreso total
+- **i18n:** ES/EN, toggle desde perfil
 - **Ads:** Interstitial ad al completar puzzle (AdMob)
-- **Auth:** Silent sign-in (Play Games / Game Center)
-- **Admin:** Panel web para gestionar locaciones, zonas, trofeos y scoring
+- **Sonidos:** Pieza correcta + puzzle completado, mute persistente
+- **Admin:** Panel web para gestionar ubicaciones, zonas, trofeos y scoring
 
 ## Setup
 
@@ -35,7 +36,7 @@ Juego móvil de puzzles fotográficos de lugares chilenos. Los jugadores resuelv
 
 - Flutter SDK
 - Node.js
-- Android Studio (emulador) o dispositivo físico
+- Android Studio o dispositivo físico
 - API keys: Google Maps, AdMob
 
 ### Correr el proyecto
@@ -51,38 +52,30 @@ flutter run
 
 El emulador Android conecta al backend via `http://10.0.2.2:3000`.
 
-### Estructura
+## Estructura
 
 ```
 lib/
-  main.dart                            # Entry point, theme, locale
+  main.dart                              # Entry, theme, localization
   core/
-    models/                            # LocationModel, GameConfig, PlayerProgress, etc.
-    services/                          # MockBackend (HTTP), GameProgressService (persistence)
-    theme/app_theme.dart               # Montserrat + Material 3 theme
+    models/                              # Location, GameConfig, PlayerProgress, Trophy, Scoring
+    services/                            # MockBackend (HTTP), GameProgressService, AudioService
+    theme/app_theme.dart                 # Colors, theme constants
   features/
-    ads/ad_service.dart                # AdMob interstitial
-    auth/auth_service.dart             # Silent auth
-    map/map_screen.dart                # Zona list, location cards, difficulty picker
-    profile/profile_screen.dart        # Stats + trophies
-    puzzle/
-      puzzle_engine.dart               # Swap-based puzzle with grid fade-out
-      puzzle_piece.dart                # Piece model
-      puzzle_screen.dart               # Wrapper with completion handling
-      completion_drawer.dart           # Points, map, tip, share, continue
-      icon_mapping.dart                # String → IconData mapping
-  l10n/                                # ARB files + generated localizations
+    ads/ad_service.dart                  # AdMob interstitial
+    auth/auth_service.dart               # Silent auth (Play Games)
+    map/map_screen.dart                  # Location grid, filters, difficulty dialog
+    profile/profile_screen.dart          # Stats, trophies modal, about
+    puzzle/                              # Engine, screen, completion drawer
+    leaderboard/                         # Ranking screen, initials input
+  l10n/                                  # ARB files + generated localizations
 
 admin-backend/
-  server.js                            # Express API
-  data/                                # locations.json, zones.json, trophies.json, scoring.json
-  public/                              # Admin UI + uploaded images
+  server.js                              # Express API + CRUD
+  db.js                                  # SQLite schema
+  data/database.sqlite                   # Production data
+  public/                                # Admin UI + uploads
 ```
-
-## Publicación
-
-- [Google Play Store](docs/PLAYSTORE_GUIDE.md)
-- [Apple App Store](docs/APPSTORE_GUIDE.md)
 
 ## Licencia
 
