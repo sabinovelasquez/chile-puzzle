@@ -48,7 +48,11 @@ android/key.properties
 
 # Admin runtime data (production state, not code)
 admin-backend/data/*.json
+admin-backend/data/*.sqlite
+admin-backend/data/*.sqlite-wal
+admin-backend/data/*.sqlite-shm
 admin-backend/public/uploads/
+admin-backend/node_modules/
 
 # Local deploy script
 deploy.sh

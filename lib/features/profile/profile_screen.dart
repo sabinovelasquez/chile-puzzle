@@ -8,6 +8,7 @@ import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:chile_puzzle/features/leaderboard/leaderboard_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   final GameConfig config;
@@ -212,6 +213,21 @@ class ProfileScreen extends StatelessWidget {
                 langCode: langCode,
               );
             },
+          ),
+          const SizedBox(height: 20),
+
+          // Leaderboard button
+          ElevatedButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
+            ),
+            icon: Icon(PhosphorIconsBold.trophy, size: 20),
+            label: Text(langCode == 'es' ? 'Ranking' : 'Leaderboard'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48),
+              backgroundColor: AppTheme.accentPurple,
+            ),
           ),
           const SizedBox(height: 24),
 

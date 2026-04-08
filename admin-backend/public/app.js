@@ -23,6 +23,12 @@ async function fetchJSON(url) {
 async function postJSON(url, data) {
   await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
 }
+async function putJSON(url, data) {
+  await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+}
+async function deleteJSON(url) {
+  await fetch(url, { method: 'DELETE' });
+}
 
 // ============================================================
 // LOCATIONS
@@ -120,7 +126,7 @@ fImageUpload.addEventListener('change', async (e) => {
     const d = await r.json();
     if (d.url) {
       fImage.value = d.url;
-      if (!fThumb.value || fThumb.value.startsWith('/uploads')) fThumb.value = d.url;
+      fThumb.value = d.thumbnail || d.url;
       imgPreview.src = d.url; imgPreviewC.style.display = 'block';
       cropToolLoad(d.url);
     }
@@ -185,12 +191,13 @@ document.getElementById('addLocationBtn').onclick = () => {
   renderLocList();
 };
 
-document.getElementById('deleteLocationBtn').onclick = () => {
+document.getElementById('deleteLocationBtn').onclick = async () => {
   if (!confirm('Delete this location?')) return;
+  await deleteJSON(API_BASE + '/api/locations/' + currentEditId);
   locations = locations.filter(l => l.id !== currentEditId);
   currentEditId = null;
   locForm.classList.add('hidden'); locEmpty.classList.remove('hidden');
-  postJSON(API_BASE + '/api/locations', locations); renderLocList();
+  renderLocList();
 };
 
 locForm.onsubmit = async (e) => {
@@ -209,12 +216,14 @@ locForm.onsubmit = async (e) => {
   };
   if (isNew) {
     if (locations.find(l => l.id === id)) { alert('ID already exists!'); return; }
+    await postJSON(API_BASE + '/api/locations', obj);
     locations.push(obj); fId.disabled = true; currentEditId = id;
   } else {
+    await putJSON(API_BASE + '/api/locations/' + id, obj);
     const idx = locations.findIndex(l => l.id === id);
     if (idx > -1) locations[idx] = obj;
   }
-  await postJSON(API_BASE + '/api/locations', locations); renderLocList();
+  renderLocList();
 };
 
 // ============================================================
@@ -706,12 +715,17 @@ window.addEventListener('touchend', cropEndDrag);
 // INIT
 // ============================================================
 async function init() {
-  [locations, zones, trophies, scoring] = await Promise.all([
+  const [locResult, zonesResult, trophiesResult, scoringResult] = await Promise.all([
     fetchJSON(API_BASE + '/api/locations'),
     fetchJSON(API_BASE + '/api/zones'),
     fetchJSON(API_BASE + '/api/trophies'),
     fetchJSON(API_BASE + '/api/scoring'),
   ]);
+  // Support both paginated {data:[...]} and legacy array responses
+  locations = Array.isArray(locResult) ? locResult : (locResult.data || []);
+  zones = zonesResult;
+  trophies = trophiesResult;
+  scoring = scoringResult;
   renderLocList(); renderZoneList(); renderTrophyList();
   populateZoneDropdown(); populateScoring();
 }

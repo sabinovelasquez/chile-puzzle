@@ -4,6 +4,22 @@ import 'package:http/http.dart' as http;
 import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/models/game_config.dart';
 
+class PaginatedLocations {
+  final List<LocationModel> data;
+  final int total;
+  final int page;
+  final int pageSize;
+
+  const PaginatedLocations({
+    required this.data,
+    required this.total,
+    required this.page,
+    required this.pageSize,
+  });
+
+  bool get hasMore => (page + 1) * pageSize < total;
+}
+
 class MockBackend {
   static const _prodUrl = 'https://games.sabino.cl/zoominchile';
   static const _devServerIp = '192.168.0.17';
@@ -13,18 +29,58 @@ class MockBackend {
     return _prodUrl;
   }
 
+  /// Fetch all locations (legacy — used by puzzle screen, profile)
   static Future<List<LocationModel>> fetchLocations() async {
     try {
       final response = await http.get(Uri.parse('$_baseUrl/api/locations'));
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-        final List<dynamic> rawData = decoded is List ? decoded : decoded['data'];
+        // Support both paginated {data:[...]} and legacy array responses
+        final List<dynamic> rawData = decoded is List ? decoded : (decoded['data'] ?? []);
         return rawData.map((e) => LocationModel.fromJson(e)).toList();
       }
     } catch (e) {
       debugPrint('Error fetching locations: $e');
     }
     return [];
+  }
+
+  /// Fetch locations with pagination and filters
+  static Future<PaginatedLocations> fetchLocationsPaginated({
+    int page = 0,
+    int limit = 20,
+    String? zone,
+    String? query,
+    bool? isNew,
+    List<String>? ids,
+  }) async {
+    try {
+      final params = <String, String>{
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      if (zone != null && zone.isNotEmpty) params['zone'] = zone;
+      if (query != null && query.isNotEmpty) params['q'] = query;
+      if (isNew == true) params['new'] = '1';
+      if (ids != null && ids.isNotEmpty) params['ids'] = ids.join(',');
+
+      final uri = Uri.parse('$_baseUrl/api/locations').replace(queryParameters: params);
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final List<dynamic> rawData = decoded['data'] ?? [];
+        return PaginatedLocations(
+          data: rawData.map((e) => LocationModel.fromJson(e)).toList(),
+          total: decoded['total'] ?? 0,
+          page: decoded['page'] ?? page,
+          pageSize: decoded['pageSize'] ?? limit,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching paginated locations: $e');
+    }
+    return PaginatedLocations(data: [], total: 0, page: page, pageSize: limit);
   }
 
   static Future<GameConfig> fetchGameConfig() async {
@@ -37,5 +93,46 @@ class MockBackend {
       debugPrint('Error fetching game config: $e');
     }
     return GameConfig.fromJson({});
+  }
+
+  /// Submit score to leaderboard
+  static Future<Map<String, dynamic>?> submitScore({
+    required String initials,
+    required int totalPoints,
+    required int puzzlesCompleted,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/leaderboard'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'initials': initials,
+          'totalPoints': totalPoints,
+          'puzzlesCompleted': puzzlesCompleted,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error submitting score: $e');
+    }
+    return null;
+  }
+
+  /// Fetch leaderboard entries
+  static Future<List<Map<String, dynamic>>> fetchLeaderboard({int limit = 50}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/leaderboard?limit=$limit'),
+      );
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        return List<Map<String, dynamic>>.from(decoded['entries'] ?? []);
+      }
+    } catch (e) {
+      debugPrint('Error fetching leaderboard: $e');
+    }
+    return [];
   }
 }

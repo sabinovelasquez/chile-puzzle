@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -15,7 +16,6 @@ import 'package:chile_puzzle/core/services/audio_service.dart';
 import 'package:chile_puzzle/main.dart';
 
 // Difficulty label helpers
-const _diffLabels = {3: 'easy', 4: 'normal', 5: 'hard', 6: 'expert'};
 const _diffLabelsEs = {3: 'Facil', 4: 'Normal', 5: 'Dificil', 6: 'Experto'};
 const _diffLabelsEn = {3: 'Easy', 4: 'Normal', 5: 'Hard', 6: 'Expert'};
 const _diffColors = {
@@ -34,15 +34,44 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   List<LocationModel> _locations = [];
+  List<LocationModel> _allLocations = []; // cached for profile/puzzle
   GameConfig _config = GameConfig.fromJson({});
   bool _isLoading = true;
+  bool _isLoadingMore = false;
   String? _error;
+  int _currentPage = 0;
+  bool _hasMore = true;
+  static const _pageSize = 20;
+
+  // Filters
+  String _activeFilter = 'all'; // 'all','new','in_progress','completed','favorites'
+  String? _activeZone;
+  String _searchQuery = '';
+  Timer? _searchDebounce;
+  final _scrollController = ScrollController();
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _initData();
     _initAuth();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchDebounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
   }
 
   Future<void> _initAuth() async {
@@ -51,16 +80,87 @@ class _MapScreenState extends State<MapScreen> {
     } catch (_) {}
   }
 
-  Future<void> _loadData() async {
+  Future<void> _initData() async {
     try {
-      final results = await Future.wait([
-        MockBackend.fetchLocations(),
-        MockBackend.fetchGameConfig(),
-      ]);
+      final config = await MockBackend.fetchGameConfig();
+      if (mounted) {
+        setState(() { _config = config; });
+      }
+      await _loadLocations();
+      // Cache all locations for profile/puzzle screens
+      _allLocations = await MockBackend.fetchLocations();
+    } catch (e) {
+      if (mounted) {
+        setState(() { _isLoading = false; _error = e.toString(); });
+      }
+    }
+  }
+
+  Future<void> _loadLocations() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _locations = [];
+      _currentPage = 0;
+      _hasMore = true;
+    });
+    await _fetchPage(0);
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_hasMore) return;
+    // ID-based filters return all at once, no pagination
+    if (['in_progress', 'completed', 'favorites'].contains(_activeFilter)) return;
+    setState(() { _isLoadingMore = true; });
+    await _fetchPage(_currentPage + 1);
+    setState(() { _isLoadingMore = false; });
+  }
+
+  Future<void> _fetchPage(int page) async {
+    try {
+      PaginatedLocations result;
+      final progress = GameProgressService.progress;
+
+      if (_activeFilter == 'in_progress') {
+        final ids = _getInProgressIds(progress);
+        if (ids.isEmpty) {
+          if (mounted) setState(() { _locations = []; _isLoading = false; _hasMore = false; });
+          return;
+        }
+        result = await MockBackend.fetchLocationsPaginated(ids: ids);
+      } else if (_activeFilter == 'completed') {
+        final ids = _getCompletedIds(progress);
+        if (ids.isEmpty) {
+          if (mounted) setState(() { _locations = []; _isLoading = false; _hasMore = false; });
+          return;
+        }
+        result = await MockBackend.fetchLocationsPaginated(ids: ids);
+      } else if (_activeFilter == 'favorites') {
+        final ids = GameProgressService.favoriteLocationIds;
+        if (ids.isEmpty) {
+          if (mounted) setState(() { _locations = []; _isLoading = false; _hasMore = false; });
+          return;
+        }
+        result = await MockBackend.fetchLocationsPaginated(ids: ids);
+      } else {
+        result = await MockBackend.fetchLocationsPaginated(
+          page: page,
+          limit: _pageSize,
+          zone: _activeZone,
+          query: _searchQuery.isNotEmpty ? _searchQuery : null,
+          isNew: _activeFilter == 'new' ? true : null,
+        );
+      }
+
       if (mounted) {
         setState(() {
-          _locations = results[0] as List<LocationModel>;
-          _config = results[1] as GameConfig;
+          if (page == 0) {
+            _locations = result.data;
+          } else {
+            _locations.addAll(result.data);
+          }
+          _currentPage = page;
+          _hasMore = result.hasMore;
           _isLoading = false;
         });
       }
@@ -69,6 +169,58 @@ class _MapScreenState extends State<MapScreen> {
         setState(() { _isLoading = false; _error = e.toString(); });
       }
     }
+  }
+
+  List<String> _getInProgressIds(dynamic progress) {
+    // Locations with some but not all difficulties completed
+    final Map<String, int> completedByLoc = {};
+    for (final key in progress.completedPuzzles.keys) {
+      final locId = key.toString().split('_').first;
+      completedByLoc[locId] = (completedByLoc[locId] ?? 0) + 1;
+    }
+    return completedByLoc.entries
+        .where((e) => e.value > 0 && e.value < 4) // less than 4 difficulties
+        .map((e) => e.key)
+        .toList();
+  }
+
+  List<String> _getCompletedIds(dynamic progress) {
+    final Map<String, int> completedByLoc = {};
+    for (final key in progress.completedPuzzles.keys) {
+      final locId = key.toString().split('_').first;
+      completedByLoc[locId] = (completedByLoc[locId] ?? 0) + 1;
+    }
+    return completedByLoc.entries
+        .where((e) => e.value >= 4) // all 4 difficulties
+        .map((e) => e.key)
+        .toList();
+  }
+
+  void _onFilterChanged(String filter) {
+    if (filter == _activeFilter) return;
+    _activeFilter = filter;
+    _activeZone = null;
+    _searchQuery = '';
+    _searchController.clear();
+    _loadLocations();
+  }
+
+  void _onZoneChanged(String? zone) {
+    _activeZone = zone;
+    _activeFilter = 'all';
+    _searchQuery = '';
+    _searchController.clear();
+    _loadLocations();
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      _searchQuery = value;
+      _activeFilter = 'all';
+      _activeZone = null;
+      _loadLocations();
+    });
   }
 
   void _toggleLanguage() {
@@ -355,11 +507,18 @@ class _MapScreenState extends State<MapScreen> {
           location: loc,
           difficulty: difficulty,
           gameConfig: _config,
-          allLocations: _locations,
+          allLocations: _allLocations,
         ),
       ),
     );
-    if (mounted) setState(() {});
+    if (mounted) {
+      // Refresh to pick up new progress, favorites, etc.
+      _loadLocations();
+      // Update allLocations cache too
+      MockBackend.fetchLocations().then((locs) {
+        if (mounted) _allLocations = locs;
+      });
+    }
   }
 
   @override
@@ -416,7 +575,7 @@ class _MapScreenState extends State<MapScreen> {
           IconButton(
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => ProfileScreen(config: _config, allLocations: _locations)),
+              MaterialPageRoute(builder: (_) => ProfileScreen(config: _config, allLocations: _allLocations)),
             ).then((_) { if (mounted) setState(() {}); }),
             icon: Icon(PhosphorIconsBold.userCircle, size: 24, color: Colors.grey.shade600),
           ),
@@ -442,7 +601,7 @@ class _MapScreenState extends State<MapScreen> {
           ElevatedButton(
             onPressed: () {
               setState(() { _isLoading = true; _error = null; });
-              _loadData();
+              _initData();
             },
             child: const Text('Retry'),
           ),
@@ -451,9 +610,8 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  Widget _buildBody(String langCode, dynamic progress, AppLocalizations l10n) {
-    // Sort: new unlocks first, then in-progress, then completed, then locked
-    final sorted = List<LocationModel>.from(_locations);
+  List<LocationModel> _sortByStatus(List<LocationModel> locs, dynamic progress) {
+    final sorted = List<LocationModel>.from(locs);
     sorted.sort((a, b) {
       final aUnlocked = _isLocationUnlocked(a);
       final bUnlocked = _isLocationUnlocked(b);
@@ -463,34 +621,148 @@ class _MapScreenState extends State<MapScreen> {
       final bDone = bDiffs.where((d) => progress.completedPuzzles.containsKey('${b.id}_$d')).length;
 
       int bucket(bool unlocked, int done, int total) {
-        if (!unlocked) return 3; // locked
-        if (done == 0) return 0; // new unlock
-        if (done < total) return 1; // in progress
-        return 2; // all completed
+        if (!unlocked) return 3;
+        if (done == 0) return 0;
+        if (done < total) return 1;
+        return 2;
       }
 
       final aBucket = bucket(aUnlocked, aDone, aDiffs.length);
       final bBucket = bucket(bUnlocked, bDone, bDiffs.length);
       if (aBucket != bBucket) return aBucket.compareTo(bBucket);
-      return 0; // preserve original order within same bucket
+      return 0;
     });
+    return sorted;
+  }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+  Widget _buildBody(String langCode, dynamic progress, AppLocalizations l10n) {
+    final sorted = _activeFilter == 'all'
+        ? _sortByStatus(_locations, progress)
+        : _locations;
+
+    return Column(
       children: [
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 0.72,
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: TextField(
+            controller: _searchController,
+            onChanged: _onSearchChanged,
+            decoration: InputDecoration(
+              hintText: langCode == 'es' ? 'Buscar ubicaciones...' : 'Search locations...',
+              hintStyle: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey.shade400),
+              prefixIcon: Icon(PhosphorIconsBold.magnifyingGlass, size: 20, color: Colors.grey.shade400),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(PhosphorIconsBold.x, size: 16, color: Colors.grey.shade400),
+                      onPressed: () {
+                        _searchController.clear();
+                        _searchQuery = '';
+                        _loadLocations();
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.grey.shade100,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              isDense: true,
+            ),
           ),
-          itemCount: sorted.length,
-          itemBuilder: (context, index) {
-            return _buildLocationCard(sorted[index], langCode, progress);
-          },
+        ),
+        const SizedBox(height: 8),
+
+        // Filter chips
+        SizedBox(
+          height: 38,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              _FilterChip(
+                label: langCode == 'es' ? 'Todos' : 'All',
+                selected: _activeFilter == 'all' && _activeZone == null && _searchQuery.isEmpty,
+                onTap: () => _onFilterChanged('all'),
+              ),
+              _FilterChip(
+                label: langCode == 'es' ? 'Nuevos' : 'New',
+                icon: PhosphorIconsBold.sparkle,
+                selected: _activeFilter == 'new',
+                onTap: () => _onFilterChanged('new'),
+              ),
+              _FilterChip(
+                label: langCode == 'es' ? 'En progreso' : 'In progress',
+                icon: PhosphorIconsBold.hourglass,
+                selected: _activeFilter == 'in_progress',
+                onTap: () => _onFilterChanged('in_progress'),
+              ),
+              _FilterChip(
+                label: langCode == 'es' ? 'Completados' : 'Completed',
+                icon: PhosphorIconsBold.checkCircle,
+                selected: _activeFilter == 'completed',
+                onTap: () => _onFilterChanged('completed'),
+              ),
+              _FilterChip(
+                label: langCode == 'es' ? 'Favoritos' : 'Favorites',
+                icon: PhosphorIconsBold.heart,
+                selected: _activeFilter == 'favorites',
+                onTap: () => _onFilterChanged('favorites'),
+              ),
+              // Zone chips from config
+              ..._config.zones.map((zone) => _FilterChip(
+                label: langCode == 'es' ? (zone.name['es'] ?? zone.id) : (zone.name['en'] ?? zone.id),
+                selected: _activeZone == zone.id,
+                onTap: () => _onZoneChanged(_activeZone == zone.id ? null : zone.id),
+              )),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Grid
+        Expanded(
+          child: sorted.isEmpty && !_isLoading
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(PhosphorIconsBold.magnifyingGlass, size: 48, color: Colors.grey.shade400),
+                      const SizedBox(height: 12),
+                      Text(
+                        langCode == 'es' ? 'Sin resultados' : 'No results',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 16, color: Colors.grey.shade500),
+                      ),
+                    ],
+                  ),
+                )
+              : GridView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.72,
+                  ),
+                  itemCount: sorted.length + (_isLoadingMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index >= sorted.length) {
+                      // Loading indicator at bottom
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: SizedBox(width: 24, height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      );
+                    }
+                    return _buildLocationCard(sorted[index], langCode, progress);
+                  },
+                ),
         ),
       ],
     );
@@ -518,7 +790,7 @@ class _MapScreenState extends State<MapScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(langCode == 'es'
-                  ? '$pts puntos mas para desbloquear'
+                  ? '$pts puntos más para desbloquear'
                   : '$pts more points to unlock'),
               duration: const Duration(seconds: 2),
             ),
@@ -538,7 +810,7 @@ class _MapScreenState extends State<MapScreen> {
           children: [
             // Image with B&W / blur filter
             _LocationImage(
-              imageUrl: loc.image,
+              imageUrl: loc.thumbnail,
               isUnlocked: isUnlocked,
               saturation: saturation,
             ),
@@ -578,6 +850,26 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                       ],
                     ),
+                  ),
+                ),
+              ),
+            // Favorite heart (unlocked only)
+            if (isUnlocked)
+              Positioned(
+                top: 8, right: 8,
+                child: GestureDetector(
+                  onTap: () async {
+                    await GameProgressService.toggleFavorite(loc.id);
+                    setState(() {});
+                  },
+                  child: Icon(
+                    GameProgressService.isFavorite(loc.id)
+                        ? PhosphorIconsFill.heart
+                        : PhosphorIconsBold.heart,
+                    size: 22,
+                    color: GameProgressService.isFavorite(loc.id)
+                        ? Colors.redAccent
+                        : Colors.white70,
                   ),
                 ),
               ),
@@ -692,6 +984,54 @@ class _LocationImage extends StatelessWidget {
         0,                0,                0,                 1, 0,
       ]),
       child: image,
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final PhosphorIconData? icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? AppTheme.accentBlue : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 14, color: selected ? Colors.white : Colors.grey.shade600),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: selected ? Colors.white : Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

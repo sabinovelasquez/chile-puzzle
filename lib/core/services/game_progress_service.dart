@@ -140,4 +140,28 @@ class GameProgressService {
 
   static int get totalPoints => _progress.totalPoints;
   static int get completedCount => _progress.completedCount;
+
+  // --- Favorites ---
+  static bool isFavorite(String locationId) =>
+      _progress.favoriteLocationIds.contains(locationId);
+
+  static Future<void> toggleFavorite(String locationId) async {
+    if (_progress.favoriteLocationIds.contains(locationId)) {
+      _progress.favoriteLocationIds.remove(locationId);
+    } else {
+      _progress.favoriteLocationIds.add(locationId);
+    }
+    await _save();
+  }
+
+  static List<String> get favoriteLocationIds => _progress.favoriteLocationIds;
+
+  // --- Leaderboard initials (separate from progress, survives reset) ---
+  static const _initialsKey = 'leaderboard_initials';
+
+  static String? get leaderboardInitials => _prefs.getString(_initialsKey);
+
+  static Future<void> setLeaderboardInitials(String initials) async {
+    await _prefs.setString(_initialsKey, initials);
+  }
 }

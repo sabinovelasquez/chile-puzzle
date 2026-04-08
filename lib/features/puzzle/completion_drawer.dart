@@ -214,7 +214,11 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
+
+                    // Favorite toggle
+                    _FavoriteButton(locationId: loc.id),
+                    const SizedBox(height: 12),
 
                     // Action buttons
                     Row(
@@ -250,6 +254,57 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
             ),
           ),
         ),
+    );
+  }
+}
+
+class _FavoriteButton extends StatefulWidget {
+  final String locationId;
+  const _FavoriteButton({required this.locationId});
+
+  @override
+  State<_FavoriteButton> createState() => _FavoriteButtonState();
+}
+
+class _FavoriteButtonState extends State<_FavoriteButton> {
+  @override
+  Widget build(BuildContext context) {
+    final isFav = GameProgressService.isFavorite(widget.locationId);
+    final langCode = Localizations.localeOf(context).languageCode;
+    return GestureDetector(
+      onTap: () async {
+        await GameProgressService.toggleFavorite(widget.locationId);
+        setState(() {});
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isFav ? Colors.redAccent.withValues(alpha: 0.08) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isFav ? PhosphorIconsFill.heart : PhosphorIconsBold.heart,
+              size: 18,
+              color: isFav ? Colors.redAccent : Colors.grey.shade600,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isFav
+                  ? (langCode == 'es' ? 'En favoritos' : 'In favorites')
+                  : (langCode == 'es' ? 'Agregar a favoritos' : 'Add to favorites'),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isFav ? Colors.redAccent : Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
