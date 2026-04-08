@@ -47,6 +47,7 @@ class _MapScreenState extends State<MapScreen> {
   String _activeFilter = 'all'; // 'all','new','in_progress','completed','favorites'
   String? _activeZone;
   String _searchQuery = '';
+  bool _searchExpanded = false;
   Timer? _searchDebounce;
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
@@ -109,8 +110,8 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _loadMore() async {
     if (_isLoadingMore || !_hasMore) return;
-    // ID-based filters return all at once, no pagination
-    if (['in_progress', 'completed', 'favorites'].contains(_activeFilter)) return;
+    // ID-based filters and "new" return all at once, no pagination
+    if (['in_progress', 'completed', 'favorites', 'new'].contains(_activeFilter)) return;
     setState(() { _isLoadingMore = true; });
     await _fetchPage(_currentPage + 1);
     setState(() { _isLoadingMore = false; });
@@ -145,7 +146,7 @@ class _MapScreenState extends State<MapScreen> {
       } else {
         result = await MockBackend.fetchLocationsPaginated(
           page: page,
-          limit: _pageSize,
+          limit: _activeFilter == 'new' ? 25 : _pageSize,
           zone: _activeZone,
           query: _searchQuery.isNotEmpty ? _searchQuery : null,
           isNew: _activeFilter == 'new' ? true : null,
@@ -171,15 +172,21 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  int _getDifficultyCount(String locId) {
+    final loc = _allLocations.where((l) => l.id == locId).firstOrNull;
+    return loc != null && loc.difficultyLevels.isNotEmpty ? loc.difficultyLevels.length : 4;
+  }
+
   List<String> _getInProgressIds(dynamic progress) {
     // Locations with some but not all difficulties completed
     final Map<String, int> completedByLoc = {};
     for (final key in progress.completedPuzzles.keys) {
-      final locId = key.toString().split('_').first;
+      final k = key.toString();
+      final locId = k.substring(0, k.lastIndexOf('_'));
       completedByLoc[locId] = (completedByLoc[locId] ?? 0) + 1;
     }
     return completedByLoc.entries
-        .where((e) => e.value > 0 && e.value < 4) // less than 4 difficulties
+        .where((e) => e.value > 0 && e.value < _getDifficultyCount(e.key))
         .map((e) => e.key)
         .toList();
   }
@@ -187,17 +194,18 @@ class _MapScreenState extends State<MapScreen> {
   List<String> _getCompletedIds(dynamic progress) {
     final Map<String, int> completedByLoc = {};
     for (final key in progress.completedPuzzles.keys) {
-      final locId = key.toString().split('_').first;
+      final k = key.toString();
+      final locId = k.substring(0, k.lastIndexOf('_'));
       completedByLoc[locId] = (completedByLoc[locId] ?? 0) + 1;
     }
     return completedByLoc.entries
-        .where((e) => e.value >= 4) // all 4 difficulties
+        .where((e) => e.value >= _getDifficultyCount(e.key))
         .map((e) => e.key)
         .toList();
   }
 
   void _onFilterChanged(String filter) {
-    if (filter == _activeFilter) return;
+    if (filter == _activeFilter && _activeZone == null && _searchQuery.isEmpty) return;
     _activeFilter = filter;
     _activeZone = null;
     _searchQuery = '';
@@ -215,6 +223,7 @@ class _MapScreenState extends State<MapScreen> {
 
   void _onSearchChanged(String value) {
     _searchDebounce?.cancel();
+    if (value.isNotEmpty && value.length < 3) return;
     _searchDebounce = Timer(const Duration(milliseconds: 300), () {
       _searchQuery = value;
       _activeFilter = 'all';
@@ -231,12 +240,18 @@ class _MapScreenState extends State<MapScreen> {
     ChilePuzzleApp.setLocale(context, newLocale);
   }
 
-  bool _isLocationUnlocked(LocationModel loc) {
-    return GameProgressService.isLocationUnlocked(loc);
+  String _compactNumber(int n) {
+    if (n < 10000) return '$n';
+    if (n < 1000000) {
+      final k = n / 1000;
+      return k == k.truncateToDouble() ? '${k.toInt()}K' : '${k.toStringAsFixed(1)}K';
+    }
+    final m = n / 1000000;
+    return m == m.truncateToDouble() ? '${m.toInt()}M' : '${m.toStringAsFixed(1)}M';
   }
 
-  int _getPointsToUnlock(LocationModel loc) {
-    return GameProgressService.getPointsToUnlock(loc);
+  bool _isLocationUnlocked(LocationModel loc) {
+    return GameProgressService.isLocationUnlocked(loc);
   }
 
   void _showDifficultyDialog(LocationModel loc) {
@@ -442,6 +457,39 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  PhosphorIconData _zoneIcon(String iconName) {
+    switch (iconName) {
+      case 'trophy': return PhosphorIconsBold.trophy;
+      case 'star': return PhosphorIconsBold.star;
+      case 'bolt': case 'lightning': return PhosphorIconsBold.lightning;
+      case 'timer': return PhosphorIconsBold.timer;
+      case 'diamond': return PhosphorIconsBold.diamond;
+      case 'flag': return PhosphorIconsBold.flag;
+      case 'puzzle_piece': return PhosphorIconsBold.puzzlePiece;
+      case 'mountains': case 'landscape': return PhosphorIconsBold.mountains;
+      case 'compass': return PhosphorIconsBold.compass;
+      case 'medal': return PhosphorIconsBold.medal;
+      case 'crown': return PhosphorIconsBold.crown;
+      case 'fire': case 'flame': return PhosphorIconsBold.flame;
+      case 'rocket': return PhosphorIconsBold.rocket;
+      case 'eye': return PhosphorIconsBold.eye;
+      case 'globe': return PhosphorIconsBold.globe;
+      case 'map_pin': return PhosphorIconsBold.mapPin;
+      case 'camera': return PhosphorIconsBold.camera;
+      case 'heart': return PhosphorIconsBold.heart;
+      case 'shield': return PhosphorIconsBold.shield;
+      case 'target': return PhosphorIconsBold.target;
+      case 'binoculars': return PhosphorIconsBold.binoculars;
+      case 'path': return PhosphorIconsBold.path;
+      case 'sun': return PhosphorIconsBold.sun;
+      case 'map_trifold': return PhosphorIconsBold.mapTrifold;
+      case 'plant': return PhosphorIconsBold.plant;
+      case 'skull': return PhosphorIconsBold.skull;
+      case 'spiral': return PhosphorIconsBold.spiral;
+      default: return PhosphorIconsBold.mapPin;
+    }
+  }
+
   PhosphorIconData _diffIcon(int diff) {
     switch (diff) {
       case 3: return PhosphorIconsBold.plant;
@@ -535,7 +583,7 @@ class _MapScreenState extends State<MapScreen> {
           _AppBarPill(
             icon: PhosphorIconsBold.star,
             iconColor: AppTheme.trophyGold,
-            label: '${progress.totalPoints}',
+            label: _compactNumber(progress.totalPoints),
             labelColor: AppTheme.trophyGold,
           ),
           // Trophies pill
@@ -544,20 +592,6 @@ class _MapScreenState extends State<MapScreen> {
             iconColor: AppTheme.accentGreen,
             label: '${progress.earnedTrophyIds.length}',
             labelColor: AppTheme.accentGreen,
-          ),
-          // Language toggle
-          IconButton(
-            onPressed: _toggleLanguage,
-            icon: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(PhosphorIconsBold.globe, size: 16, color: Colors.grey.shade600),
-                const SizedBox(width: 2),
-                Text(langCode.toUpperCase(), style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade500,
-                )),
-              ],
-            ),
           ),
           // Sound toggle
           IconButton(
@@ -571,19 +605,26 @@ class _MapScreenState extends State<MapScreen> {
             ),
             visualDensity: VisualDensity.compact,
           ),
+          // Search toggle
+          IconButton(
+            onPressed: () => setState(() => _searchExpanded = !_searchExpanded),
+            icon: Icon(PhosphorIconsBold.magnifyingGlass, size: 20, color: Colors.grey.shade600),
+            visualDensity: VisualDensity.compact,
+          ),
           // Profile
           IconButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => ProfileScreen(config: _config, allLocations: _allLocations)),
-            ).then((_) { if (mounted) setState(() {}); }),
+            onPressed: () {
+              setState(() => _searchExpanded = false);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ProfileScreen(config: _config, allLocations: _allLocations)),
+              ).then((_) { if (mounted) setState(() {}); });
+            },
             icon: Icon(PhosphorIconsBold.userCircle, size: 24, color: Colors.grey.shade600),
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
+      body: _error != null
               ? _buildError()
               : _buildBody(langCode, progress, l10n),
     );
@@ -630,6 +671,8 @@ class _MapScreenState extends State<MapScreen> {
       final aBucket = bucket(aUnlocked, aDone, aDiffs.length);
       final bBucket = bucket(bUnlocked, bDone, bDiffs.length);
       if (aBucket != bBucket) return aBucket.compareTo(bBucket);
+      // Within in-progress bucket, sort least completed first
+      if (aBucket == 1) return aDone.compareTo(bDone);
       return 0;
     });
     return sorted;
@@ -640,39 +683,44 @@ class _MapScreenState extends State<MapScreen> {
         ? _sortByStatus(_locations, progress)
         : _locations;
 
+    final inProgressCount = _getInProgressIds(progress).length;
+    final completedCount = _getCompletedIds(progress).length;
+    final favCount = GameProgressService.favoriteLocationIds.length;
+
     return Column(
       children: [
-        // Search bar
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: TextField(
-            controller: _searchController,
-            onChanged: _onSearchChanged,
-            decoration: InputDecoration(
-              hintText: langCode == 'es' ? 'Buscar ubicaciones...' : 'Search locations...',
-              hintStyle: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey.shade400),
-              prefixIcon: Icon(PhosphorIconsBold.magnifyingGlass, size: 20, color: Colors.grey.shade400),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: Icon(PhosphorIconsBold.x, size: 16, color: Colors.grey.shade400),
-                      onPressed: () {
-                        _searchController.clear();
-                        _searchQuery = '';
-                        _loadLocations();
-                      },
-                    )
-                  : null,
-              filled: true,
-              fillColor: Colors.grey.shade100,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+        // Search bar (collapsible)
+        if (_searchExpanded)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: TextField(
+              controller: _searchController,
+              autofocus: true,
+              onChanged: _onSearchChanged,
+              decoration: InputDecoration(
+                hintText: langCode == 'es' ? 'Buscar ubicaciones...' : 'Search locations...',
+                hintStyle: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey.shade400),
+                prefixIcon: Icon(PhosphorIconsBold.magnifyingGlass, size: 20, color: Colors.grey.shade400),
+                suffixIcon: IconButton(
+                  icon: Icon(PhosphorIconsBold.x, size: 16, color: Colors.grey.shade400),
+                  onPressed: () {
+                    _searchController.clear();
+                    _searchQuery = '';
+                    setState(() => _searchExpanded = false);
+                    _loadLocations();
+                  },
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                isDense: true,
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 10),
-              isDense: true,
             ),
           ),
-        ),
         const SizedBox(height: 8),
 
         // Filter chips
@@ -693,30 +741,36 @@ class _MapScreenState extends State<MapScreen> {
                 selected: _activeFilter == 'new',
                 onTap: () => _onFilterChanged('new'),
               ),
-              _FilterChip(
-                label: langCode == 'es' ? 'En progreso' : 'In progress',
-                icon: PhosphorIconsBold.hourglass,
-                selected: _activeFilter == 'in_progress',
-                onTap: () => _onFilterChanged('in_progress'),
-              ),
-              _FilterChip(
-                label: langCode == 'es' ? 'Completados' : 'Completed',
-                icon: PhosphorIconsBold.checkCircle,
-                selected: _activeFilter == 'completed',
-                onTap: () => _onFilterChanged('completed'),
-              ),
-              _FilterChip(
-                label: langCode == 'es' ? 'Favoritos' : 'Favorites',
-                icon: PhosphorIconsBold.heart,
-                selected: _activeFilter == 'favorites',
-                onTap: () => _onFilterChanged('favorites'),
-              ),
-              // Zone chips from config
-              ..._config.zones.map((zone) => _FilterChip(
-                label: langCode == 'es' ? (zone.name['es'] ?? zone.id) : (zone.name['en'] ?? zone.id),
-                selected: _activeZone == zone.id,
-                onTap: () => _onZoneChanged(_activeZone == zone.id ? null : zone.id),
-              )),
+              if (inProgressCount > 0)
+                _FilterChip(
+                  label: langCode == 'es' ? 'En progreso' : 'In progress',
+                  icon: PhosphorIconsBold.hourglass,
+                  selected: _activeFilter == 'in_progress',
+                  onTap: () => _onFilterChanged('in_progress'),
+                ),
+              if (completedCount > 0)
+                _FilterChip(
+                  label: langCode == 'es' ? 'Completados' : 'Completed',
+                  icon: PhosphorIconsBold.checkCircle,
+                  selected: _activeFilter == 'completed',
+                  onTap: () => _onFilterChanged('completed'),
+                ),
+              if (favCount > 0)
+                _FilterChip(
+                  label: langCode == 'es' ? 'Favoritos' : 'Favorites',
+                  icon: PhosphorIconsBold.heart,
+                  selected: _activeFilter == 'favorites',
+                  onTap: () => _onFilterChanged('favorites'),
+                ),
+              // Zone chips from config (only if they have locations)
+              ..._config.zones
+                .where((zone) => _allLocations.any((loc) => loc.region == zone.id))
+                .map((zone) => _FilterChip(
+                  label: langCode == 'es' ? (zone.name['es'] ?? zone.id) : (zone.name['en'] ?? zone.id),
+                  icon: _zoneIcon(zone.icon),
+                  selected: _activeZone == zone.id,
+                  onTap: () => _onZoneChanged(_activeZone == zone.id ? null : zone.id),
+                )),
             ],
           ),
         ),
@@ -724,7 +778,9 @@ class _MapScreenState extends State<MapScreen> {
 
         // Grid
         Expanded(
-          child: sorted.isEmpty && !_isLoading
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : sorted.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -786,12 +842,11 @@ class _MapScreenState extends State<MapScreen> {
     return GestureDetector(
       onTap: () {
         if (!isUnlocked) {
-          final pts = _getPointsToUnlock(loc);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(langCode == 'es'
-                  ? '$pts puntos más para desbloquear'
-                  : '$pts more points to unlock'),
+                  ? 'Necesitas ${loc.requiredPoints} puntos para desbloquear'
+                  : 'Need ${loc.requiredPoints} points to unlock'),
               duration: const Duration(seconds: 2),
             ),
           );
@@ -843,7 +898,7 @@ class _MapScreenState extends State<MapScreen> {
                         const Icon(PhosphorIconsBold.lock, size: 22, color: Colors.white70),
                         const SizedBox(height: 4),
                         Text(
-                          '${_getPointsToUnlock(loc)} pts',
+                          '${loc.requiredPoints} pts',
                           style: GoogleFonts.spaceGrotesk(
                             fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white,
                           ),

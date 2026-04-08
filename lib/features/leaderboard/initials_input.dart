@@ -5,16 +5,17 @@ import 'package:chile_puzzle/core/theme/app_theme.dart';
 
 /// Arcade-style 3-letter initials input dialog.
 /// Returns the 3-letter string or null if cancelled.
-Future<String?> showInitialsInput(BuildContext context, {String? currentInitials}) {
+Future<String?> showInitialsInput(BuildContext context, {String? currentInitials, int? totalPoints}) {
   return showDialog<String>(
     context: context,
-    builder: (ctx) => _InitialsDialog(currentInitials: currentInitials),
+    builder: (ctx) => _InitialsDialog(currentInitials: currentInitials, totalPoints: totalPoints),
   );
 }
 
 class _InitialsDialog extends StatefulWidget {
   final String? currentInitials;
-  const _InitialsDialog({this.currentInitials});
+  final int? totalPoints;
+  const _InitialsDialog({this.currentInitials, this.totalPoints});
 
   @override
   State<_InitialsDialog> createState() => _InitialsDialogState();
@@ -51,11 +52,15 @@ class _InitialsDialogState extends State<_InitialsDialog> {
               langCode == 'es' ? 'Ingresa tus iniciales' : 'Enter your initials',
               style: GoogleFonts.spaceGrotesk(fontSize: 20, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 4),
-            Text(
-              langCode == 'es' ? '3 letras, estilo arcade' : '3 letters, arcade style',
-              style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade600),
-            ),
+            if (widget.totalPoints != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                '${widget.totalPoints} pts',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.trophyGold,
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
 
             // 3 letter slots

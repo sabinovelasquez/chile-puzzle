@@ -6,6 +6,9 @@ import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/features/ads/ad_service.dart';
+import 'package:chile_puzzle/core/services/mock_backend.dart';
+import 'package:chile_puzzle/features/leaderboard/initials_input.dart';
+import 'package:chile_puzzle/features/leaderboard/leaderboard_screen.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 
 class CompletionDrawer extends StatefulWidget {
@@ -13,6 +16,8 @@ class CompletionDrawer extends StatefulWidget {
   final CompletionResult? result;
   final VoidCallback? onHide;
   final bool animate;
+  final int timeSecs;
+  final int moves;
 
   const CompletionDrawer({
     super.key,
@@ -20,6 +25,8 @@ class CompletionDrawer extends StatefulWidget {
     this.result,
     this.onHide,
     this.animate = true,
+    this.timeSecs = 0,
+    this.moves = 0,
   });
 
   @override
@@ -28,6 +35,7 @@ class CompletionDrawer extends StatefulWidget {
 
 class _CompletionDrawerState extends State<CompletionDrawer> {
   late bool _visible = !widget.animate;
+  bool _navigating = false;
 
   @override
   void initState() {
@@ -165,9 +173,15 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      // Enter ranking button
+                      _RankingButton(
+                        totalPoints: GameProgressService.progress.totalPoints,
+                        timeSecs: widget.timeSecs,
+                        moves: widget.moves,
+                      ),
                       const SizedBox(height: 16),
                     ],
-                    const SizedBox(height: 4),
 
                     // Google Maps link
                     GestureDetector(
@@ -233,7 +247,8 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () {
+                            onPressed: _navigating ? null : () {
+                              setState(() => _navigating = true);
                               AdService.showInterstitial(
                                 onAdDismissed: () {
                                   if (context.mounted) {
@@ -302,6 +317,131 @@ class _FavoriteButtonState extends State<_FavoriteButton> {
                 color: isFav ? Colors.redAccent : Colors.grey.shade600,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RankingButton extends StatefulWidget {
+  final int totalPoints;
+  final int timeSecs;
+  final int moves;
+  const _RankingButton({required this.totalPoints, this.timeSecs = 0, this.moves = 0});
+
+  @override
+  State<_RankingButton> createState() => _RankingButtonState();
+}
+
+class _RankingButtonState extends State<_RankingButton> {
+  bool _submitting = false;
+  int? _rank;
+
+  Future<void> _submitScore() async {
+    final langCode = Localizations.localeOf(context).languageCode;
+    final currentInitials = GameProgressService.leaderboardInitials;
+
+    final initials = await showInitialsInput(
+      context,
+      currentInitials: currentInitials,
+      totalPoints: widget.totalPoints,
+    );
+    if (initials == null) return;
+    await GameProgressService.setLeaderboardInitials(initials);
+
+    setState(() => _submitting = true);
+    final progress = GameProgressService.progress;
+    final result = await MockBackend.submitScore(
+      initials: initials,
+      totalPoints: progress.totalPoints,
+      puzzlesCompleted: progress.completedCount,
+      timeSeconds: widget.timeSecs,
+      moves: widget.moves,
+    );
+    if (mounted) {
+      if (result != null && result.containsKey('error')) {
+        setState(() => _submitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(langCode == 'es'
+                ? 'No puedes usar esas iniciales'
+                : 'Cannot use those initials'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      setState(() {
+        _submitting = false;
+        _rank = result?['rank'];
+      });
+      if (result != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(langCode == 'es'
+              ? '¡Posición #${result['rank']}!'
+              : 'Ranked #${result['rank']}!')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final langCode = Localizations.localeOf(context).languageCode;
+    if (_rank != null) {
+      return GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
+        ),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: AppTheme.accentPurple.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(PhosphorIconsFill.trophy, size: 18, color: AppTheme.accentPurple),
+              const SizedBox(width: 8),
+              Text(
+                langCode == 'es' ? '#$_rank — Ver ranking' : '#$_rank — View ranking',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.accentPurple,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return GestureDetector(
+      onTap: _submitting ? null : _submitScore,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: AppTheme.accentPurple.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (_submitting)
+              const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+            else ...[
+              Icon(PhosphorIconsBold.listNumbers, size: 18, color: AppTheme.accentPurple),
+              const SizedBox(width: 8),
+              Text(
+                langCode == 'es' ? 'Entrar al ranking' : 'Enter ranking',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.accentPurple,
+                ),
+              ),
+            ],
           ],
         ),
       ),

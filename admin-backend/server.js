@@ -22,7 +22,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ============================================================
 app.get('/api/locations', (req, res) => {
   const page = parseInt(req.query.page) || 0;
-  const limit = parseInt(req.query.limit) || 999;
+  let limit = parseInt(req.query.limit) || 999;
   const zone = req.query.zone || null;
   const q = req.query.q || null;
   const isNew = req.query.new === '1';
@@ -46,7 +46,8 @@ app.get('/api/locations', (req, res) => {
       params.q = `%${q}%`;
     }
     if (isNew) {
-      where.push("l.created_at >= datetime('now', '-7 days')");
+      // Show latest locations, ordered by creation date
+      limit = Math.min(parseInt(req.query.limit) || 25, 100);
     }
   }
 
@@ -55,11 +56,14 @@ app.get('/api/locations', (req, res) => {
   const countSql = `SELECT COUNT(*) as total FROM locations l ${whereClause}`;
   const total = db.prepare(countSql).get(params).total;
 
+  const orderBy = isNew
+    ? 'ORDER BY l.created_at DESC'
+    : 'ORDER BY COALESCE(z."order", 99) ASC, l.required_points ASC';
   const dataSql = `
     SELECT l.* FROM locations l
     LEFT JOIN zones z ON l.region = z.id
     ${whereClause}
-    ORDER BY COALESCE(z."order", 99) ASC, l.required_points ASC
+    ${orderBy}
     LIMIT @limit OFFSET @offset
   `;
   params.limit = limit;
@@ -272,7 +276,11 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
 
 // Batch generate thumbnails for existing locations
 app.post('/api/generate-thumbnails', async (req, res) => {
-  const rows = db.prepare('SELECT id, image, thumbnail FROM locations WHERE thumbnail = image').all();
+  const force = req.query.force === '1';
+  const query = force
+    ? 'SELECT id, image, thumbnail FROM locations'
+    : 'SELECT id, image, thumbnail FROM locations WHERE thumbnail = image';
+  const rows = db.prepare(query).all();
   const results = [];
 
   for (const row of rows) {
@@ -286,6 +294,7 @@ app.post('/api/generate-thumbnails', async (req, res) => {
       const thumbName = fileName.replace(/\.[^.]+$/, '') + '_thumb.jpg';
       const thumbPath = path.join(uploadsDir, thumbName);
       await sharp(filePath)
+        .rotate()
         .resize(400, null, { withoutEnlargement: true })
         .jpeg({ quality: 70 })
         .toFile(thumbPath);
@@ -348,8 +357,8 @@ const BANNED_INITIALS = ['FUK', 'FKU', 'KKK', 'WTF', 'DIK', 'DIE', 'ASS', 'FAG',
 app.get('/api/leaderboard', (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 50, 200);
   const rows = db.prepare(`
-    SELECT id, initials, total_points, puzzles_completed, created_at
-    FROM leaderboard ORDER BY total_points DESC, puzzles_completed DESC
+    SELECT id, initials, total_points, puzzles_completed, time_seconds, moves, created_at
+    FROM leaderboard ORDER BY total_points DESC, time_seconds ASC, created_at DESC
     LIMIT ?
   `).all(limit);
 
@@ -358,6 +367,8 @@ app.get('/api/leaderboard', (req, res) => {
     initials: row.initials,
     totalPoints: row.total_points,
     puzzlesCompleted: row.puzzles_completed,
+    timeSeconds: row.time_seconds,
+    moves: row.moves,
     createdAt: row.created_at,
   }));
 
@@ -365,12 +376,12 @@ app.get('/api/leaderboard', (req, res) => {
 });
 
 app.post('/api/leaderboard', (req, res) => {
-  const { initials, totalPoints, puzzlesCompleted } = req.body;
+  const { initials, totalPoints, puzzlesCompleted, timeSeconds, moves } = req.body;
 
   if (!initials || !/^[A-Z]{3}$/.test(initials)) {
     return res.status(400).json({ error: 'Initials must be exactly 3 uppercase letters' });
   }
-  if (BANNED_INITIALS.includes(initials)) {
+  if (BANNED_INITIALS.length && BANNED_INITIALS.includes(initials)) {
     return res.status(400).json({ error: 'Invalid initials' });
   }
   if (typeof totalPoints !== 'number' || totalPoints < 0) {
@@ -378,19 +389,21 @@ app.post('/api/leaderboard', (req, res) => {
   }
 
   const result = db.prepare(`
-    INSERT INTO leaderboard (initials, total_points, puzzles_completed)
-    VALUES (@initials, @totalPoints, @puzzlesCompleted)
+    INSERT INTO leaderboard (initials, total_points, puzzles_completed, time_seconds, moves)
+    VALUES (@initials, @totalPoints, @puzzlesCompleted, @timeSeconds, @moves)
   `).run({
     initials,
     totalPoints: totalPoints || 0,
     puzzlesCompleted: puzzlesCompleted || 0,
+    timeSeconds: timeSeconds || 0,
+    moves: moves || 0,
   });
 
   // Calculate rank
   const rank = db.prepare(`
     SELECT COUNT(*) + 1 as rank FROM leaderboard
-    WHERE total_points > @points
-  `).get({ points: totalPoints || 0 }).rank;
+    WHERE total_points > @points OR (total_points = @points AND time_seconds < @time)
+  `).get({ points: totalPoints || 0, time: timeSeconds || 0 }).rank;
 
   res.json({ id: result.lastInsertRowid, rank });
 });

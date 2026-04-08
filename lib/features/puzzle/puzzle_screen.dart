@@ -313,6 +313,8 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                       location: widget.location,
                       result: _result,
                       animate: _firstDrawerShow,
+                      timeSecs: _stopwatch.elapsed.inSeconds,
+                      moves: _moveCount.value,
                       onHide: () => setState(() {
                         _showDrawer = false;
                         _firstDrawerShow = false;

@@ -9,6 +9,7 @@ import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:chile_puzzle/features/leaderboard/leaderboard_screen.dart';
+import 'package:chile_puzzle/main.dart';
 
 class ProfileScreen extends StatelessWidget {
   final GameConfig config;
@@ -56,6 +57,33 @@ class ProfileScreen extends StatelessWidget {
                       ? '$unlockedCount/${allLocations.length} ubicaciones descubiertas'
                       : '$unlockedCount/${allLocations.length} locations discovered',
                   style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: () {
+                    final newLocale = langCode == 'es' ? const Locale('en') : const Locale('es');
+                    ChilePuzzleApp.setLocale(context, newLocale);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(PhosphorIconsBold.globe, size: 16, color: Colors.grey.shade600),
+                        const SizedBox(width: 6),
+                        Text(
+                          langCode == 'es' ? 'English' : 'Español',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 20),
               ],
@@ -161,6 +189,21 @@ class ProfileScreen extends StatelessWidget {
               ),
             );
           }),
+          const SizedBox(height: 16),
+
+          // Ranking button
+          ElevatedButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
+            ),
+            icon: const Icon(PhosphorIconsBold.trophy, size: 20),
+            label: Text(langCode == 'es' ? 'Ver ranking' : 'View ranking'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48),
+              backgroundColor: AppTheme.accentPurple,
+            ),
+          ),
           const SizedBox(height: 28),
 
           // Trophies header
@@ -215,21 +258,6 @@ class ProfileScreen extends StatelessWidget {
             },
           ),
           const SizedBox(height: 20),
-
-          // Leaderboard button
-          ElevatedButton.icon(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
-            ),
-            icon: Icon(PhosphorIconsBold.trophy, size: 20),
-            label: Text(langCode == 'es' ? 'Ranking' : 'Leaderboard'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 48),
-              backgroundColor: AppTheme.accentPurple,
-            ),
-          ),
-          const SizedBox(height: 24),
 
           // New locations banner
           Container(
@@ -505,6 +533,10 @@ PhosphorIconData _trophyIcon(String iconName) {
     case 'sun': return PhosphorIconsFill.sun;
     case 'map_trifold': return PhosphorIconsFill.mapTrifold;
     case 'hand_pointing': return PhosphorIconsFill.handPointing;
+    case 'plant': return PhosphorIconsFill.plant;
+    case 'skull': return PhosphorIconsFill.skull;
+    case 'flame': return PhosphorIconsFill.flame;
+    case 'spiral': return PhosphorIconsFill.spiral;
     default: return PhosphorIconsFill.trophy;
   }
 }

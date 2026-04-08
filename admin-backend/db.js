@@ -69,10 +69,20 @@ db.exec(`
     initials TEXT NOT NULL CHECK(length(initials) = 3),
     total_points INTEGER NOT NULL DEFAULT 0,
     puzzles_completed INTEGER NOT NULL DEFAULT 0,
+    time_seconds INTEGER NOT NULL DEFAULT 0,
+    moves INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_lb_points ON leaderboard(total_points DESC);
 `);
+
+// Migrate: add time_seconds and moves to leaderboard if missing
+try {
+  db.prepare('SELECT time_seconds FROM leaderboard LIMIT 0').get();
+} catch (_) {
+  db.exec('ALTER TABLE leaderboard ADD COLUMN time_seconds INTEGER NOT NULL DEFAULT 0');
+  db.exec('ALTER TABLE leaderboard ADD COLUMN moves INTEGER NOT NULL DEFAULT 0');
+}
 
 // Ensure scoring has a default row
 const scoringRow = db.prepare('SELECT id FROM scoring WHERE id = 1').get();

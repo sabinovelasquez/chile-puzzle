@@ -100,6 +100,8 @@ class MockBackend {
     required String initials,
     required int totalPoints,
     required int puzzlesCompleted,
+    int timeSeconds = 0,
+    int moves = 0,
   }) async {
     try {
       final response = await http.post(
@@ -109,11 +111,16 @@ class MockBackend {
           'initials': initials,
           'totalPoints': totalPoints,
           'puzzlesCompleted': puzzlesCompleted,
+          'timeSeconds': timeSeconds,
+          'moves': moves,
         }),
       );
+      final decoded = json.decode(response.body);
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        return decoded;
       }
+      // Return error info for banned initials etc.
+      return {'error': decoded['error'] ?? 'Unknown error'};
     } catch (e) {
       debugPrint('Error submitting score: $e');
     }

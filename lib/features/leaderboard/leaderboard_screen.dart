@@ -1,10 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:flutter_confetti/flutter_confetti.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/core/services/mock_backend.dart';
-import 'package:chile_puzzle/core/services/game_progress_service.dart';
-import 'package:chile_puzzle/features/leaderboard/initials_input.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
@@ -16,7 +16,7 @@ class LeaderboardScreen extends StatefulWidget {
 class _LeaderboardScreenState extends State<LeaderboardScreen> {
   List<Map<String, dynamic>> _entries = [];
   bool _isLoading = true;
-  int? _lastSubmittedRank;
+  bool _confettiFired = false;
 
   @override
   void initState() {
@@ -26,131 +26,91 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   Future<void> _loadLeaderboard() async {
     setState(() { _isLoading = true; });
-    final entries = await MockBackend.fetchLeaderboard();
+    final entries = await MockBackend.fetchLeaderboard(limit: 10);
     if (mounted) {
       setState(() { _entries = entries; _isLoading = false; });
+      if (!_confettiFired && entries.isNotEmpty) {
+        _confettiFired = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) => _launchConfetti());
+      }
     }
   }
 
-  Future<void> _submitScore() async {
-    final langCode = Localizations.localeOf(context).languageCode;
-    String? initials = GameProgressService.leaderboardInitials;
+  void _launchConfetti() {
+    const colors = [Color(0xffbb0000), Color(0xffffffff)];
+    const frameTime = 1000 ~/ 24;
+    const total = 4 * 1000 ~/ frameTime;
+    int progress = 0;
+    ConfettiController? controller1;
+    ConfettiController? controller2;
+    bool isDone = false;
 
-    if (initials == null) {
-      initials = await showInitialsInput(context);
-      if (initials == null) return; // cancelled
-      await GameProgressService.setLeaderboardInitials(initials);
-    }
-
-    final progress = GameProgressService.progress;
-    final result = await MockBackend.submitScore(
-      initials: initials,
-      totalPoints: progress.totalPoints,
-      puzzlesCompleted: progress.completedCount,
-    );
-
-    if (result != null && mounted) {
-      setState(() { _lastSubmittedRank = result['rank']; });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(langCode == 'es'
-              ? '¡Posición #${result['rank']}!'
-              : 'Ranked #${result['rank']}!'),
-        ),
-      );
-      _loadLeaderboard();
-    }
-  }
-
-  Future<void> _changeInitials() async {
-    final current = GameProgressService.leaderboardInitials;
-    final initials = await showInitialsInput(context, currentInitials: current);
-    if (initials != null) {
-      await GameProgressService.setLeaderboardInitials(initials);
-      setState(() {});
-    }
+    Timer.periodic(const Duration(milliseconds: frameTime), (timer) {
+      progress++;
+      if (progress >= total) {
+        timer.cancel();
+        isDone = true;
+        return;
+      }
+      if (!mounted) { timer.cancel(); return; }
+      if (controller1 == null) {
+        controller1 = Confetti.launch(context,
+          options: const ConfettiOptions(particleCount: 2, angle: 60, spread: 55, x: 0, colors: colors),
+          onFinished: (overlayEntry) { if (isDone) overlayEntry.remove(); },
+        );
+      } else {
+        controller1!.launch();
+      }
+      if (controller2 == null) {
+        controller2 = Confetti.launch(context,
+          options: const ConfettiOptions(particleCount: 2, angle: 120, spread: 55, x: 1, colors: colors),
+          onFinished: (overlayEntry) { if (isDone) overlayEntry.remove(); },
+        );
+      } else {
+        controller2!.launch();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final langCode = Localizations.localeOf(context).languageCode;
-    final initials = GameProgressService.leaderboardInitials;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(langCode == 'es' ? 'Ranking' : 'Leaderboard'),
-        actions: [
-          if (initials != null)
-            TextButton(
-              onPressed: _changeInitials,
-              child: Text(initials, style: GoogleFonts.spaceGrotesk(
-                fontSize: 16, fontWeight: FontWeight.w800,
-              )),
-            ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Expanded(
-                  child: _entries.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(PhosphorIconsBold.trophy, size: 48, color: Colors.grey.shade400),
-                              const SizedBox(height: 12),
-                              Text(
-                                langCode == 'es' ? 'Sin puntajes aún' : 'No scores yet',
-                                style: GoogleFonts.plusJakartaSans(fontSize: 16, color: Colors.grey.shade500),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                langCode == 'es' ? '¡Sé el primero!' : 'Be the first!',
-                                style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade400),
-                              ),
-                            ],
-                          ),
-                        )
-                      : RefreshIndicator(
-                          onRefresh: _loadLeaderboard,
-                          child: ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                            itemCount: _entries.length,
-                            itemBuilder: (context, index) {
-                              final entry = _entries[index];
-                              final rank = entry['rank'] as int;
-                              final isHighlighted = _lastSubmittedRank == rank &&
-                                  entry['initials'] == initials;
-                              return _LeaderboardRow(
-                                rank: rank,
-                                initials: entry['initials'] as String,
-                                points: entry['totalPoints'] as int,
-                                puzzles: entry['puzzlesCompleted'] as int,
-                                highlighted: isHighlighted,
-                              );
-                            },
-                          ),
-                        ),
-                ),
-                // Submit button
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    16, 8, 16,
-                    16 + MediaQuery.of(context).padding.bottom,
+          : _entries.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(PhosphorIconsBold.trophy, size: 48, color: Colors.grey.shade400),
+                      const SizedBox(height: 12),
+                      Text(
+                        langCode == 'es' ? 'Sin puntajes aún' : 'No scores yet',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 16, color: Colors.grey.shade500),
+                      ),
+                    ],
                   ),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _submitScore,
-                      icon: const Icon(PhosphorIconsBold.paperPlaneTilt, size: 18),
-                      label: Text(langCode == 'es' ? 'Enviar puntaje' : 'Submit score'),
-                    ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadLeaderboard,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    itemCount: _entries.length,
+                    itemBuilder: (context, index) {
+                      final entry = _entries[index];
+                      return _LeaderboardRow(
+                        rank: entry['rank'] as int,
+                        initials: entry['initials'] as String,
+                        points: entry['totalPoints'] as int,
+                      );
+                    },
                   ),
                 ),
-              ],
-            ),
     );
   }
 }
@@ -159,15 +119,11 @@ class _LeaderboardRow extends StatelessWidget {
   final int rank;
   final String initials;
   final int points;
-  final int puzzles;
-  final bool highlighted;
 
   const _LeaderboardRow({
     required this.rank,
     required this.initials,
     required this.points,
-    required this.puzzles,
-    this.highlighted = false,
   });
 
   @override
@@ -179,17 +135,11 @@ class _LeaderboardRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: highlighted
-            ? AppTheme.accentBlue.withValues(alpha: 0.08)
-            : Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: highlighted
-            ? Border.all(color: AppTheme.accentBlue.withValues(alpha: 0.3), width: 1.5)
-            : null,
       ),
       child: Row(
         children: [
-          // Rank
           SizedBox(
             width: 36,
             child: isTop3
@@ -202,39 +152,28 @@ class _LeaderboardRow extends StatelessWidget {
                   ),
           ),
           const SizedBox(width: 12),
-          // Initials
-          Container(
-            width: 48, height: 36,
-            decoration: BoxDecoration(
-              color: AppTheme.seedColor,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                initials,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 2,
+          Expanded(
+            child: Container(
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppTheme.seedColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  initials,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 2,
+                  ),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 16),
-          // Points
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$points pts',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.trophyGold,
-                  ),
-                ),
-                Text(
-                  '$puzzles puzzles',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey.shade500),
-                ),
-              ],
+          Text(
+            '$points pts',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.trophyGold,
             ),
           ),
         ],
