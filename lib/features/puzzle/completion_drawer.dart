@@ -179,6 +179,7 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                         totalPoints: GameProgressService.progress.totalPoints,
                         timeSecs: widget.timeSecs,
                         moves: widget.moves,
+                        enabled: !_navigating,
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -328,7 +329,8 @@ class _RankingButton extends StatefulWidget {
   final int totalPoints;
   final int timeSecs;
   final int moves;
-  const _RankingButton({required this.totalPoints, this.timeSecs = 0, this.moves = 0});
+  final bool enabled;
+  const _RankingButton({required this.totalPoints, this.timeSecs = 0, this.moves = 0, this.enabled = true});
 
   @override
   State<_RankingButton> createState() => _RankingButtonState();
@@ -389,9 +391,12 @@ class _RankingButtonState extends State<_RankingButton> {
   @override
   Widget build(BuildContext context) {
     final langCode = Localizations.localeOf(context).languageCode;
+    final disabled = !widget.enabled;
+    final color = disabled ? Colors.grey.shade400 : AppTheme.accentPurple;
+
     if (_rank != null) {
       return GestureDetector(
-        onTap: () => Navigator.push(
+        onTap: disabled ? null : () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
         ),
@@ -399,18 +404,18 @@ class _RankingButtonState extends State<_RankingButton> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: AppTheme.accentPurple.withValues(alpha: 0.08),
+            color: color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(PhosphorIconsFill.trophy, size: 18, color: AppTheme.accentPurple),
+              Icon(PhosphorIconsFill.trophy, size: 18, color: color),
               const SizedBox(width: 8),
               Text(
                 langCode == 'es' ? '#$_rank — Ver ranking' : '#$_rank — View ranking',
                 style: GoogleFonts.spaceGrotesk(
-                  fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.accentPurple,
+                  fontSize: 14, fontWeight: FontWeight.w700, color: color,
                 ),
               ),
             ],
@@ -419,12 +424,12 @@ class _RankingButtonState extends State<_RankingButton> {
       );
     }
     return GestureDetector(
-      onTap: _submitting ? null : _submitScore,
+      onTap: (_submitting || disabled) ? null : _submitScore,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: AppTheme.accentPurple.withValues(alpha: 0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -433,12 +438,12 @@ class _RankingButtonState extends State<_RankingButton> {
             if (_submitting)
               const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
             else ...[
-              Icon(PhosphorIconsBold.listNumbers, size: 18, color: AppTheme.accentPurple),
+              Icon(PhosphorIconsBold.listNumbers, size: 18, color: color),
               const SizedBox(width: 8),
               Text(
                 langCode == 'es' ? 'Entrar al ranking' : 'Enter ranking',
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.accentPurple,
+                  fontSize: 13, fontWeight: FontWeight.w600, color: color,
                 ),
               ),
             ],

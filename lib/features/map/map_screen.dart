@@ -90,6 +90,7 @@ class _MapScreenState extends State<MapScreen> {
       await _loadLocations();
       // Cache all locations for profile/puzzle screens
       _allLocations = await MockBackend.fetchLocations();
+      if (mounted) setState(() {});
     } catch (e) {
       if (mounted) {
         setState(() { _isLoading = false; _error = e.toString(); });
@@ -280,6 +281,18 @@ class _MapScreenState extends State<MapScreen> {
                   child: Image.network(
                     loc.image,
                     fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        color: Colors.grey.shade200,
+                        child: const Center(
+                          child: SizedBox(
+                            width: 24, height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      );
+                    },
                     errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade300),
                   ),
                 ),
@@ -588,7 +601,7 @@ class _MapScreenState extends State<MapScreen> {
           ),
           // Trophies pill
           _AppBarPill(
-            icon: PhosphorIconsBold.trophy,
+            icon: PhosphorIconsBold.medal,
             iconColor: AppTheme.accentGreen,
             label: '${progress.earnedTrophyIds.length}',
             labelColor: AppTheme.accentGreen,

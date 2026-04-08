@@ -39,7 +39,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   void _launchConfetti() {
     const colors = [Color(0xffbb0000), Color(0xffffffff)];
     const frameTime = 1000 ~/ 24;
-    const total = 4 * 1000 ~/ frameTime;
+    const total = 2 * 1000 ~/ frameTime;
     int progress = 0;
     ConfettiController? controller1;
     ConfettiController? controller2;

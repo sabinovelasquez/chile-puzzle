@@ -127,6 +127,30 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
+          // New locations banner
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppTheme.accentBlue.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(PhosphorIconsFill.mapTrifold, size: 22, color: AppTheme.accentBlue),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n?.newLocationsWeekly ?? 'New locations every week — keep exploring!',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12, color: AppTheme.accentBlue, fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // Progress bar
           Builder(builder: (_) {
             final totalDifficulties = allLocations.fold<int>(
@@ -197,7 +221,7 @@ class ProfileScreen extends StatelessWidget {
               context,
               MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
             ),
-            icon: const Icon(PhosphorIconsBold.trophy, size: 20),
+            icon: const Icon(PhosphorIconsBold.listNumbers, size: 20),
             label: Text(langCode == 'es' ? 'Ver ranking' : 'View ranking'),
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 48),
@@ -206,79 +230,41 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 28),
 
-          // Trophies header
-          Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(PhosphorIconsFill.trophy, size: 22, color: AppTheme.trophyGold),
-                const SizedBox(width: 8),
-                Text(
-                  l10n?.trophies ?? 'Trophies',
-                  style: GoogleFonts.spaceGrotesk(fontSize: 18, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppTheme.accentOrange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
+          // Trophies button → opens modal
+          GestureDetector(
+            onTap: () => _showTrophiesModal(context, config, progress, langCode, l10n),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Icon(PhosphorIconsFill.trophy, size: 22, color: AppTheme.trophyGold),
+                  const SizedBox(width: 12),
+                  Text(
+                    l10n?.trophies ?? 'Trophies',
+                    style: GoogleFonts.spaceGrotesk(fontSize: 16, fontWeight: FontWeight.w700),
                   ),
-                  child: Text(
-                    '${progress.earnedTrophyIds.length}/${config.trophies.length}',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.accentOrange,
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentOrange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${progress.earnedTrophyIds.length}/${config.trophies.length}',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.accentOrange,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Trophy grid
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 1.1,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-            ),
-            itemCount: config.trophies.length,
-            itemBuilder: (context, index) {
-              final trophy = config.trophies[index];
-              final isEarned = progress.earnedTrophyIds.contains(trophy.id);
-              return _TrophyCard(
-                trophy: trophy,
-                isEarned: isEarned,
-                langCode: langCode,
-              );
-            },
-          ),
-          const SizedBox(height: 20),
-
-          // New locations banner
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppTheme.accentBlue.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(PhosphorIconsFill.mapTrifold, size: 22, color: AppTheme.accentBlue),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    l10n?.newLocationsWeekly ?? 'New locations every week — keep exploring!',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, color: AppTheme.accentBlue, fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Icon(PhosphorIconsBold.caretRight, size: 16, color: Colors.grey.shade400),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 24),
@@ -312,6 +298,86 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showTrophiesModal(BuildContext context, GameConfig config, dynamic progress, String langCode, AppLocalizations? l10n) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (ctx) => DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.5,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (_, controller) => ListView(
+        controller: controller,
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(PhosphorIconsFill.trophy, size: 22, color: AppTheme.trophyGold),
+                const SizedBox(width: 8),
+                Text(
+                  l10n?.trophies ?? 'Trophies',
+                  style: GoogleFonts.spaceGrotesk(fontSize: 20, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentOrange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${progress.earnedTrophyIds.length}/${config.trophies.length}',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.accentOrange,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 1.1,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
+            itemCount: config.trophies.length,
+            itemBuilder: (context, index) {
+              final trophy = config.trophies[index];
+              final isEarned = progress.earnedTrophyIds.contains(trophy.id);
+              return _TrophyCard(
+                trophy: trophy,
+                isEarned: isEarned,
+                langCode: langCode,
+              );
+            },
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 void _showClearProgressDialog(BuildContext context, AppLocalizations? l10n, String langCode) {
@@ -410,7 +476,7 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'v1.1.0',
+              'v1.3.0',
               style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade400),
             ),
           ),
