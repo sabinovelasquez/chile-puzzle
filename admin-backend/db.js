@@ -74,6 +74,17 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_lb_points ON leaderboard(total_points DESC);
+
+  CREATE TABLE IF NOT EXISTS testers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    lang TEXT NOT NULL DEFAULT 'es',
+    enrolled INTEGER NOT NULL DEFAULT 0,
+    notified INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_testers_email ON testers(email);
 `);
 
 // Migrate: add time_seconds and moves to leaderboard if missing
@@ -164,6 +175,18 @@ function rowToScoring(row) {
   };
 }
 
+function rowToTester(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    lang: row.lang,
+    enrolled: !!row.enrolled,
+    notified: !!row.notified,
+    createdAt: row.created_at,
+  };
+}
+
 module.exports = {
   db,
   rowToLocation,
@@ -171,4 +194,5 @@ module.exports = {
   rowToZone,
   rowToTrophy,
   rowToScoring,
+  rowToTester,
 };

@@ -1,10 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const sharp = require('sharp');
-const { db, rowToLocation, locationToParams, rowToZone, rowToTrophy, rowToScoring } = require('./db');
+const { db, rowToLocation, locationToParams, rowToZone, rowToTrophy, rowToScoring, rowToTester } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -406,6 +407,104 @@ app.post('/api/leaderboard', (req, res) => {
   `).get({ points: totalPoints || 0, time: timeSeconds || 0 }).rank;
 
   res.json({ id: result.lastInsertRowid, rank });
+});
+
+// ============================================================
+// TESTERS
+// ============================================================
+app.post('/api/testers', (req, res) => {
+  const { name, email, lang } = req.body;
+  if (!name || !email) return res.status(400).json({ error: 'Name and email required' });
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanLang = (lang || 'es').substring(0, 2);
+
+  const existing = db.prepare('SELECT id FROM testers WHERE email = ?').get(cleanEmail);
+  if (existing) return res.json({ ok: true, message: 'Already registered' });
+
+  const result = db.prepare(
+    'INSERT INTO testers (name, email, lang) VALUES (?, ?, ?)'
+  ).run(name.trim(), cleanEmail, cleanLang);
+
+  res.json({ ok: true, id: result.lastInsertRowid });
+});
+
+app.get('/api/testers', (req, res) => {
+  const rows = db.prepare('SELECT * FROM testers ORDER BY created_at DESC').all();
+  res.json(rows.map(rowToTester));
+});
+
+app.put('/api/testers/:id', (req, res) => {
+  const { enrolled } = req.body;
+  db.prepare('UPDATE testers SET enrolled = ? WHERE id = ?').run(enrolled ? 1 : 0, req.params.id);
+  res.json({ ok: true });
+});
+
+app.delete('/api/testers/:id', (req, res) => {
+  db.prepare('DELETE FROM testers WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+app.post('/api/testers/notify', async (req, res) => {
+  const BREVO_KEY = process.env.BREVO_API_KEY;
+  if (!BREVO_KEY) return res.status(500).json({ error: 'Brevo API key not configured' });
+
+  const downloadUrl = 'https://play.google.com/apps/internaltest/4700433915880246135';
+  const defaultSubject = 'Zoom-In Chile - Early Access';
+  const defaultHtmlEs = `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:2rem;">
+    <h2 style="color:#1565C0;">Zoom-In Chile</h2>
+    <p>Hola {{name}},</p>
+    <p>La app ya está disponible para testing. Descárgala aquí:</p>
+    <p><a href="${downloadUrl}" style="display:inline-block;padding:12px 24px;background:#1565C0;color:white;text-decoration:none;border-radius:8px;font-weight:600;">Descargar App</a></p>
+    <p style="color:#888;font-size:0.85rem;">Gracias por ser parte de los primeros testers.</p>
+  </div>`;
+  const defaultHtmlEn = `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:2rem;">
+    <h2 style="color:#1565C0;">Zoom-In Chile</h2>
+    <p>Hi {{name}},</p>
+    <p>The app is now available for testing. Download it here:</p>
+    <p><a href="${downloadUrl}" style="display:inline-block;padding:12px 24px;background:#1565C0;color:white;text-decoration:none;border-radius:8px;font-weight:600;">Download App</a></p>
+    <p style="color:#888;font-size:0.85rem;">Thanks for being one of our early testers.</p>
+  </div>`;
+
+  const subject = (req.body && req.body.subject) || defaultSubject;
+  const htmlEs = (req.body && req.body.htmlEs) || defaultHtmlEs;
+  const htmlEn = (req.body && req.body.htmlEn) || defaultHtmlEn;
+
+  const testers = db.prepare('SELECT * FROM testers WHERE enrolled = 1 AND notified = 0').all();
+  if (testers.length === 0) return res.json({ ok: true, sent: 0, message: 'No testers to notify' });
+
+  let sent = 0;
+  const errors = [];
+
+  for (const tester of testers) {
+    const html = (tester.lang === 'en' ? htmlEn : htmlEs).replace(/\{\{name\}\}/g, tester.name);
+    try {
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': BREVO_KEY,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { name: 'Zoom-In Chile', email: 'contact@depointless.cl' },
+          to: [{ email: tester.email, name: tester.name }],
+          subject,
+          htmlContent: html,
+        }),
+      });
+      if (response.ok) {
+        db.prepare('UPDATE testers SET notified = 1 WHERE id = ?').run(tester.id);
+        sent++;
+      } else {
+        const err = await response.text();
+        errors.push({ email: tester.email, error: err });
+      }
+    } catch (e) {
+      errors.push({ email: tester.email, error: e.message });
+    }
+  }
+
+  res.json({ ok: true, sent, total: testers.length, errors: errors.length > 0 ? errors : undefined });
 });
 
 // ============================================================

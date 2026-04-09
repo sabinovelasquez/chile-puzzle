@@ -1,0 +1,429 @@
+---
+/**
+ * PuzzleGame — Self-contained puzzle component.
+ * Can be used inside a phone mockup (landing) or full-screen (playable ad).
+ * All CSS + JS is inline for easy extraction to a standalone HTML file.
+ */
+interface Props {
+  image: string;
+  locationName?: string;
+  locationNameEn?: string;
+  description?: string;
+  descriptionEn?: string;
+  cols?: number;
+  rows?: number;
+}
+
+const {
+  image,
+  locationName = 'Ubicación',
+  locationNameEn = 'Location',
+  description = '',
+  descriptionEn = '',
+  cols = 4,
+  rows = 6,
+} = Astro.props;
+
+const total = cols * rows;
+---
+
+<div
+  class="pg-root"
+  data-image={image}
+  data-cols={cols}
+  data-rows={rows}
+  data-total={total}
+>
+  <div class="pg-container">
+    <div class="pg-header">
+      <div class="pg-title" data-es="RESUELVE EL PUZZLE" data-en="SOLVE THE PUZZLE">RESUELVE EL PUZZLE</div>
+      <div class="pg-location" data-es={locationName} data-en={locationNameEn}>{locationName}</div>
+    </div>
+    <div class="pg-hud">
+      <span data-es="Movimientos:" data-en="Moves:">Movimientos:</span>
+      <span class="pg-moves">0</span>
+      <span>&nbsp;|&nbsp;</span>
+      <span class="pg-correct">0</span><span>/{total}</span>
+    </div>
+    <div class="pg-board"></div>
+    <div class="pg-footer">
+      <button class="pg-btn-reset" data-es="Reiniciar" data-en="Reset">Reiniciar</button>
+    </div>
+    <div class="pg-win-overlay">
+      <div class="pg-win-icon"><i class="ph ph-trophy"></i></div>
+      <div class="pg-win-title" data-es="&iexcl;Completado!" data-en="Completed!">&iexcl;Completado!</div>
+      <div class="pg-win-sub" data-es={description} data-en={descriptionEn}>{description}</div>
+      <button class="pg-win-cta" data-open-tester-modal>
+        <span data-es="Jugar" data-en="Play">Jugar</span>
+        <i class="ph ph-arrow-right"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<style is:inline>
+  /* ── PuzzleGame scoped styles ── */
+  .pg-root {
+    width: 100%;
+    height: 100%;
+  }
+
+  .pg-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, #0F1D24 0%, #1B3A4B 100%);
+    position: relative;
+    font-family: 'Plus Jakarta Sans', 'Space Grotesk', system-ui, sans-serif;
+  }
+
+  .pg-header {
+    padding: 2.2rem 1rem 0.5rem;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .pg-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #C9A961;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 0.15rem;
+  }
+
+  .pg-location {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: white;
+  }
+
+  .pg-hud {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.35rem 1rem;
+    font-size: 0.62rem;
+    color: #8A9BA5;
+    flex-shrink: 0;
+  }
+
+  .pg-hud span {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .pg-board {
+    flex: 1;
+    display: grid;
+    gap: 0;
+    padding: 0;
+    min-height: 0;
+  }
+
+  .pg-piece {
+    position: relative;
+    cursor: grab;
+    transition: box-shadow 0.2s, opacity 0.2s;
+    border: none;
+    box-shadow: inset 0 0 0 1.5px rgba(15, 29, 36, 0.7);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .pg-piece:hover {
+    box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.35);
+    z-index: 2;
+  }
+
+  .pg-piece.dragging {
+    opacity: 0.4;
+    box-shadow: inset 0 0 0 2px #FF6D00 !important;
+  }
+
+  .pg-piece.drag-over {
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.7) !important;
+  }
+
+  .pg-piece.selected {
+    box-shadow: inset 0 0 0 2px #FF6D00 !important;
+    z-index: 3;
+  }
+
+  .pg-piece.correct {
+    box-shadow: none !important;
+  }
+
+  .pg-piece.just-swapped {
+    animation: pgSwapFlash 0.35s ease;
+  }
+
+  @keyframes pgSwapFlash {
+    0% { transform: scale(0.85); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+
+  .pg-footer {
+    padding: 0.5rem 1rem 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .pg-btn-reset {
+    padding: 0.4rem 1rem;
+    border-radius: 8px;
+    border: none;
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(255,255,255,0.1);
+    color: #8A9BA5;
+  }
+
+  .pg-btn-reset:hover { background: rgba(255,255,255,0.15); }
+
+  .pg-win-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 29, 36, 0.92);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s;
+    border-radius: inherit;
+  }
+
+  .pg-win-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .pg-win-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    color: #C9A961;
+    animation: pgWinBounce 0.6s ease;
+  }
+
+  @keyframes pgWinBounce {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+
+  .pg-win-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #C9A961;
+    margin-bottom: 0.25rem;
+  }
+
+  .pg-win-sub {
+    font-size: 0.72rem;
+    color: #8A9BA5;
+    margin-bottom: 1.25rem;
+    text-align: center;
+    padding: 0 1rem;
+  }
+
+  .pg-win-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.55rem 1.25rem;
+    background: #1565C0;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 10px;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.75rem;
+    transition: all 0.3s;
+  }
+
+  .pg-win-cta:hover { background: #1976D2; transform: scale(1.05); }
+</style>
+
+<script is:inline>
+  // ── PuzzleGame Engine ──
+  (function() {
+    const root = document.querySelector('.pg-root');
+    if (!root) return;
+
+    const IMAGE = root.dataset.image;
+    const COLS = parseInt(root.dataset.cols);
+    const ROWS = parseInt(root.dataset.rows);
+    const TOTAL = parseInt(root.dataset.total);
+
+    const board = root.querySelector('.pg-board');
+    const movesEl = root.querySelector('.pg-moves');
+    const correctEl = root.querySelector('.pg-correct');
+    const winOverlay = root.querySelector('.pg-win-overlay');
+    const resetBtn = root.querySelector('.pg-btn-reset');
+
+    board.style.gridTemplateColumns = `repeat(${COLS}, 1fr)`;
+    board.style.gridTemplateRows = `repeat(${ROWS}, 1fr)`;
+
+    let pieces = [], selected = null, moves = 0, solved = false, dragFrom = null;
+
+    function init() {
+      board.innerHTML = '';
+      pieces = Array.from({ length: TOTAL }, (_, i) => i);
+      do {
+        for (let i = pieces.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
+        }
+      } while (pieces.every((p, i) => p === i));
+
+      moves = 0;
+      selected = null;
+      dragFrom = null;
+      solved = false;
+      movesEl.textContent = '0';
+      winOverlay.classList.remove('show');
+      render();
+    }
+
+    function swap(a, b) {
+      if (a === b || solved) return;
+      [pieces[a], pieces[b]] = [pieces[b], pieces[a]];
+      moves++;
+      movesEl.textContent = moves;
+      selected = null;
+      dragFrom = null;
+      render();
+
+      const childA = board.children[a];
+      const childB = board.children[b];
+      if (childA) { childA.classList.add('just-swapped'); setTimeout(() => childA.classList.remove('just-swapped'), 400); }
+      if (childB) { childB.classList.add('just-swapped'); setTimeout(() => childB.classList.remove('just-swapped'), 400); }
+
+      if (pieces.every((p, i) => p === i)) {
+        solved = true;
+        setTimeout(() => winOverlay.classList.add('show'), 400);
+      }
+    }
+
+    function render() {
+      board.innerHTML = '';
+      let correct = 0;
+
+      const bgSize = `${COLS * 100}% ${ROWS * 100}%`;
+
+      pieces.forEach((pieceIdx, slotIdx) => {
+        const div = document.createElement('div');
+        div.className = 'pg-piece';
+        div.draggable = true;
+        div.dataset.slot = slotIdx;
+
+        const col = pieceIdx % COLS;
+        const row = Math.floor(pieceIdx / COLS);
+        div.style.backgroundImage = `url(${IMAGE})`;
+        div.style.backgroundSize = bgSize;
+        div.style.backgroundPosition = `${(col / (COLS - 1)) * 100}% ${(row / (ROWS - 1)) * 100}%`;
+
+        if (pieceIdx === slotIdx) { div.classList.add('correct'); correct++; }
+        if (selected === slotIdx) div.classList.add('selected');
+
+        // Mouse drag
+        div.addEventListener('dragstart', (e) => {
+          if (solved) { e.preventDefault(); return; }
+          dragFrom = slotIdx;
+          div.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', slotIdx);
+        });
+        div.addEventListener('dragend', () => {
+          div.classList.remove('dragging');
+          board.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        });
+        div.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          div.classList.add('drag-over');
+        });
+        div.addEventListener('dragleave', () => div.classList.remove('drag-over'));
+        div.addEventListener('drop', (e) => {
+          e.preventDefault();
+          div.classList.remove('drag-over');
+          const from = parseInt(e.dataTransfer.getData('text/plain'));
+          if (!isNaN(from) && from !== slotIdx) swap(from, slotIdx);
+        });
+
+        // Touch
+        div.addEventListener('touchstart', () => {
+          if (solved) return;
+          dragFrom = slotIdx;
+          div.classList.add('dragging');
+        }, { passive: true });
+
+        div.addEventListener('touchmove', (e) => {
+          e.preventDefault();
+          const touch = e.touches[0];
+          const target = document.elementFromPoint(touch.clientX, touch.clientY);
+          board.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+          if (target && target.classList.contains('pg-piece') && target !== div) {
+            target.classList.add('drag-over');
+          }
+        }, { passive: false });
+
+        div.addEventListener('touchend', (e) => {
+          div.classList.remove('dragging');
+          const touch = e.changedTouches[0];
+          const target = document.elementFromPoint(touch.clientX, touch.clientY);
+          board.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+          if (target && target.classList.contains('pg-piece') && dragFrom !== null) {
+            const toSlot = parseInt(target.dataset.slot);
+            if (!isNaN(toSlot) && dragFrom !== toSlot) { swap(dragFrom, toSlot); return; }
+          }
+          if (dragFrom !== null) {
+            if (selected === null) { selected = dragFrom; }
+            else if (selected === dragFrom) { selected = null; }
+            else { swap(selected, dragFrom); return; }
+            dragFrom = null;
+            render();
+          }
+        });
+
+        // Click fallback
+        let clickStart = 0;
+        div.addEventListener('mousedown', () => { clickStart = Date.now(); });
+        div.addEventListener('mouseup', () => {
+          if (Date.now() - clickStart > 200 || solved) return;
+          if (selected === null) { selected = slotIdx; render(); }
+          else if (selected === slotIdx) { selected = null; render(); }
+          else { swap(selected, slotIdx); }
+        });
+
+        board.appendChild(div);
+      });
+
+      correctEl.textContent = correct;
+    }
+
+    resetBtn.addEventListener('click', init);
+
+    // Wait for image then start
+    const img = new Image();
+    img.onload = init;
+    img.onerror = init;
+    img.src = IMAGE;
+  })();
+</script>

@@ -53,6 +53,7 @@ admin-backend/data/*.sqlite-wal
 admin-backend/data/*.sqlite-shm
 admin-backend/public/uploads/
 admin-backend/node_modules/
+admin-backend/.env
 
 # Local deploy script
 deploy.sh

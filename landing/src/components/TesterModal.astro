@@ -1,0 +1,272 @@
+---
+/**
+ * TesterModal — Beta tester signup form in a modal.
+ * Triggered by any element with [data-open-tester-modal].
+ */
+interface Props {
+  apiUrl?: string;
+}
+
+const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.props;
+---
+
+<div class="tm-overlay" id="testerModal">
+  <div class="tm-modal">
+    <button class="tm-close" aria-label="Close">&times;</button>
+    <div class="tm-icon"><i class="ph ph-envelope-simple"></i></div>
+    <h3 class="tm-title" data-es="&Uacute;nete como tester" data-en="Join as a tester">&Uacute;nete como tester</h3>
+    <p class="tm-desc" data-es="La app estar&aacute; pronto en Google Play. D&eacute;janos tus datos y te enviaremos el link de acceso anticipado." data-en="The app will be on Google Play soon. Leave your info and we'll send you early access.">La app estar&aacute; pronto en Google Play. D&eacute;janos tus datos y te enviaremos el link de acceso anticipado.</p>
+    <form class="tm-form" id="testerForm" data-api={apiUrl}>
+      <input
+        type="text"
+        name="name"
+        required
+        class="tm-input"
+        data-placeholder-es="Nombre"
+        data-placeholder-en="Name"
+        placeholder="Nombre"
+      />
+      <input
+        type="email"
+        name="email"
+        required
+        class="tm-input"
+        data-placeholder-es="Email"
+        data-placeholder-en="Email"
+        placeholder="Email"
+      />
+      <button type="submit" class="tm-submit">
+        <span data-es="Quiero ser tester" data-en="I want to be a tester">Quiero ser tester</span>
+        <i class="ph ph-arrow-right"></i>
+      </button>
+    </form>
+    <div class="tm-success" id="testerSuccess" style="display:none;">
+      <div class="tm-success-icon"><i class="ph ph-check-circle"></i></div>
+      <p data-es="&iexcl;Listo! Te avisaremos cuando est&eacute; disponible." data-en="Done! We'll let you know when it's available.">&iexcl;Listo! Te avisaremos cuando est&eacute; disponible.</p>
+    </div>
+    <div class="tm-error" id="testerError" style="display:none;">
+      <p data-es="Hubo un error. Int&eacute;ntalo de nuevo." data-en="Something went wrong. Try again.">Hubo un error. Int&eacute;ntalo de nuevo.</p>
+    </div>
+  </div>
+</div>
+
+<style is:inline>
+  .tm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+
+  .tm-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .tm-modal {
+    background: #FFFFFF;
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    max-width: 420px;
+    width: 100%;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    transform: translateY(16px);
+    transition: transform 0.25s;
+  }
+
+  .tm-overlay.open .tm-modal {
+    transform: translateY(0);
+  }
+
+  .tm-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #F5F7FA;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    color: #6B7280;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+
+  .tm-close:hover { background: #E5E7EB; }
+
+  .tm-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #E3F2FD;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+  }
+
+  .tm-icon .ph {
+    font-size: 1.4rem;
+    color: #1565C0;
+  }
+
+  .tm-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #1A1A1A;
+    margin-bottom: 0.5rem;
+  }
+
+  .tm-desc {
+    font-size: 0.9rem;
+    color: #6B7280;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+  }
+
+  .tm-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .tm-input {
+    padding: 0.75rem 1rem;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.9rem;
+    color: #1A1A1A;
+    background: #FFFFFF;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .tm-input:focus {
+    border-color: #1565C0;
+    box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.1);
+  }
+
+  .tm-input::placeholder { color: #9CA3AF; }
+
+  .tm-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.5rem;
+    background: #1565C0;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 0.25rem;
+  }
+
+  .tm-submit:hover { background: #1976D2; }
+  .tm-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .tm-success {
+    text-align: center;
+    padding: 1rem 0;
+  }
+
+  .tm-success-icon {
+    font-size: 2.5rem;
+    color: #4CAF50;
+    margin-bottom: 0.5rem;
+  }
+
+  .tm-success p {
+    color: #6B7280;
+    font-size: 0.95rem;
+  }
+
+  .tm-error p {
+    color: #E53935;
+    font-size: 0.85rem;
+    text-align: center;
+  }
+</style>
+
+<script is:inline>
+  (function() {
+    const overlay = document.getElementById('testerModal');
+    const form = document.getElementById('testerForm');
+    const successEl = document.getElementById('testerSuccess');
+    const errorEl = document.getElementById('testerError');
+    if (!overlay || !form) return;
+
+    // Open modal
+    document.querySelectorAll('[data-open-tester-modal]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        overlay.classList.add('open');
+      });
+    });
+
+    // Close modal
+    overlay.querySelector('.tm-close').addEventListener('click', () => {
+      overlay.classList.remove('open');
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.classList.remove('open');
+    });
+
+    // Submit form
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = form.querySelector('.tm-submit');
+      btn.disabled = true;
+      errorEl.style.display = 'none';
+
+      const data = {
+        name: form.name.value.trim(),
+        email: form.email.value.trim(),
+        lang: document.documentElement.lang || 'es',
+      };
+
+      try {
+        const res = await fetch(form.dataset.api, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Request failed');
+        form.style.display = 'none';
+        successEl.style.display = 'block';
+      } catch (err) {
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+      }
+    });
+
+    // Update placeholders on lang change (observe lang attribute)
+    const langObserver = new MutationObserver(() => {
+      const lang = document.documentElement.lang || 'es';
+      form.querySelectorAll('[data-placeholder-es]').forEach(input => {
+        input.placeholder = input.getAttribute(`data-placeholder-${lang}`) || input.placeholder;
+      });
+    });
+    langObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+  })();
+</script>

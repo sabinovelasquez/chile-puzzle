@@ -712,21 +712,115 @@ window.addEventListener('touchmove', cropMoveDrag, { passive: false });
 window.addEventListener('touchend', cropEndDrag);
 
 // ============================================================
+// TESTERS
+// ============================================================
+let testers = [];
+
+function renderTesterTable() {
+  const tbody = document.getElementById('testerTableBody');
+  const empty = document.getElementById('testerEmpty');
+  const stats = document.getElementById('testerStats');
+  tbody.innerHTML = '';
+  if (!testers.length) { empty.style.display = 'block'; stats.textContent = ''; return; }
+  empty.style.display = 'none';
+  const enrolled = testers.filter(t => t.enrolled).length;
+  const notified = testers.filter(t => t.notified).length;
+  stats.textContent = `${testers.length} total · ${enrolled} enrolled · ${notified} notified`;
+
+  testers.forEach(t => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${esc(t.name)}</td>
+      <td>${esc(t.email)}</td>
+      <td>${t.lang.toUpperCase()}</td>
+      <td><input type="checkbox" ${t.enrolled ? 'checked' : ''} data-id="${t.id}" data-field="enrolled"></td>
+      <td><span class="tester-badge ${t.notified ? 'yes' : 'no'}">${t.notified ? 'Yes' : 'No'}</span></td>
+      <td style="color:var(--text-secondary);font-size:0.8rem;">${t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}</td>
+      <td><button class="btn-delete" data-delete-id="${t.id}" title="Delete">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Bind checkbox toggles
+  tbody.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.onchange = async () => {
+      const id = cb.dataset.id;
+      try {
+        await putJSON(API_BASE + '/api/testers/' + id, { enrolled: cb.checked ? 1 : 0 });
+        const t = testers.find(x => x.id == id);
+        if (t) t.enrolled = cb.checked;
+        renderTesterTable();
+      } catch { showTesterMsg('Error updating tester', true); }
+    };
+  });
+
+  // Bind delete buttons
+  tbody.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm('Delete this tester?')) return;
+      const id = btn.dataset.deleteId;
+      try {
+        await deleteJSON(API_BASE + '/api/testers/' + id);
+        testers = testers.filter(t => t.id != id);
+        renderTesterTable();
+      } catch { showTesterMsg('Error deleting tester', true); }
+    };
+  });
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+function showTesterMsg(text, isError) {
+  const el = document.getElementById('testerMsg');
+  el.textContent = text;
+  el.style.display = 'block';
+  el.style.background = isError ? 'rgba(248,81,73,0.15)' : 'rgba(35,134,54,0.15)';
+  el.style.color = isError ? '#f85149' : '#3fb950';
+  setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+document.getElementById('notifyTestersBtn').onclick = async () => {
+  const btn = document.getElementById('notifyTestersBtn');
+  const enrolled = testers.filter(t => t.enrolled && !t.notified);
+  if (!enrolled.length) { showTesterMsg('No enrolled testers pending notification', true); return; }
+  if (!confirm(`Send notification email to ${enrolled.length} tester(s)?`)) return;
+  btn.disabled = true; btn.textContent = 'Sending...';
+  try {
+    const res = await fetch(API_BASE + '/api/testers/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const data = await res.json();
+    if (res.ok) {
+      showTesterMsg(`Notified ${data.sent} tester(s)`, false);
+      testers = await fetchJSON(API_BASE + '/api/testers');
+      renderTesterTable();
+    } else {
+      showTesterMsg(data.error || 'Error sending notifications', true);
+    }
+  } catch { showTesterMsg('Error sending notifications', true); }
+  btn.disabled = false; btn.textContent = 'Notify Enrolled';
+};
+
+// ============================================================
 // INIT
 // ============================================================
 async function init() {
-  const [locResult, zonesResult, trophiesResult, scoringResult] = await Promise.all([
+  const [locResult, zonesResult, trophiesResult, scoringResult, testersResult] = await Promise.all([
     fetchJSON(API_BASE + '/api/locations'),
     fetchJSON(API_BASE + '/api/zones'),
     fetchJSON(API_BASE + '/api/trophies'),
     fetchJSON(API_BASE + '/api/scoring'),
+    fetchJSON(API_BASE + '/api/testers'),
   ]);
   // Support both paginated {data:[...]} and legacy array responses
   locations = Array.isArray(locResult) ? locResult : (locResult.data || []);
   zones = zonesResult;
   trophies = trophiesResult;
   scoring = scoringResult;
-  renderLocList(); renderZoneList(); renderTrophyList();
+  testers = testersResult;
+  renderLocList(); renderZoneList(); renderTrophyList(); renderTesterTable();
   populateZoneDropdown(); populateScoring();
 }
 init();

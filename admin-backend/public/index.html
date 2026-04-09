@@ -18,6 +18,7 @@
                 <button class="tab" data-tab="zones">Zones</button>
                 <button class="tab" data-tab="trophies">Trophies</button>
                 <button class="tab" data-tab="scoring">Scoring</button>
+                <button class="tab" data-tab="testers">Testers</button>
             </nav>
         </header>
 
@@ -242,6 +243,33 @@
                     </div>
                 </form>
                 <div id="trophyEmpty" class="empty-state"><p>Select or add a trophy.</p></div>
+            </main>
+        </div>
+
+        <!-- TESTERS TAB -->
+        <div class="dashboard tab-content" data-tab="testers">
+            <main class="editor-area" style="max-width:900px;margin:0 auto;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                    <h2 style="margin:0;">Testers</h2>
+                    <button id="notifyTestersBtn" class="btn primary">Notify Enrolled</button>
+                </div>
+                <div id="testerMsg" style="display:none;padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.9rem;"></div>
+                <div id="testerStats" style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem;"></div>
+                <table class="tester-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Lang</th>
+                            <th>Enrolled</th>
+                            <th>Notified</th>
+                            <th>Date</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="testerTableBody"></tbody>
+                </table>
+                <div id="testerEmpty" style="color:var(--text-secondary);text-align:center;padding:3rem 0;">No testers yet.</div>
             </main>
         </div>
 

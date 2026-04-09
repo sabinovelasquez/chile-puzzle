@@ -292,3 +292,54 @@ input:focus, textarea:focus {
     font-weight: 600;
     text-align: center;
 }
+
+/* Testers table */
+.tester-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+.tester-table th {
+    text-align: left;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--glass-border);
+}
+.tester-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    vertical-align: middle;
+}
+.tester-table tr:hover td {
+    background: rgba(255,255,255,0.03);
+}
+.tester-table input[type="checkbox"] {
+    width: auto;
+    cursor: pointer;
+    accent-color: var(--accent);
+}
+.tester-table .btn-delete {
+    background: none;
+    border: none;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+.tester-table .btn-delete:hover { opacity: 1; }
+.tester-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.tester-badge.yes { background: rgba(35,134,54,0.2); color: #3fb950; }
+.tester-badge.no { background: rgba(248,81,73,0.15); color: #f85149; }
