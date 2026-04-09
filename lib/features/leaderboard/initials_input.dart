@@ -39,7 +39,9 @@ class _InitialsDialogState extends State<_InitialsDialog> {
   @override
   Widget build(BuildContext context) {
     final langCode = Localizations.localeOf(context).languageCode;
-    return Dialog(
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+      child: Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
@@ -75,25 +77,24 @@ class _InitialsDialogState extends State<_InitialsDialog> {
             const SizedBox(height: 24),
 
             // Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(langCode == 'es' ? 'Cancelar' : 'Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context, _initials),
-                    child: Text(langCode == 'es' ? 'Confirmar' : 'Confirm'),
-                  ),
-                ),
-              ],
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context, _initials),
+                child: Text(langCode == 'es' ? 'Confirmar' : 'Confirm'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(langCode == 'es' ? 'Cancelar' : 'Cancel'),
+              ),
             ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -131,7 +131,9 @@ class _LeaderboardRow extends StatelessWidget {
     final isTop3 = rank <= 3;
     final medalColors = {1: AppTheme.trophyGold, 2: Colors.grey.shade400, 3: const Color(0xFFCD7F32)};
 
-    return Container(
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -177,6 +179,7 @@ class _LeaderboardRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
