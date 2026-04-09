@@ -21,13 +21,16 @@ async function fetchJSON(url) {
   return res.json();
 }
 async function postJSON(url, data) {
-  await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  if (!res.ok) throw new Error(res.status);
 }
 async function putJSON(url, data) {
-  await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  if (!res.ok) throw new Error(res.status);
 }
 async function deleteJSON(url) {
-  await fetch(url, { method: 'DELETE' });
+  const res = await fetch(url, { method: 'DELETE' });
+  if (!res.ok) throw new Error(res.status);
 }
 
 // ============================================================
