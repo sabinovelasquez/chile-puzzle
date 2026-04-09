@@ -420,18 +420,42 @@ app.get('/api/tester-spots', (req, res) => {
   res.json({ spots: row?.tester_spots ?? 100, registered: total.count });
 });
 
-app.post('/api/testers', (req, res) => {
-  const { name, email, lang } = req.body;
+app.post('/api/testers', async (req, res) => {
+  const { name, email, lang, platform } = req.body;
   if (!name || !email) return res.status(400).json({ error: 'Name and email required' });
   const cleanEmail = email.trim().toLowerCase();
   const cleanLang = (lang || 'es').substring(0, 2);
+  const cleanPlatform = (platform === 'ios') ? 'ios' : 'android';
 
   const existing = db.prepare('SELECT id FROM testers WHERE email = ?').get(cleanEmail);
   if (existing) return res.json({ ok: true, message: 'Already registered' });
 
   const result = db.prepare(
-    'INSERT INTO testers (name, email, lang) VALUES (?, ?, ?)'
-  ).run(name.trim(), cleanEmail, cleanLang);
+    'INSERT INTO testers (name, email, lang, platform) VALUES (?, ?, ?, ?)'
+  ).run(name.trim(), cleanEmail, cleanLang, cleanPlatform);
+
+  // Notify admin about new tester
+  const BREVO_KEY = process.env.BREVO_API_KEY;
+  if (BREVO_KEY) {
+    try {
+      await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: { 'accept': 'application/json', 'api-key': BREVO_KEY, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          sender: { name: 'Zoom-In Chile', email: 'no-reply@sabino.cl' },
+          to: [{ email: 'sabinovelasquez@gmail.com', name: 'Sabino' }],
+          subject: `Nuevo tester: ${name.trim()} (${cleanPlatform})`,
+          htmlContent: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:2rem;">
+            <h2 style="color:#1565C0;">Nuevo Tester</h2>
+            <p><strong>Nombre:</strong> ${name.trim()}</p>
+            <p><strong>Email:</strong> ${cleanEmail}</p>
+            <p><strong>Plataforma:</strong> ${cleanPlatform}</p>
+            <p><strong>Idioma:</strong> ${cleanLang.toUpperCase()}</p>
+          </div>`,
+        }),
+      });
+    } catch (_) { /* don't block signup if notification fails */ }
+  }
 
   res.json({ ok: true, id: result.lastInsertRowid });
 });

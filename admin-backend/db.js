@@ -87,6 +87,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_testers_email ON testers(email);
 `);
 
+// Migrate: add platform to testers if missing
+try {
+  db.prepare('SELECT platform FROM testers LIMIT 0').get();
+} catch (_) {
+  db.exec("ALTER TABLE testers ADD COLUMN platform TEXT NOT NULL DEFAULT 'android'");
+}
+
 // Migrate: add time_seconds and moves to leaderboard if missing
 try {
   db.prepare('SELECT time_seconds FROM leaderboard LIMIT 0').get();
@@ -189,6 +196,7 @@ function rowToTester(row) {
     name: row.name,
     email: row.email,
     lang: row.lang,
+    platform: row.platform || 'android',
     enrolled: !!row.enrolled,
     notified: !!row.notified,
     createdAt: row.created_at,

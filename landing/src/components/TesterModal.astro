@@ -13,46 +13,18 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
 <div class="tm-overlay" id="testerModal">
   <div class="tm-modal">
     <button class="tm-close" aria-label="Close">&times;</button>
-    <div class="tm-icon"><i class="ph ph-envelope-simple"></i></div>
-    <h3 class="tm-title" data-es="&Uacute;nete como tester" data-en="Join as a tester">&Uacute;nete como tester</h3>
-    <p class="tm-desc" data-es="La app estar&aacute; pronto en Google Play y App Store. D&eacute;janos tus datos y te enviaremos el link de acceso anticipado. Usa el Gmail con el que tienes configurada tu Play Store." data-en="The app will be on Google Play &amp; App Store soon. Leave your info and we'll send you early access. Use the Gmail linked to your Play Store.">La app estar&aacute; pronto en Google Play y App Store. D&eacute;janos tus datos y te enviaremos el link de acceso anticipado. Usa el Gmail con el que tienes configurada tu Play Store.</p>
-    <form class="tm-form" id="testerForm" data-api={apiUrl} novalidate>
-      <input
-        type="text"
-        name="name"
-        class="tm-input"
-        data-placeholder-es="Nombre"
-        data-placeholder-en="Name"
-        placeholder="Nombre"
-      />
-      <input
-        type="text"
-        name="email"
-        class="tm-input"
-        data-placeholder-es="Gmail (tu cuenta de Play Store)"
-        data-placeholder-en="Gmail (your Play Store account)"
-        placeholder="Gmail (tu cuenta de Play Store)"
-      />
-      <div class="tm-validation" id="testerValidation" style="display:none;"
-        data-name-es="Ingresa tu nombre"
-        data-name-en="Enter your name"
-        data-email-es="Ingresa un email v&aacute;lido"
-        data-email-en="Enter a valid email"
-      ></div>
-      <button type="submit" class="tm-submit">
-        <span data-es="Probar la App" data-en="Try It">Probar la App</span>
-        <i class="ph ph-arrow-right"></i>
-      </button>
-    </form>
-    <div class="tm-success" id="testerSuccess" style="display:none;">
-      <div class="tm-success-icon"><i class="ph ph-check-circle"></i></div>
-      <p data-es="&iexcl;Listo! Descarga la app para empezar a jugar." data-en="Done! Download the app to start playing.">&iexcl;Listo! Descarga la app para empezar a jugar.</p>
-      <div class="tm-stores">
-        <a href="https://play.google.com/apps/internaltest/4700433915880246135" target="_blank" class="tm-store-btn tm-store-play">
+
+    <!-- Step 1: Choose platform -->
+    <div class="tm-step" id="tmStepPlatform">
+      <div class="tm-icon"><i class="ph ph-device-mobile"></i></div>
+      <h3 class="tm-title" data-es="Probar la App" data-en="Try the App">Probar la App</h3>
+      <p class="tm-desc" data-es="&iquest;En qu&eacute; plataforma quieres jugar?" data-en="Which platform do you want to play on?">&iquest;En qu&eacute; plataforma quieres jugar?</p>
+      <div class="tm-platform-btns">
+        <button class="tm-platform-btn" data-platform="android">
           <i class="ph ph-google-play-logo"></i>
           <span>Google Play</span>
-        </a>
-        <button class="tm-store-btn tm-store-apple" disabled>
+        </button>
+        <button class="tm-platform-btn tm-platform-apple" data-platform="ios">
           <i class="ph ph-apple-logo"></i>
           <div class="tm-store-label">
             <span>App Store</span>
@@ -61,6 +33,103 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
         </button>
       </div>
     </div>
+
+    <!-- Step 2: Form (Android) -->
+    <div class="tm-step" id="tmStepForm" style="display:none;">
+      <div class="tm-icon"><i class="ph ph-google-play-logo"></i></div>
+      <h3 class="tm-title" data-es="Google Play" data-en="Google Play">Google Play</h3>
+      <p class="tm-desc" data-es="Ingresa el Gmail con el que tienes configurada tu Play Store." data-en="Enter the Gmail linked to your Play Store.">Ingresa el Gmail con el que tienes configurada tu Play Store.</p>
+      <form class="tm-form" id="testerForm" data-api={apiUrl} novalidate>
+        <input type="hidden" name="platform" value="android" />
+        <input
+          type="text"
+          name="name"
+          class="tm-input"
+          data-placeholder-es="Nombre"
+          data-placeholder-en="Name"
+          placeholder="Nombre"
+        />
+        <input
+          type="text"
+          name="email"
+          class="tm-input"
+          data-placeholder-es="Gmail (tu cuenta de Play Store)"
+          data-placeholder-en="Gmail (your Play Store account)"
+          placeholder="Gmail (tu cuenta de Play Store)"
+        />
+        <div class="tm-validation" id="testerValidation" style="display:none;"
+          data-name-es="Ingresa tu nombre"
+          data-name-en="Enter your name"
+          data-email-es="Ingresa un email v&aacute;lido"
+          data-email-en="Enter a valid email"
+        ></div>
+        <button type="submit" class="tm-submit">
+          <span data-es="Enviar" data-en="Submit">Enviar</span>
+          <i class="ph ph-arrow-right"></i>
+        </button>
+        <button type="button" class="tm-back" id="tmBack">
+          <i class="ph ph-arrow-left"></i>
+          <span data-es="Volver" data-en="Back">Volver</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Step 2: Coming soon (iOS) -->
+    <div class="tm-step" id="tmStepIos" style="display:none;">
+      <div class="tm-icon tm-icon-apple"><i class="ph ph-apple-logo"></i></div>
+      <h3 class="tm-title">App Store</h3>
+      <p class="tm-desc" data-es="Estamos trabajando en la versi&oacute;n para iOS. D&eacute;janos tus datos y te avisaremos cuando est&eacute; lista." data-en="We're working on the iOS version. Leave your info and we'll notify you when it's ready.">Estamos trabajando en la versi&oacute;n para iOS. D&eacute;janos tus datos y te avisaremos cuando est&eacute; lista.</p>
+      <form class="tm-form" id="testerFormIos" data-api={apiUrl} novalidate>
+        <input type="hidden" name="platform" value="ios" />
+        <input
+          type="text"
+          name="name"
+          class="tm-input"
+          data-placeholder-es="Nombre"
+          data-placeholder-en="Name"
+          placeholder="Nombre"
+        />
+        <input
+          type="text"
+          name="email"
+          class="tm-input"
+          data-placeholder-es="Email"
+          data-placeholder-en="Email"
+          placeholder="Email"
+        />
+        <div class="tm-validation" id="testerValidationIos" style="display:none;"
+          data-name-es="Ingresa tu nombre"
+          data-name-en="Enter your name"
+          data-email-es="Ingresa un email v&aacute;lido"
+          data-email-en="Enter a valid email"
+        ></div>
+        <button type="submit" class="tm-submit">
+          <span data-es="Avisarme" data-en="Notify me">Avisarme</span>
+          <i class="ph ph-bell"></i>
+        </button>
+        <button type="button" class="tm-back" id="tmBackIos">
+          <i class="ph ph-arrow-left"></i>
+          <span data-es="Volver" data-en="Back">Volver</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Success: Android -->
+    <div class="tm-step" id="testerSuccess" style="display:none;">
+      <div class="tm-success-icon"><i class="ph ph-check-circle"></i></div>
+      <p class="tm-desc" data-es="&iexcl;Listo! Descarga la app para empezar a jugar." data-en="Done! Download the app to start playing.">&iexcl;Listo! Descarga la app para empezar a jugar.</p>
+      <a href="https://play.google.com/apps/internaltest/4700433915880246135" target="_blank" class="tm-submit" style="text-decoration:none;">
+        <i class="ph ph-google-play-logo"></i>
+        <span data-es="Descargar en Google Play" data-en="Download on Google Play">Descargar en Google Play</span>
+      </a>
+    </div>
+
+    <!-- Success: iOS -->
+    <div class="tm-step" id="testerSuccessIos" style="display:none;">
+      <div class="tm-success-icon"><i class="ph ph-check-circle"></i></div>
+      <p class="tm-desc" data-es="&iexcl;Listo! Te avisaremos cuando est&eacute; disponible en App Store." data-en="Done! We'll notify you when it's available on the App Store.">&iexcl;Listo! Te avisaremos cuando est&eacute; disponible en App Store.</p>
+    </div>
+
     <div class="tm-error" id="testerError" style="display:none;">
       <p data-es="Hubo un error. Int&eacute;ntalo de nuevo." data-en="Something went wrong. Try again.">Hubo un error. Int&eacute;ntalo de nuevo.</p>
     </div>
@@ -202,20 +271,11 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
   .tm-submit:hover { background: #1976D2; }
   .tm-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
-  .tm-success {
-    text-align: center;
-    padding: 1rem 0;
-  }
-
   .tm-success-icon {
     font-size: 2.5rem;
     color: #4CAF50;
     margin-bottom: 0.5rem;
-  }
-
-  .tm-success p {
-    color: #6B7280;
-    font-size: 0.95rem;
+    text-align: center;
   }
 
   .tm-error p {
@@ -234,41 +294,38 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
     border-color: #E53935;
   }
 
-  .tm-stores {
+  .tm-platform-btns {
     display: flex;
+    flex-direction: column;
     gap: 0.75rem;
-    margin-top: 1.25rem;
-    justify-content: center;
   }
 
-  .tm-store-btn {
-    display: inline-flex;
+  .tm-platform-btn {
+    display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.7rem 1.2rem;
-    border-radius: 10px;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    border: 1px solid #E5E7EB;
+    background: #FFFFFF;
     font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     font-weight: 600;
+    color: #1A1A1A;
     cursor: pointer;
     transition: all 0.2s;
-    text-decoration: none;
-    border: none;
+    width: 100%;
+    text-align: left;
   }
 
-  .tm-store-btn .ph { font-size: 1.3rem; }
+  .tm-platform-btn .ph { font-size: 1.4rem; color: #1565C0; }
+  .tm-platform-btn:hover { border-color: #1565C0; background: #F0F7FF; }
 
-  .tm-store-play {
-    background: #1565C0;
-    color: white;
-  }
-  .tm-store-play:hover { background: #1976D2; transform: scale(1.03); }
-
-  .tm-store-apple {
-    background: #F5F7FA;
+  .tm-platform-apple {
     color: #9CA3AF;
-    cursor: default;
   }
+  .tm-platform-apple .ph { color: #9CA3AF; }
+  .tm-platform-apple:hover { border-color: #E5E7EB; background: #FFFFFF; cursor: default; }
 
   .tm-store-label {
     display: flex;
@@ -277,90 +334,125 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
   }
 
   .tm-store-label small {
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     font-weight: 400;
   }
+
+  .tm-icon-apple { background: #F5F7FA; }
+  .tm-icon-apple .ph { color: #1A1A1A; }
+
+  .tm-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1rem;
+    background: none;
+    border: none;
+    color: #6B7280;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .tm-back:hover { color: #1A1A1A; }
 </style>
 
 <script is:inline>
   (function() {
     const overlay = document.getElementById('testerModal');
-    const form = document.getElementById('testerForm');
-    const successEl = document.getElementById('testerSuccess');
-    const errorEl = document.getElementById('testerError');
-    if (!overlay || !form) return;
+    if (!overlay) return;
 
-    // Open modal
+    const steps = {
+      platform: document.getElementById('tmStepPlatform'),
+      form: document.getElementById('tmStepForm'),
+      ios: document.getElementById('tmStepIos'),
+      success: document.getElementById('testerSuccess'),
+      successIos: document.getElementById('testerSuccessIos'),
+    };
+    const errorEl = document.getElementById('testerError');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    function showStep(name) {
+      Object.values(steps).forEach(s => { if (s) s.style.display = 'none'; });
+      errorEl.style.display = 'none';
+      if (steps[name]) steps[name].style.display = '';
+    }
+
+    // Open modal — always reset to platform step
     document.querySelectorAll('[data-open-tester-modal]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
+        showStep('platform');
         overlay.classList.add('open');
       });
     });
 
     // Close modal
-    overlay.querySelector('.tm-close').addEventListener('click', () => {
-      overlay.classList.remove('open');
-    });
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) overlay.classList.remove('open');
-    });
+    overlay.querySelector('.tm-close').addEventListener('click', () => overlay.classList.remove('open'));
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
 
-    // Validation
-    const validationEl = document.getElementById('testerValidation');
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // Platform selection
+    overlay.querySelector('[data-platform="android"]').addEventListener('click', () => showStep('form'));
+    overlay.querySelector('[data-platform="ios"]').addEventListener('click', () => showStep('ios'));
 
-    function showValidation(key) {
-      const lang = document.documentElement.lang || 'es';
-      validationEl.textContent = validationEl.getAttribute('data-' + key + '-' + lang) || '';
-      validationEl.style.display = 'block';
-    }
+    // Back buttons
+    document.getElementById('tmBack').addEventListener('click', () => showStep('platform'));
+    document.getElementById('tmBackIos').addEventListener('click', () => showStep('platform'));
 
-    function clearValidation() {
-      validationEl.style.display = 'none';
-      form.querySelectorAll('.tm-input').forEach(i => i.classList.remove('invalid'));
-    }
+    // Generic form handler
+    function setupForm(formId, validationId, successStep) {
+      const form = document.getElementById(formId);
+      const validationEl = document.getElementById(validationId);
+      if (!form) return;
 
-    // Clear validation on input
-    form.querySelectorAll('.tm-input').forEach(input => {
-      input.addEventListener('input', () => { input.classList.remove('invalid'); validationEl.style.display = 'none'; });
-    });
-
-    // Submit form
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      clearValidation();
-      const btn = form.querySelector('.tm-submit');
-      errorEl.style.display = 'none';
-
-      const name = form.name.value.trim();
-      const email = form.email.value.trim();
-
-      if (!name) { form.name.classList.add('invalid'); showValidation('name'); return; }
-      if (!email || !emailRegex.test(email)) { form.email.classList.add('invalid'); showValidation('email'); return; }
-
-      btn.disabled = true;
-
-      try {
-        const res = await fetch(form.dataset.api, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, lang: document.documentElement.lang || 'es' }),
-        });
-        if (!res.ok) throw new Error('Request failed');
-        form.style.display = 'none';
-        successEl.style.display = 'block';
-      } catch (err) {
-        errorEl.style.display = 'block';
-        btn.disabled = false;
+      function showValidation(key) {
+        const lang = document.documentElement.lang || 'es';
+        validationEl.textContent = validationEl.getAttribute('data-' + key + '-' + lang) || '';
+        validationEl.style.display = 'block';
       }
-    });
 
-    // Update placeholders on lang change (observe lang attribute)
+      form.querySelectorAll('.tm-input').forEach(input => {
+        input.addEventListener('input', () => { input.classList.remove('invalid'); validationEl.style.display = 'none'; });
+      });
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        validationEl.style.display = 'none';
+        errorEl.style.display = 'none';
+        const btn = form.querySelector('.tm-submit');
+
+        const name = form.name.value.trim();
+        const email = form.email.value.trim();
+        const platform = form.platform.value;
+
+        if (!name) { form.name.classList.add('invalid'); showValidation('name'); return; }
+        if (!email || !emailRegex.test(email)) { form.email.classList.add('invalid'); showValidation('email'); return; }
+
+        btn.disabled = true;
+        try {
+          const res = await fetch(form.dataset.api, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, platform, lang: document.documentElement.lang || 'es' }),
+          });
+          if (!res.ok) throw new Error('Request failed');
+          showStep(successStep);
+        } catch (err) {
+          errorEl.style.display = 'block';
+          btn.disabled = false;
+        }
+      });
+    }
+
+    setupForm('testerForm', 'testerValidation', 'success');
+    setupForm('testerFormIos', 'testerValidationIos', 'successIos');
+
+    // Update placeholders on lang change
     const langObserver = new MutationObserver(() => {
       const lang = document.documentElement.lang || 'es';
-      form.querySelectorAll('[data-placeholder-es]').forEach(input => {
-        input.placeholder = input.getAttribute(`data-placeholder-${lang}`) || input.placeholder;
+      overlay.querySelectorAll('[data-placeholder-es]').forEach(input => {
+        input.placeholder = input.getAttribute('data-placeholder-' + lang) || input.placeholder;
       });
     });
     langObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });

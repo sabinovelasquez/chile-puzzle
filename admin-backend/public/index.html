@@ -258,11 +258,20 @@
                 </div>
                 <div id="testerMsg" style="display:none;padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.9rem;"></div>
                 <div id="testerStats" style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem;"></div>
+                <div style="margin-bottom:1rem;display:flex;gap:0.5rem;align-items:center;">
+                    <label style="color:var(--text-secondary);font-size:0.85rem;">Platform:</label>
+                    <select id="testerPlatformFilter" style="padding:0.3rem 0.6rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);font-size:0.85rem;">
+                        <option value="all">All</option>
+                        <option value="android">Android</option>
+                        <option value="ios">iOS</option>
+                    </select>
+                </div>
                 <table class="tester-table">
                     <thead>
                         <tr>
                             <th>Name</th>
                             <th>Email</th>
+                            <th>Platform</th>
                             <th>Lang</th>
                             <th>Enrolled</th>
                             <th>Notified</th>

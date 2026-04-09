@@ -725,18 +725,24 @@ function renderTesterTable() {
   const tbody = document.getElementById('testerTableBody');
   const empty = document.getElementById('testerEmpty');
   const stats = document.getElementById('testerStats');
+  const platformFilter = document.getElementById('testerPlatformFilter').value;
   tbody.innerHTML = '';
-  if (!testers.length) { empty.style.display = 'block'; stats.textContent = ''; return; }
-  empty.style.display = 'none';
-  const enrolled = testers.filter(t => t.enrolled).length;
-  const notified = testers.filter(t => t.notified).length;
-  stats.textContent = `${testers.length} total · ${enrolled} enrolled · ${notified} notified`;
 
-  testers.forEach(t => {
+  const filtered = platformFilter === 'all' ? testers : testers.filter(t => t.platform === platformFilter);
+  if (!filtered.length) { empty.style.display = 'block'; stats.textContent = ''; return; }
+  empty.style.display = 'none';
+  const android = testers.filter(t => t.platform === 'android').length;
+  const ios = testers.filter(t => t.platform === 'ios').length;
+  const enrolled = filtered.filter(t => t.enrolled).length;
+  const notified = filtered.filter(t => t.notified).length;
+  stats.textContent = `${testers.length} total (${android} Android · ${ios} iOS) · ${filtered.length} shown · ${enrolled} enrolled · ${notified} notified`;
+
+  filtered.forEach(t => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${esc(t.name)}</td>
       <td>${esc(t.email)}</td>
+      <td>${t.platform === 'ios' ? 'iOS' : 'Android'}</td>
       <td>${t.lang.toUpperCase()}</td>
       <td><input type="checkbox" ${t.enrolled ? 'checked' : ''} data-id="${t.id}" data-field="enrolled"></td>
       <td><span class="tester-badge ${t.notified ? 'yes' : 'no'}">${t.notified ? 'Yes' : 'No'}</span></td>
@@ -817,6 +823,8 @@ function showTesterMsg(text, isError) {
   el.style.color = isError ? '#f85149' : '#3fb950';
   setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
+
+document.getElementById('testerPlatformFilter').onchange = () => renderTesterTable();
 
 document.getElementById('refreshTestersBtn').onclick = async () => {
   const btn = document.getElementById('refreshTestersBtn');
