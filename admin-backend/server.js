@@ -16,6 +16,7 @@ const upload = multer({ dest: uploadsDir });
 
 app.use(cors());
 app.use(express.json());
+app.use((req, res, next) => { if (req.url.includes('tester')) console.log(`[DEBUG] ${req.method} ${req.url}`); next(); });
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ============================================================
