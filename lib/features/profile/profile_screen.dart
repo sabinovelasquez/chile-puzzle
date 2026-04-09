@@ -216,16 +216,19 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Ranking button
-          ElevatedButton.icon(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
-            ),
-            icon: const Icon(PhosphorIconsBold.listNumbers, size: 20),
-            label: Text(langCode == 'es' ? 'Ver ranking' : 'View ranking'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 48),
-              backgroundColor: AppTheme.accentPurple,
+          MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
+              ),
+              icon: const Icon(PhosphorIconsBold.listNumbers, size: 20),
+              label: Text(langCode == 'es' ? 'Ver ranking' : 'View ranking'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+                backgroundColor: AppTheme.accentPurple,
+              ),
             ),
           ),
           const SizedBox(height: 28),
@@ -476,7 +479,7 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'v1.3.0',
+              'v1.4.0',
               style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade400),
             ),
           ),
@@ -540,28 +543,31 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 26, color: iconColor),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: GoogleFonts.spaceGrotesk(fontSize: 22, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade600),
-            textAlign: TextAlign.center,
-          ),
-        ],
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 26, color: iconColor),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: GoogleFonts.spaceGrotesk(fontSize: 22, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -620,54 +626,57 @@ class _TrophyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: isEarned
-            ? Border.all(color: AppTheme.trophyGold.withValues(alpha: 0.3), width: 1.5)
-            : null,
-      ),
-      child: Stack(
-        children: [
-          if (!isEarned)
-            Positioned(
-              top: 0, right: 0,
-              child: Icon(PhosphorIconsBold.lock, size: 14, color: Colors.grey.shade300),
-            ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  _trophyIcon(trophy.icon),
-                  size: 32,
-                  color: isEarned ? AppTheme.trophyGold : Colors.grey.shade300,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  isEarned ? trophy.getLocalizedName(langCode) : trophy.getLocalizedName(langCode),
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 13, fontWeight: FontWeight.w700,
-                    color: isEarned ? AppTheme.seedColor : Colors.grey.shade600,
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: isEarned
+              ? Border.all(color: AppTheme.trophyGold.withValues(alpha: 0.3), width: 1.5)
+              : null,
+        ),
+        child: Stack(
+          children: [
+            if (!isEarned)
+              Positioned(
+                top: 0, right: 0,
+                child: Icon(PhosphorIconsBold.lock, size: 14, color: Colors.grey.shade300),
+              ),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _trophyIcon(trophy.icon),
+                    size: 32,
+                    color: isEarned ? AppTheme.trophyGold : Colors.grey.shade300,
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2, overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  trophy.getLocalizedDescription(langCode),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10, color: Colors.grey.shade500,
+                  const SizedBox(height: 8),
+                  Text(
+                    trophy.getLocalizedName(langCode),
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 13, fontWeight: FontWeight.w700,
+                      color: isEarned ? AppTheme.seedColor : Colors.grey.shade600,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2, overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    trophy.getLocalizedDescription(langCode),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10, color: Colors.grey.shade500,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

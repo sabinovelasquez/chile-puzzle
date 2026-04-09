@@ -143,7 +143,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
     final secs = _stopwatch.elapsed.inSeconds;
     final m = secs ~/ 60;
     final s = secs % 60;
-    final topPadding = MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return PopScope(
       canPop: false,
@@ -157,66 +157,6 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
         backgroundColor: AppTheme.seedColor,
         body: Column(
           children: [
-            // Top bar — hidden on completion via AnimatedContainer
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              height: _completed ? 0 : topPadding + 48,
-              clipBehavior: Clip.hardEdge,
-              decoration: const BoxDecoration(color: Colors.white),
-              child: Container(
-                padding: EdgeInsets.fromLTRB(16, topPadding + 8, 8, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        widget.location.getLocalizedName(langCode),
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 14, fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    ValueListenableBuilder<int>(
-                      valueListenable: _moveCount,
-                      builder: (_, moves, __) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (!_stopwatch.isRunning)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 4),
-                                child: Icon(PhosphorIconsBold.pause, size: 12, color: Colors.grey.shade600),
-                              ),
-                            Text(
-                              '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}  ·  $moves mov',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12, fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () async {
-                        if (await _onWillPop()) {
-                          if (mounted) Navigator.of(context).pop();
-                        }
-                      },
-                      icon: Icon(PhosphorIconsBold.x, size: 20, color: Colors.grey.shade700),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ],
-                ),
-              ),
-            ),
             // Puzzle area
             Expanded(
               child: Stack(
@@ -237,59 +177,6 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                       return const Center(child: CircularProgressIndicator());
                     },
                   ),
-                  // Bottom stats bar — always visible when completed, fixed height
-                  if (_completed)
-                    Positioned(
-                      bottom: 0, left: 0, right: 0,
-                      child: Container(
-                        padding: EdgeInsets.fromLTRB(16, 12, 12, 12 + MediaQuery.of(context).padding.bottom),
-                        color: AppTheme.seedColor,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    widget.location.getLocalizedName(langCode),
-                                    style: GoogleFonts.spaceGrotesk(
-                                      fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white,
-                                    ),
-                                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  ValueListenableBuilder<int>(
-                                    valueListenable: _moveCount,
-                                    builder: (_, moves, __) => Text(
-                                      langCode == 'es'
-                                          ? '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}  ·  $moves movimientos'
-                                          : '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}  ·  $moves moves',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12, color: Colors.white70,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            AnimatedOpacity(
-                              opacity: _showDrawer ? 0.0 : 1.0,
-                              duration: const Duration(milliseconds: 200),
-                              child: IgnorePointer(
-                                ignoring: _showDrawer,
-                                child: FloatingActionButton.small(
-                                  onPressed: () => setState(() => _showDrawer = true),
-                                  backgroundColor: AppTheme.accentBlue,
-                                  child: const Icon(PhosphorIconsBold.trophy, size: 20, color: Colors.white),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                   // Close button when viewing photo (drawer hidden)
                   if (_completed && !_showDrawer)
                     Positioned(
@@ -322,6 +209,105 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                     ),
                 ],
               ),
+            ),
+            // Bottom footer — always visible
+            Container(
+              padding: EdgeInsets.fromLTRB(16, 12, 12, 12 + bottomPadding),
+              color: AppTheme.seedColor,
+              child: _completed
+                  ? Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                widget.location.getLocalizedName(langCode),
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white,
+                                ),
+                                maxLines: 1, overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              ValueListenableBuilder<int>(
+                                valueListenable: _moveCount,
+                                builder: (_, moves, __) => Text(
+                                  langCode == 'es'
+                                      ? '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}  ·  $moves movimientos'
+                                      : '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}  ·  $moves moves',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12, color: Colors.white70,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        AnimatedOpacity(
+                          opacity: _showDrawer ? 0.0 : 1.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: IgnorePointer(
+                            ignoring: _showDrawer,
+                            child: FloatingActionButton.small(
+                              onPressed: () => setState(() => _showDrawer = true),
+                              backgroundColor: AppTheme.accentBlue,
+                              child: const Icon(PhosphorIconsBold.trophy, size: 20, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.location.getLocalizedName(langCode),
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white,
+                            ),
+                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        ValueListenableBuilder<int>(
+                          valueListenable: _moveCount,
+                          builder: (_, moves, __) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.white24,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (!_stopwatch.isRunning)
+                                  const Padding(
+                                    padding: EdgeInsets.only(right: 4),
+                                    child: Icon(PhosphorIconsBold.pause, size: 12, color: Colors.white70),
+                                  ),
+                                Text(
+                                  '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}  ·  $moves mov',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12, fontWeight: FontWeight.w500,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () async {
+                            if (await _onWillPop()) {
+                              if (mounted) Navigator.of(context).pop();
+                            }
+                          },
+                          icon: const Icon(PhosphorIconsBold.x, size: 20, color: Colors.white70),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),

@@ -74,11 +74,18 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
           child: Dialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
             insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.8,
+              ),
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                     // Celebration icon
                     Icon(PhosphorIconsFill.confetti, size: 48, color: AppTheme.trophyGold),
                     const SizedBox(height: 12),
@@ -236,39 +243,40 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                     const SizedBox(height: 12),
 
                     // Action buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: widget.onHide,
-                            icon: const Icon(PhosphorIconsBold.image, size: 18),
-                            label: Text(langCode == 'es' ? 'Ver foto' : 'View photo'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _navigating ? null : () {
-                              setState(() => _navigating = true);
-                              AdService.showInterstitial(
-                                onAdDismissed: () {
-                                  if (context.mounted) {
-                                    Navigator.of(context).pop(result);
-                                  }
-                                },
-                              );
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: widget.onHide,
+                        icon: const Icon(PhosphorIconsBold.image, size: 18),
+                        label: Text(langCode == 'es' ? 'Ver foto' : 'View photo'),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _navigating ? null : () {
+                          setState(() => _navigating = true);
+                          AdService.showInterstitial(
+                            onAdDismissed: () {
+                              if (context.mounted) {
+                                Navigator.of(context).pop(result);
+                              }
                             },
-                            icon: const Icon(PhosphorIconsBold.arrowRight, size: 18),
-                            label: Text(l10n?.unlockNext ?? 'Continue'),
-                          ),
-                        ),
+                          );
+                        },
+                        icon: const Icon(PhosphorIconsBold.arrowRight, size: 18),
+                        label: Text(l10n?.unlockNext ?? 'Continue'),
+                      ),
+                    ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
+        ),
         ),
     );
   }

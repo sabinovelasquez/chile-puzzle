@@ -266,7 +266,9 @@ class _MapScreenState extends State<MapScreen> {
 
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
+      builder: (ctx) => MediaQuery(
+        data: MediaQuery.of(ctx).copyWith(textScaler: TextScaler.noScaling),
+        child: Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         clipBehavior: Clip.antiAlias,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
@@ -466,6 +468,7 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -867,7 +870,9 @@ class _MapScreenState extends State<MapScreen> {
         }
         _showDifficultyDialog(loc);
       },
-      child: Container(
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+        child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -984,6 +989,7 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
