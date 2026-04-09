@@ -6,6 +6,7 @@ import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'features/map/map_screen.dart';
 import 'features/ads/ad_service.dart';
 import 'core/services/audio_service.dart';
+import 'core/services/settings_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +16,7 @@ void main() async {
   AdService.loadInterstitial();
   await GameProgressService.initialize();
   await AudioService.initialize();
+  await SettingsService.initialize();
   runApp(const ChilePuzzleApp());
 }
 

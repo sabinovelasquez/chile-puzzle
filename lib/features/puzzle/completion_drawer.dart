@@ -125,6 +125,82 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                       const SizedBox(height: 16),
                     ],
 
+                    // Action buttons
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: widget.onHide,
+                        icon: const Icon(PhosphorIconsBold.image, size: 18),
+                        label: Text(langCode == 'es' ? 'Ver foto' : 'View photo'),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _navigating ? null : () {
+                          setState(() => _navigating = true);
+                          AdService.showInterstitial(
+                            onAdDismissed: () {
+                              if (context.mounted) {
+                                Navigator.of(context).pop(result);
+                              }
+                            },
+                          );
+                        },
+                        icon: const Icon(PhosphorIconsBold.arrowRight, size: 18),
+                        label: Text(l10n?.unlockNext ?? 'Continue'),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Google Maps link
+                    GestureDetector(
+                      onTap: _openInGoogleMaps,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36, height: 36,
+                              decoration: BoxDecoration(
+                                color: AppTheme.accentBlue.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(PhosphorIconsBold.mapPin, size: 18, color: AppTheme.accentBlue),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    loc.getLocalizedName(langCode),
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13, fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    langCode == 'es' ? 'Ver en Google Maps' : 'See on Google Maps',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11, color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(PhosphorIconsBold.arrowRight, size: 16, color: Colors.grey.shade400),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
                     // Points breakdown card
                     if (result != null) ...[
                       Container(
@@ -188,87 +264,11 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                         moves: widget.moves,
                         enabled: !_navigating,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                     ],
-
-                    // Google Maps link
-                    GestureDetector(
-                      onTap: _openInGoogleMaps,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 36, height: 36,
-                              decoration: BoxDecoration(
-                                color: AppTheme.accentBlue.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(PhosphorIconsBold.mapPin, size: 18, color: AppTheme.accentBlue),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    loc.getLocalizedName(langCode),
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 13, fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Text(
-                                    langCode == 'es' ? 'Ver en Google Maps' : 'See on Google Maps',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 11, color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(PhosphorIconsBold.arrowRight, size: 16, color: Colors.grey.shade400),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
 
                     // Favorite toggle
                     _FavoriteButton(locationId: loc.id),
-                    const SizedBox(height: 12),
-
-                    // Action buttons
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: widget.onHide,
-                        icon: const Icon(PhosphorIconsBold.image, size: 18),
-                        label: Text(langCode == 'es' ? 'Ver foto' : 'View photo'),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _navigating ? null : () {
-                          setState(() => _navigating = true);
-                          AdService.showInterstitial(
-                            onAdDismissed: () {
-                              if (context.mounted) {
-                                Navigator.of(context).pop(result);
-                              }
-                            },
-                          );
-                        },
-                        icon: const Icon(PhosphorIconsBold.arrowRight, size: 18),
-                        label: Text(l10n?.unlockNext ?? 'Continue'),
-                      ),
-                    ),
                       ],
                     ),
                   ),

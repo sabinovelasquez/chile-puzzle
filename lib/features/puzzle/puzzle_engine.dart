@@ -4,6 +4,8 @@ import 'dart:math';
 import 'puzzle_piece.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/services/audio_service.dart';
+import 'package:chile_puzzle/core/services/settings_service.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class PuzzleEngine extends StatefulWidget {
   final LocationModel location;
@@ -30,7 +32,7 @@ class PuzzleEngine extends StatefulWidget {
 }
 
 class _PuzzleEngineState extends State<PuzzleEngine>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   List<PuzzlePieceModel> pieces = [];
   bool isCompleted = false;
   int rows = 0;
@@ -43,6 +45,7 @@ class _PuzzleEngineState extends State<PuzzleEngine>
 
   // Drag state
   int? _draggingId;
+  Set<int>? _draggingGroup;
   Offset _dragGlobalStart = Offset.zero;
   Offset _dragPieceOrigin = Offset.zero;
   double _dragCurrentX = 0;
@@ -50,6 +53,9 @@ class _PuzzleEngineState extends State<PuzzleEngine>
 
   // Completion animation
   late AnimationController _fadeController;
+
+  // Shine effect controllers
+  final Map<int, AnimationController> _shineControllers = {};
 
   Stopwatch get _stopwatch => widget.stopwatch;
   int get _moveCount => widget.moveCount.value;
@@ -88,6 +94,9 @@ class _PuzzleEngineState extends State<PuzzleEngine>
   void dispose() {
     widget.imageLoaded.removeListener(_onImageLoaded);
     _fadeController.dispose();
+    for (final c in _shineControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -138,8 +147,10 @@ class _PuzzleEngineState extends State<PuzzleEngine>
 
   void _onDragStart(PuzzlePieceModel piece, DragStartDetails details) {
     if (isCompleted || !widget.imageLoaded.value) return;
+    if (SettingsService.lockInPlace && piece.isCorrect) return;
     setState(() {
       _draggingId = piece.id;
+      _draggingGroup = SettingsService.multiSelect ? _findGroup(piece) : null;
       _dragGlobalStart = details.globalPosition;
       _dragPieceOrigin = Offset(
         piece.currentCol * pieceWidth,
@@ -151,7 +162,7 @@ class _PuzzleEngineState extends State<PuzzleEngine>
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
-    if (isCompleted) return;
+    if (isCompleted || _draggingId == null) return;
     setState(() {
       _dragCurrentX =
           _dragPieceOrigin.dx + (details.globalPosition.dx - _dragGlobalStart.dx);
@@ -161,33 +172,146 @@ class _PuzzleEngineState extends State<PuzzleEngine>
   }
 
   void _onDragEnd(PuzzlePieceModel piece) {
-    if (isCompleted) return;
+    if (isCompleted || _draggingId == null) return;
     double centerX = _dragCurrentX + pieceWidth / 2;
     double centerY = _dragCurrentY + pieceHeight / 2;
     int targetCol = (centerX / pieceWidth).floor().clamp(0, cols - 1);
     int targetRow = (centerY / pieceHeight).floor().clamp(0, rows - 1);
 
-    if (targetRow != piece.currentRow || targetCol != piece.currentCol) {
-      final target = pieces.firstWhere(
-        (p) => p.currentRow == targetRow && p.currentCol == targetCol,
-      );
-      setState(() {
-        int tmpRow = piece.currentRow;
-        int tmpCol = piece.currentCol;
-        piece.currentRow = target.currentRow;
-        piece.currentCol = target.currentCol;
-        target.currentRow = tmpRow;
-        target.currentCol = tmpCol;
-      });
-      _moveCount++;
-      AudioService.playPiecePlaced();
+    final deltaRow = targetRow - piece.currentRow;
+    final deltaCol = targetCol - piece.currentCol;
+
+    if (deltaRow != 0 || deltaCol != 0) {
+      if (_draggingGroup != null && _draggingGroup!.length > 1) {
+        _handleGroupMove(deltaRow, deltaCol);
+      } else {
+        _handleSingleMove(piece, targetRow, targetCol);
+      }
     }
 
     setState(() {
       _draggingId = null;
+      _draggingGroup = null;
     });
 
     _checkCompletion();
+  }
+
+  void _handleSingleMove(PuzzlePieceModel piece, int targetRow, int targetCol) {
+    final target = pieces.firstWhere(
+      (p) => p.currentRow == targetRow && p.currentCol == targetCol,
+    );
+    if (SettingsService.lockInPlace && target.isCorrect) return;
+
+    setState(() {
+      int tmpRow = piece.currentRow;
+      int tmpCol = piece.currentCol;
+      piece.currentRow = target.currentRow;
+      piece.currentCol = target.currentCol;
+      target.currentRow = tmpRow;
+      target.currentCol = tmpCol;
+    });
+    _moveCount++;
+    AudioService.playPiecePlaced();
+
+    if (SettingsService.edgeShine) {
+      if (piece.isCorrect) _triggerShine(piece.id);
+      if (target.isCorrect) _triggerShine(target.id);
+    }
+  }
+
+  void _handleGroupMove(int deltaRow, int deltaCol) {
+    final groupPieces = pieces.where((p) => _draggingGroup!.contains(p.id)).toList();
+
+    // Validate all targets in bounds
+    for (final p in groupPieces) {
+      final tr = p.currentRow + deltaRow;
+      final tc = p.currentCol + deltaCol;
+      if (tr < 0 || tr >= rows || tc < 0 || tc >= cols) return;
+    }
+
+    // Find target cells and displaced pieces
+    final sourceCells = groupPieces.map((p) => (p.currentRow, p.currentCol)).toSet();
+    final targetCells = groupPieces.map((p) => (p.currentRow + deltaRow, p.currentCol + deltaCol)).toSet();
+    final displacedCells = targetCells.difference(sourceCells);
+    final vacatedCells = sourceCells.difference(targetCells);
+
+    final displacedPieces = <PuzzlePieceModel>[];
+    for (final cell in displacedCells) {
+      final p = pieces.firstWhere((p) => p.currentRow == cell.$1 && p.currentCol == cell.$2);
+      if (SettingsService.lockInPlace && p.isCorrect) return; // Can't displace locked piece
+      displacedPieces.add(p);
+    }
+
+    setState(() {
+      // Move group pieces to target positions
+      for (final p in groupPieces) {
+        p.currentRow += deltaRow;
+        p.currentCol += deltaCol;
+      }
+      // Move displaced pieces to vacated cells
+      final vacatedList = vacatedCells.toList();
+      for (int i = 0; i < displacedPieces.length; i++) {
+        displacedPieces[i].currentRow = vacatedList[i].$1;
+        displacedPieces[i].currentCol = vacatedList[i].$2;
+      }
+    });
+    _moveCount++;
+    AudioService.playPiecePlaced();
+
+    if (SettingsService.edgeShine) {
+      for (final p in groupPieces) {
+        if (p.isCorrect) _triggerShine(p.id);
+      }
+      for (final p in displacedPieces) {
+        if (p.isCorrect) _triggerShine(p.id);
+      }
+    }
+  }
+
+  void _triggerShine(int pieceId) {
+    _shineControllers[pieceId]?.dispose();
+    final controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _shineControllers[pieceId] = controller;
+    controller.forward().then((_) {
+      controller.dispose();
+      if (mounted) {
+        setState(() {
+          _shineControllers.remove(pieceId);
+        });
+      }
+    });
+  }
+
+  Set<int>? _findGroup(PuzzlePieceModel startPiece) {
+    final group = <int>{startPiece.id};
+    final queue = <PuzzlePieceModel>[startPiece];
+    const deltas = [(-1, 0), (1, 0), (0, -1), (0, 1)];
+
+    while (queue.isNotEmpty) {
+      final current = queue.removeAt(0);
+      for (final (dr, dc) in deltas) {
+        final nr = current.currentRow + dr;
+        final nc = current.currentCol + dc;
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+
+        final neighbor = pieces.firstWhere(
+          (p) => p.currentRow == nr && p.currentCol == nc,
+        );
+        if (group.contains(neighbor.id)) continue;
+
+        // Check relative correctness
+        if ((current.correctRow - neighbor.correctRow == current.currentRow - neighbor.currentRow) &&
+            (current.correctCol - neighbor.correctCol == current.currentCol - neighbor.currentCol)) {
+          group.add(neighbor.id);
+          queue.add(neighbor);
+        }
+      }
+    }
+    return group.length > 1 ? group : null;
   }
 
   void _checkCompletion() {
@@ -209,9 +333,15 @@ class _PuzzleEngineState extends State<PuzzleEngine>
   List<PuzzlePieceModel> _sortedPieces() {
     if (_draggingId == null) return pieces;
     final sorted = List<PuzzlePieceModel>.from(pieces);
-    final dragged = sorted.firstWhere((p) => p.id == _draggingId);
-    sorted.remove(dragged);
-    sorted.add(dragged);
+    if (_draggingGroup != null && _draggingGroup!.length > 1) {
+      final groupPieces = sorted.where((p) => _draggingGroup!.contains(p.id)).toList();
+      sorted.removeWhere((p) => _draggingGroup!.contains(p.id));
+      sorted.addAll(groupPieces);
+    } else {
+      final dragged = sorted.firstWhere((p) => p.id == _draggingId);
+      sorted.remove(dragged);
+      sorted.add(dragged);
+    }
     return sorted;
   }
 
@@ -290,12 +420,19 @@ class _PuzzleEngineState extends State<PuzzleEngine>
                 // Pieces
                 ..._sortedPieces().map((piece) {
                   final isDragging = piece.id == _draggingId;
+                  final isInGroup = _draggingGroup?.contains(piece.id) ?? false;
+                  final isGroupDragging = isInGroup && _draggingId != null && !isDragging;
+
                   final x = isDragging
                       ? _dragCurrentX
-                      : piece.currentCol * pieceWidth;
+                      : isGroupDragging
+                          ? piece.currentCol * pieceWidth + (_dragCurrentX - _dragPieceOrigin.dx)
+                          : piece.currentCol * pieceWidth;
                   final y = isDragging
                       ? _dragCurrentY
-                      : piece.currentRow * pieceHeight;
+                      : isGroupDragging
+                          ? piece.currentRow * pieceHeight + (_dragCurrentY - _dragPieceOrigin.dy)
+                          : piece.currentRow * pieceHeight;
 
                   return Positioned(
                     key: ValueKey(piece.id),
@@ -306,9 +443,47 @@ class _PuzzleEngineState extends State<PuzzleEngine>
                       onPanUpdate: _onDragUpdate,
                       onPanEnd: (_) => _onDragEnd(piece),
                       child: Material(
-                        elevation: isDragging ? 12 : 0,
+                        elevation: (isDragging || isGroupDragging) ? 12 : 0,
                         color: Colors.transparent,
-                        child: _buildPieceWidget(piece, borderOpacity),
+                        child: Stack(
+                          children: [
+                            _buildPieceWidget(piece, borderOpacity),
+                            // Shine effect
+                            if (_shineControllers.containsKey(piece.id))
+                              AnimatedBuilder(
+                                animation: _shineControllers[piece.id]!,
+                                builder: (_, __) {
+                                  final value = _shineControllers[piece.id]!.value;
+                                  return SizedBox(
+                                    width: pieceWidth,
+                                    height: pieceHeight,
+                                    child: ClipRect(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment(-1.0 + 3.0 * value, -1.0 + 3.0 * value),
+                                            end: Alignment(-0.5 + 3.0 * value, -0.5 + 3.0 * value),
+                                            colors: [
+                                              Colors.white.withValues(alpha: 0),
+                                              Colors.white.withValues(alpha: 0.4),
+                                              Colors.white.withValues(alpha: 0),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            // Lock icon
+                            if (SettingsService.lockInPlace && piece.isCorrect && !isCompleted)
+                              Positioned(
+                                bottom: 2, right: 2,
+                                child: Icon(PhosphorIconsFill.lockSimple, size: 12,
+                                  color: Colors.white.withValues(alpha: 0.4)),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   );

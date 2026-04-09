@@ -5,23 +5,31 @@ import 'package:chile_puzzle/core/models/game_config.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/models/trophy_model.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
+import 'package:chile_puzzle/core/services/settings_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:chile_puzzle/features/leaderboard/leaderboard_screen.dart';
 import 'package:chile_puzzle/main.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   final GameConfig config;
   final List<LocationModel> allLocations;
 
   const ProfileScreen({super.key, required this.config, required this.allLocations});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final langCode = Localizations.localeOf(context).languageCode;
     final progress = GameProgressService.progress;
+    final allLocations = widget.allLocations;
+    final config = widget.config;
     final unlockedCount = allLocations.where((loc) {
       return GameProgressService.isLocationUnlocked(loc);
     }).length;
@@ -215,6 +223,82 @@ class ProfileScreen extends StatelessWidget {
           }),
           const SizedBox(height: 16),
 
+          // Settings card
+          MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(PhosphorIconsFill.gear, size: 20, color: Colors.grey.shade600),
+                      const SizedBox(width: 8),
+                      Text(
+                        langCode == 'es' ? 'Ajustes' : 'Settings',
+                        style: GoogleFonts.spaceGrotesk(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _settingRow(
+                    icon: PhosphorIconsFill.image,
+                    iconColor: AppTheme.accentBlue,
+                    label: langCode == 'es' ? 'Imagen de referencia' : 'Reference image',
+                    subtitle: langCode == 'es' ? 'Mostrar imagen completa en el puzzle' : 'Show full image during puzzle',
+                    value: SettingsService.referenceImage,
+                    onChanged: (v) async {
+                      await SettingsService.setReferenceImage(v);
+                      setState(() {});
+                    },
+                  ),
+                  Divider(color: Colors.grey.shade200, height: 1),
+                  _settingRow(
+                    icon: PhosphorIconsFill.sparkle,
+                    iconColor: AppTheme.trophyGold,
+                    label: langCode == 'es' ? 'Brillo al encajar' : 'Edge shine',
+                    subtitle: langCode == 'es' ? 'Brillo cuando la pieza es correcta' : 'Shimmer when piece is correct',
+                    value: SettingsService.edgeShine,
+                    onChanged: (v) async {
+                      await SettingsService.setEdgeShine(v);
+                      setState(() {});
+                    },
+                  ),
+                  Divider(color: Colors.grey.shade200, height: 1),
+                  _settingRow(
+                    icon: PhosphorIconsFill.lockSimple,
+                    iconColor: AppTheme.accentGreen,
+                    label: langCode == 'es' ? 'Fijar en su lugar' : 'Lock in place',
+                    subtitle: langCode == 'es' ? 'Fijar piezas correctas' : 'Lock correctly placed pieces',
+                    value: SettingsService.lockInPlace,
+                    onChanged: (v) async {
+                      await SettingsService.setLockInPlace(v);
+                      setState(() {});
+                    },
+                  ),
+                  Divider(color: Colors.grey.shade200, height: 1),
+                  _settingRow(
+                    icon: PhosphorIconsFill.squaresFour,
+                    iconColor: AppTheme.accentPurple,
+                    label: langCode == 'es' ? 'Multi-selección' : 'Multi-select',
+                    subtitle: langCode == 'es' ? 'Mover piezas agrupadas juntas' : 'Move grouped pieces together',
+                    value: SettingsService.multiSelect,
+                    onChanged: (v) async {
+                      await SettingsService.setMultiSelect(v);
+                      setState(() {});
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // Ranking button
           MediaQuery(
             data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
@@ -297,6 +381,45 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _settingRow({
+    required PhosphorIconData icon,
+    required Color iconColor,
+    required String label,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: iconColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade500),
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+            activeTrackColor: AppTheme.accentBlue,
+          ),
         ],
       ),
     );
@@ -479,7 +602,7 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'v1.4.0',
+              'v1.5.0',
               style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade400),
             ),
           ),

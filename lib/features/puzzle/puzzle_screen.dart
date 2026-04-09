@@ -9,6 +9,8 @@ import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'package:flutter_confetti/flutter_confetti.dart';
 import 'package:chile_puzzle/core/services/audio_service.dart';
+import 'package:chile_puzzle/core/services/settings_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chile_puzzle/features/puzzle/puzzle_engine.dart';
 import 'package:chile_puzzle/features/puzzle/completion_drawer.dart';
 
@@ -35,6 +37,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
   bool _completed = false;
   bool _showDrawer = true;
   bool _firstDrawerShow = true;
+  bool _showReference = false;
 
   final Stopwatch _stopwatch = Stopwatch();
   final ValueNotifier<int> _moveCount = ValueNotifier(0);
@@ -111,6 +114,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
       _result = result;
       _completed = true;
       _showDrawer = true;
+      _showReference = false;
     });
 
     if (result.newTrophies.isNotEmpty && mounted) {
@@ -177,6 +181,55 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                       return const Center(child: CircularProgressIndicator());
                     },
                   ),
+                  // Reference image overlay
+                  if (_showReference && !_completed)
+                    Positioned.fill(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _showReference = false),
+                        child: Container(
+                          color: Colors.black,
+                          child: CachedNetworkImage(
+                            imageUrl: widget.location.image,
+                            fit: BoxFit.contain,
+                            errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Reference image button
+                  if (!_completed && SettingsService.referenceImage && !_showReference)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _showReference = true),
+                        child: Container(
+                          width: 40, height: 40,
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(PhosphorIconsBold.image, size: 20, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  // Reference close button
+                  if (_showReference && !_completed)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _showReference = false),
+                        child: Container(
+                          width: 40, height: 40,
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(PhosphorIconsBold.x, size: 20, color: Colors.white),
+                        ),
+                      ),
+                    ),
                   // Close button when viewing photo (drawer hidden)
                   if (_completed && !_showDrawer)
                     Positioned(
