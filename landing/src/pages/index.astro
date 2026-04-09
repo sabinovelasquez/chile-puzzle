@@ -852,8 +852,8 @@ const puzzleHeroCount = 3; // Number of images in puzzle-hero/
               imageCount={puzzleHeroCount}
               locationName="Demo web"
               locationNameEn="Web demo"
-              description="Descarga la app para jugar con lugares reales de Chile"
-              descriptionEn="Download the app to play with real Chilean locations"
+              description="Descarga la app para jugar m&aacute;s lugares"
+              descriptionEn="Download to play more locations"
             />
           </div>
         </div>
@@ -1033,20 +1033,23 @@ const puzzleHeroCount = 3; // Number of images in puzzle-hero/
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
     // ── Bilingual Toggle ──
-    let currentLang = 'es';
+    function setLang(lang) {
+      document.querySelectorAll('.lang-toggle button').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.querySelector(`.lang-toggle button[data-lang="${lang}"]`);
+      if (activeBtn) activeBtn.classList.add('active');
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-es][data-en]').forEach(el => {
+        const text = el.getAttribute(`data-${lang}`);
+        if (text) el.textContent = text;
+      });
+    }
+
+    // Auto-detect language
+    const browserLang = (navigator.language || '').slice(0, 2);
+    if (browserLang === 'en') setLang('en');
 
     document.querySelectorAll('.lang-toggle button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        currentLang = btn.dataset.lang;
-        document.querySelectorAll('.lang-toggle button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.documentElement.lang = currentLang;
-
-        document.querySelectorAll('[data-es][data-en]').forEach(el => {
-          const text = el.getAttribute(`data-${currentLang}`);
-          if (text) el.textContent = text;
-        });
-      });
+      btn.addEventListener('click', () => setLang(btn.dataset.lang));
     });
     // ── Tester Spots ──
     (async () => {

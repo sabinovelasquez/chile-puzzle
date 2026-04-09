@@ -46,7 +46,20 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
     </form>
     <div class="tm-success" id="testerSuccess" style="display:none;">
       <div class="tm-success-icon"><i class="ph ph-check-circle"></i></div>
-      <p data-es="&iexcl;Listo! Te avisaremos cuando est&eacute; disponible." data-en="Done! We'll let you know when it's available.">&iexcl;Listo! Te avisaremos cuando est&eacute; disponible.</p>
+      <p data-es="&iexcl;Listo! Descarga la app para empezar a jugar." data-en="Done! Download the app to start playing.">&iexcl;Listo! Descarga la app para empezar a jugar.</p>
+      <div class="tm-stores">
+        <a href="https://play.google.com/apps/internaltest/4700433915880246135" target="_blank" class="tm-store-btn tm-store-play">
+          <i class="ph ph-google-play-logo"></i>
+          <span>Google Play</span>
+        </a>
+        <button class="tm-store-btn tm-store-apple" disabled>
+          <i class="ph ph-apple-logo"></i>
+          <div class="tm-store-label">
+            <span>App Store</span>
+            <small data-es="Pr&oacute;ximamente" data-en="Coming soon">Pr&oacute;ximamente</small>
+          </div>
+        </button>
+      </div>
     </div>
     <div class="tm-error" id="testerError" style="display:none;">
       <p data-es="Hubo un error. Int&eacute;ntalo de nuevo." data-en="Something went wrong. Try again.">Hubo un error. Int&eacute;ntalo de nuevo.</p>
@@ -219,6 +232,53 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
 
   .tm-input.invalid {
     border-color: #E53935;
+  }
+
+  .tm-stores {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    justify-content: center;
+  }
+
+  .tm-store-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.2rem;
+    border-radius: 10px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    border: none;
+  }
+
+  .tm-store-btn .ph { font-size: 1.3rem; }
+
+  .tm-store-play {
+    background: #1565C0;
+    color: white;
+  }
+  .tm-store-play:hover { background: #1976D2; transform: scale(1.03); }
+
+  .tm-store-apple {
+    background: #F5F7FA;
+    color: #9CA3AF;
+    cursor: default;
+  }
+
+  .tm-store-label {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+
+  .tm-store-label small {
+    font-size: 0.65rem;
+    font-weight: 400;
   }
 </style>
 
