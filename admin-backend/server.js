@@ -486,7 +486,7 @@ app.post('/api/testers/notify', async (req, res) => {
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          sender: { name: 'Zoom-In Chile', email: 'contact@depointless.cl' },
+          sender: { name: 'Zoom-In Chile', email: 'no-reply@sabino.cl' },
           to: [{ email: tester.email, name: tester.name }],
           subject,
           htmlContent: html,
