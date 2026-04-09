@@ -1,5 +1,5 @@
-// --- API base (auto-detect /zoominchile prefix from URL) ---
-const API_BASE = window.location.pathname.replace(/\/(admin\/?)?$/, '');
+// --- API base (keep /admin so requests share its auth scope) ---
+const API_BASE = window.location.pathname.replace(/\/?$/, '');
 
 // --- State ---
 let locations = [], zones = [], trophies = [], scoring = {};
@@ -401,6 +401,7 @@ function populateScoring() {
   document.getElementById('scoreTimeThreshold').value = scoring.timeBonusThresholdSecs || 60;
   document.getElementById('scoreTimeBonus').value = scoring.timeBonusPoints || 50;
   document.getElementById('scoreMoveBonus').value = scoring.moveEfficiencyBonusPercent || 20;
+  document.getElementById('scoreTesterSpots').value = scoring.testerSpots ?? 100;
 }
 
 scoringForm.onsubmit = async (e) => {
@@ -415,6 +416,7 @@ scoringForm.onsubmit = async (e) => {
     timeBonusThresholdSecs: parseInt(document.getElementById('scoreTimeThreshold').value),
     timeBonusPoints: parseInt(document.getElementById('scoreTimeBonus').value),
     moveEfficiencyBonusPercent: parseInt(document.getElementById('scoreMoveBonus').value),
+    testerSpots: parseInt(document.getElementById('scoreTesterSpots').value),
   };
   await postJSON(API_BASE + '/api/scoring', scoring);
   alert('Scoring saved!');

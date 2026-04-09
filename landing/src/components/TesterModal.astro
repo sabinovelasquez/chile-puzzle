@@ -15,28 +15,32 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
     <button class="tm-close" aria-label="Close">&times;</button>
     <div class="tm-icon"><i class="ph ph-envelope-simple"></i></div>
     <h3 class="tm-title" data-es="&Uacute;nete como tester" data-en="Join as a tester">&Uacute;nete como tester</h3>
-    <p class="tm-desc" data-es="La app estar&aacute; pronto en Google Play. D&eacute;janos tus datos y te enviaremos el link de acceso anticipado." data-en="The app will be on Google Play soon. Leave your info and we'll send you early access.">La app estar&aacute; pronto en Google Play. D&eacute;janos tus datos y te enviaremos el link de acceso anticipado.</p>
-    <form class="tm-form" id="testerForm" data-api={apiUrl}>
+    <p class="tm-desc" data-es="La app estar&aacute; pronto en Google Play y App Store. D&eacute;janos tus datos y te enviaremos el link de acceso anticipado." data-en="The app will be on Google Play &amp; App Store soon. Leave your info and we'll send you early access.">La app estar&aacute; pronto en Google Play y App Store. D&eacute;janos tus datos y te enviaremos el link de acceso anticipado.</p>
+    <form class="tm-form" id="testerForm" data-api={apiUrl} novalidate>
       <input
         type="text"
         name="name"
-        required
         class="tm-input"
         data-placeholder-es="Nombre"
         data-placeholder-en="Name"
         placeholder="Nombre"
       />
       <input
-        type="email"
+        type="text"
         name="email"
-        required
         class="tm-input"
         data-placeholder-es="Email"
         data-placeholder-en="Email"
         placeholder="Email"
       />
+      <div class="tm-validation" id="testerValidation" style="display:none;"
+        data-name-es="Ingresa tu nombre"
+        data-name-en="Enter your name"
+        data-email-es="Ingresa un email v&aacute;lido"
+        data-email-en="Enter a valid email"
+      ></div>
       <button type="submit" class="tm-submit">
-        <span data-es="Quiero ser tester" data-en="I want to be a tester">Quiero ser tester</span>
+        <span data-es="Probar la App" data-en="Try It">Probar la App</span>
         <i class="ph ph-arrow-right"></i>
       </button>
     </form>
@@ -206,6 +210,16 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
     font-size: 0.85rem;
     text-align: center;
   }
+
+  .tm-validation {
+    color: #E53935;
+    font-size: 0.8rem;
+    text-align: center;
+  }
+
+  .tm-input.invalid {
+    border-color: #E53935;
+  }
 </style>
 
 <script is:inline>
@@ -232,24 +246,46 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
       if (e.target === overlay) overlay.classList.remove('open');
     });
 
+    // Validation
+    const validationEl = document.getElementById('testerValidation');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    function showValidation(key) {
+      const lang = document.documentElement.lang || 'es';
+      validationEl.textContent = validationEl.getAttribute('data-' + key + '-' + lang) || '';
+      validationEl.style.display = 'block';
+    }
+
+    function clearValidation() {
+      validationEl.style.display = 'none';
+      form.querySelectorAll('.tm-input').forEach(i => i.classList.remove('invalid'));
+    }
+
+    // Clear validation on input
+    form.querySelectorAll('.tm-input').forEach(input => {
+      input.addEventListener('input', () => { input.classList.remove('invalid'); validationEl.style.display = 'none'; });
+    });
+
     // Submit form
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      clearValidation();
       const btn = form.querySelector('.tm-submit');
-      btn.disabled = true;
       errorEl.style.display = 'none';
 
-      const data = {
-        name: form.name.value.trim(),
-        email: form.email.value.trim(),
-        lang: document.documentElement.lang || 'es',
-      };
+      const name = form.name.value.trim();
+      const email = form.email.value.trim();
+
+      if (!name) { form.name.classList.add('invalid'); showValidation('name'); return; }
+      if (!email || !emailRegex.test(email)) { form.email.classList.add('invalid'); showValidation('email'); return; }
+
+      btn.disabled = true;
 
       try {
         const res = await fetch(form.dataset.api, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
+          body: JSON.stringify({ name, email, lang: document.documentElement.lang || 'es' }),
         });
         if (!res.ok) throw new Error('Request failed');
         form.style.display = 'none';

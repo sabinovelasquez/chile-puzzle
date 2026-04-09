@@ -95,6 +95,13 @@ try {
   db.exec('ALTER TABLE leaderboard ADD COLUMN moves INTEGER NOT NULL DEFAULT 0');
 }
 
+// Migrate: add tester_spots to scoring if missing
+try {
+  db.prepare('SELECT tester_spots FROM scoring LIMIT 0').get();
+} catch (_) {
+  db.exec('ALTER TABLE scoring ADD COLUMN tester_spots INTEGER NOT NULL DEFAULT 100');
+}
+
 // Ensure scoring has a default row
 const scoringRow = db.prepare('SELECT id FROM scoring WHERE id = 1').get();
 if (!scoringRow) {
@@ -172,6 +179,7 @@ function rowToScoring(row) {
     timeBonusThresholdSecs: row.time_bonus_threshold_secs,
     timeBonusPoints: row.time_bonus_points,
     moveEfficiencyBonusPercent: row.move_efficiency_bonus_pct,
+    testerSpots: row.tester_spots ?? 100,
   };
 }
 

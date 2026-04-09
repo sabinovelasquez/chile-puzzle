@@ -666,6 +666,25 @@ const puzzleImage = `${baseUrl}puzzle-hero.jpg`;
       flex-wrap: wrap;
     }
 
+    .cta-spots {
+      margin-bottom: 1.25rem;
+    }
+
+    .spots-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 0.5rem 1.25rem;
+      border-radius: 999px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .spots-badge .ph { font-size: 1.1rem; }
+
     /* ═══════════════════ FOOTER ═══════════════════ */
     footer {
       padding: 2.5rem 2rem;
@@ -793,7 +812,7 @@ const puzzleImage = `${baseUrl}puzzle-hero.jpg`;
       <div class="hero-text">
         <div class="hero-badge reveal">
           <i class="ph ph-google-play-logo"></i>
-          <span data-es="Gratis en Google Play" data-en="Free on Google Play">Gratis en Google Play</span>
+          <span data-es="Gratis en Google Play y App Store" data-en="Free on Google Play &amp; App Store">Gratis en Google Play y App Store</span>
         </div>
         <h1 class="reveal stagger-1">
           <span data-es="Descubre Chile" data-en="Discover Chile">Descubre Chile</span><br/>
@@ -818,8 +837,8 @@ const puzzleImage = `${baseUrl}puzzle-hero.jpg`;
             <div class="stat-label" data-es="De f&aacute;cil a locura" data-en="Easy to insane">De f&aacute;cil a locura</div>
           </div>
           <div class="stat-item">
-            <div class="stat-num" data-es="100% gratis" data-en="100% free">100% gratis</div>
-            <div class="stat-label" data-es="Sin compras in-app" data-en="No in-app purchases">Sin compras in-app</div>
+            <div class="stat-num" data-es="Gratis para siempre" data-en="Free forever">Gratis para siempre</div>
+            <div class="stat-label" data-es="Sin costo oculto" data-en="No hidden costs">Sin costo oculto</div>
           </div>
         </div>
       </div>
@@ -964,8 +983,14 @@ const puzzleImage = `${baseUrl}puzzle-hero.jpg`;
   <!-- CTA -->
   <section class="cta" id="download">
     <div class="cta-box">
-      <h2 class="reveal" data-es="Pronto en Google Play" data-en="Coming soon to Google Play">Pronto en Google Play</h2>
+      <h2 class="reveal" data-es="Pronto en Google Play y App Store" data-en="Coming soon to Google Play &amp; App Store">Pronto en Google Play y App Store</h2>
       <p class="reveal stagger-1" data-es="Estamos en fase de testing. &Uacute;nete como tester y s&eacute; de los primeros en jugar." data-en="We're in testing phase. Join as a tester and be among the first to play.">Estamos en fase de testing. &Uacute;nete como tester y s&eacute; de los primeros en jugar.</p>
+      <div class="cta-spots reveal stagger-2" id="ctaSpots" style="display:none;">
+        <span class="spots-badge">
+          <i class="ph ph-users"></i>
+          <span id="spotsText"></span>
+        </span>
+      </div>
       <div class="cta-actions reveal stagger-2">
         <button class="btn-primary" data-open-tester-modal>
           <i class="ph ph-envelope-simple"></i>
@@ -1021,6 +1046,23 @@ const puzzleImage = `${baseUrl}puzzle-hero.jpg`;
         });
       });
     });
+    // ── Tester Spots ──
+    (async () => {
+      try {
+        const res = await fetch('https://games.sabino.cl/zoominchile/api/tester-spots');
+        if (!res.ok) return;
+        const { spots, registered } = await res.json();
+        const remaining = Math.max(0, spots - registered);
+        if (remaining <= 0) return;
+        const lang = document.documentElement.lang || 'es';
+        const el = document.getElementById('spotsText');
+        const container = document.getElementById('ctaSpots');
+        el.setAttribute('data-es', `Solo ${remaining} cupos disponibles`);
+        el.setAttribute('data-en', `Only ${remaining} spots left`);
+        el.textContent = lang === 'en' ? `Only ${remaining} spots left` : `Solo ${remaining} cupos disponibles`;
+        container.style.display = '';
+      } catch (_) {}
+    })();
   </script>
 </body>
 </html>

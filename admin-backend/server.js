@@ -16,7 +16,6 @@ const upload = multer({ dest: uploadsDir });
 
 app.use(cors());
 app.use(express.json());
-app.use((req, res, next) => { if (req.url.includes('tester')) console.log(`[DEBUG] ${req.method} ${req.url}`); next(); });
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ============================================================
@@ -207,7 +206,8 @@ app.post('/api/scoring', (req, res) => {
       base_points_3 = @bp3, base_points_4 = @bp4,
       base_points_5 = @bp5, base_points_6 = @bp6,
       time_bonus_threshold_secs = @tbt, time_bonus_points = @tbp,
-      move_efficiency_bonus_pct = @meb
+      move_efficiency_bonus_pct = @meb,
+      tester_spots = @ts
     WHERE id = 1
   `).run({
     bp3: s.basePoints?.['3'] ?? 50,
@@ -217,6 +217,7 @@ app.post('/api/scoring', (req, res) => {
     tbt: s.timeBonusThresholdSecs ?? 60,
     tbp: s.timeBonusPoints ?? 50,
     meb: s.moveEfficiencyBonusPercent ?? 20,
+    ts: s.testerSpots ?? 100,
   });
   res.json({ success: true });
 });
@@ -413,6 +414,12 @@ app.post('/api/leaderboard', (req, res) => {
 // ============================================================
 // TESTERS
 // ============================================================
+app.get('/api/tester-spots', (req, res) => {
+  const row = db.prepare('SELECT tester_spots FROM scoring WHERE id = 1').get();
+  const total = db.prepare('SELECT COUNT(*) as count FROM testers').get();
+  res.json({ spots: row?.tester_spots ?? 100, registered: total.count });
+});
+
 app.post('/api/testers', (req, res) => {
   const { name, email, lang } = req.body;
   if (!name || !email) return res.status(400).json({ error: 'Name and email required' });
