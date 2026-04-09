@@ -548,18 +548,32 @@ const puzzleImage = `${baseUrl}puzzle-hero.jpg`;
       text-align: center;
     }
 
+    .gallery-sub {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-top: 0.5rem;
+    }
+
     .gallery-track {
-      display: flex;
+      display: inline-flex;
       gap: 1.5rem;
-      justify-content: center;
-      flex-wrap: wrap;
-      max-width: var(--max-w);
-      margin: 0 auto;
+      padding: 0 2rem 1rem;
+    }
+
+    .gallery-track-wrapper {
+      overflow-x: auto;
+      scrollbar-width: none;
+      scroll-snap-type: x mandatory;
+      text-align: center;
+    }
+    .gallery-track-wrapper::-webkit-scrollbar {
+      display: none;
     }
 
     .gallery-phone {
-      width: 200px;
-      flex-shrink: 0;
+      flex: 0 0 auto;
+      width: 180px;
+      scroll-snap-align: start;
       transition: transform 0.3s;
     }
 
@@ -737,6 +751,8 @@ const puzzleImage = `${baseUrl}puzzle-hero.jpg`;
       .features-grid { grid-template-columns: 1fr 1fr; }
       .nav-links a.hide-mobile { display: none; }
       .gallery-phone { width: 160px; }
+      .gallery-track { padding: 0 1.5rem 1rem; }
+      .gallery-track-wrapper { text-align: left; }
     }
 
     @media (max-width: 600px) {
@@ -746,6 +762,8 @@ const puzzleImage = `${baseUrl}puzzle-hero.jpg`;
       .stat-num { font-size: 1.4rem; }
       nav { padding: 0.65rem 1rem; }
       .gallery-phone { width: 140px; }
+      .gallery-track { padding: 0 1rem 1rem; }
+      .gallery-track-wrapper { text-align: left; }
     }
   </style>
 </head>
@@ -759,9 +777,9 @@ const puzzleImage = `${baseUrl}puzzle-hero.jpg`;
     </a>
     <div class="nav-links">
       <a href="#story" class="hide-mobile" data-es="Historia" data-en="Story">Historia</a>
-      <a href="#features" class="hide-mobile" data-es="Caracte&iacute;sticas" data-en="Features">Caracter&iacute;sticas</a>
-      <a href="#gallery" class="hide-mobile" data-es="La App" data-en="The App">La App</a>
-      <a href="#" data-open-tester-modal data-es="Ser Tester" data-en="Be a Tester">Ser Tester</a>
+      <a href="#features" class="hide-mobile" data-es="Caracter&iacute;sticas" data-en="Features">Caracter&iacute;sticas</a>
+      <a href="#gallery" class="hide-mobile" data-es="Nuestra App" data-en="Our App">Nuestra App</a>
+      <a href="#" data-open-tester-modal data-es="Probar la App" data-en="Try It">Probar la App</a>
       <div class="lang-toggle">
         <button class="active" data-lang="es">ES</button>
         <button data-lang="en">EN</button>
@@ -787,7 +805,7 @@ const puzzleImage = `${baseUrl}puzzle-hero.jpg`;
         <div class="hero-actions reveal stagger-3">
           <button class="btn-primary" data-open-tester-modal>
             <i class="ph ph-envelope-simple"></i>
-            <span data-es="Quiero ser tester" data-en="I want to be a tester">Quiero ser tester</span>
+            <span data-es="Probar la App" data-en="Try It">Probar la App</span>
           </button>
         </div>
         <div class="hero-stats reveal stagger-4">
@@ -897,40 +915,49 @@ const puzzleImage = `${baseUrl}puzzle-hero.jpg`;
   <!-- GALLERY (app screenshots) -->
   <section class="gallery" id="gallery">
     <div class="gallery-header">
-      <div class="section-label reveal" data-es="Conoce la App" data-en="Meet the App">Conoce la App</div>
-      <h2 class="section-title reveal stagger-1" data-es="As&iacute; se ve por dentro" data-en="A look inside">As&iacute; se ve por dentro</h2>
+      <div class="section-label reveal" data-es="Nuestra App" data-en="Our App">Nuestra App</div>
+      <h2 class="section-title reveal stagger-1" data-es="Nuestra App" data-en="Our App">Nuestra App</h2>
+      <p class="gallery-sub reveal stagger-2" data-es="Nuevas ubicaciones y mejoras cada semana." data-en="New locations and improvements every week.">Nuevas ubicaciones y mejoras cada semana.</p>
     </div>
+    <div class="gallery-track-wrapper">
     <div class="gallery-track">
       <div class="gallery-phone reveal stagger-1">
         <div class="gallery-phone-frame">
-          <img src={`${baseUrl}screenshots/1.png`} alt="Map screen" onerror="this.outerHTML='<div class=gallery-placeholder>screenshot</div>'" />
+          <img src={`${baseUrl}screenshots/main-view.jpg`} alt="Location grid showing Chilean landmarks like Embajada de China, Galeria de la Merced, and Ruinas de la Iglesia Santa Ana with photos, favorites, and progress filters" />
         </div>
-        <div class="gallery-phone-label" data-es="Mapa" data-en="Map">Mapa</div>
+        <div class="gallery-phone-label" data-es="Explorar" data-en="Explore">Explorar</div>
       </div>
       <div class="gallery-phone reveal stagger-2">
         <div class="gallery-phone-frame">
-          <img src={`${baseUrl}screenshots/2.png`} alt="Puzzle screen" onerror="this.outerHTML='<div class=gallery-placeholder>screenshot</div>'" />
+          <img src={`${baseUrl}screenshots/difficulty.jpg`} alt="Difficulty selection dialog with four levels: Easy (3 columns, 100 pts), Normal (4 columns), Hard (5 columns), and Expert (6 columns, 350 pts)" />
         </div>
-        <div class="gallery-phone-label" data-es="Puzzle" data-en="Puzzle">Puzzle</div>
+        <div class="gallery-phone-label" data-es="Dificultad" data-en="Difficulty">Dificultad</div>
       </div>
       <div class="gallery-phone reveal stagger-3">
         <div class="gallery-phone-frame">
-          <img src={`${baseUrl}screenshots/3.png`} alt="Completion screen" onerror="this.outerHTML='<div class=gallery-placeholder>screenshot</div>'" />
+          <img src={`${baseUrl}screenshots/puzzle.jpg`} alt="Active puzzle of Galeria de la Merced showing a building with red strawberry planters, timer at 3:07 and 104 moves" />
         </div>
-        <div class="gallery-phone-label" data-es="Completado" data-en="Completed">Completado</div>
+        <div class="gallery-phone-label" data-es="Puzzle" data-en="Puzzle">Puzzle</div>
       </div>
       <div class="gallery-phone reveal stagger-4">
         <div class="gallery-phone-frame">
-          <img src={`${baseUrl}screenshots/4.png`} alt="Profile screen" onerror="this.outerHTML='<div class=gallery-placeholder>screenshot</div>'" />
+          <img src={`${baseUrl}screenshots/completed.jpg`} alt="Puzzle completed screen showing 100 points earned, a tip about the location, Google Maps link, and options to view the photo or continue" />
         </div>
-        <div class="gallery-phone-label" data-es="Perfil" data-en="Profile">Perfil</div>
+        <div class="gallery-phone-label" data-es="Completado" data-en="Completed">Completado</div>
       </div>
       <div class="gallery-phone reveal stagger-5">
         <div class="gallery-phone-frame">
-          <img src={`${baseUrl}screenshots/5.png`} alt="Leaderboard screen" onerror="this.outerHTML='<div class=gallery-placeholder>screenshot</div>'" />
+          <img src={`${baseUrl}screenshots/profile.jpg`} alt="Explorer profile with 2630 points, 24 puzzles solved, 21-second best time, 13 of 14 locations discovered, and 43% total progress" />
         </div>
-        <div class="gallery-phone-label" data-es="Ranking" data-en="Leaderboard">Ranking</div>
+        <div class="gallery-phone-label" data-es="Perfil" data-en="Profile">Perfil</div>
       </div>
+      <div class="gallery-phone reveal stagger-6">
+        <div class="gallery-phone-frame">
+          <img src={`${baseUrl}screenshots/trophies.jpg`} alt="Trophies collection showing 16 of 27 unlocked, including Primeros Pasos, En Marcha, Amante de Puzzles, and locked achievements like Maestro de Puzzles" />
+        </div>
+        <div class="gallery-phone-label" data-es="Trofeos" data-en="Trophies">Trofeos</div>
+      </div>
+    </div>
     </div>
   </section>
 
@@ -942,7 +969,7 @@ const puzzleImage = `${baseUrl}puzzle-hero.jpg`;
       <div class="cta-actions reveal stagger-2">
         <button class="btn-primary" data-open-tester-modal>
           <i class="ph ph-envelope-simple"></i>
-          <span data-es="Quiero ser tester" data-en="I want to be a tester">Quiero ser tester</span>
+          <span data-es="Probar la App" data-en="Try It">Probar la App</span>
         </button>
       </div>
     </div>

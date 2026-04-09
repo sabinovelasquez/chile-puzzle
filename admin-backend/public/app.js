@@ -735,7 +735,13 @@ function renderTesterTable() {
       <td>${t.lang.toUpperCase()}</td>
       <td><input type="checkbox" ${t.enrolled ? 'checked' : ''} data-id="${t.id}" data-field="enrolled"></td>
       <td><span class="tester-badge ${t.notified ? 'yes' : 'no'}">${t.notified ? 'Yes' : 'No'}</span></td>
-      <td style="color:var(--text-secondary);font-size:0.8rem;">${t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}</td>
+      <td style="white-space:nowrap;">
+        <select class="notify-lang" data-id="${t.id}" style="width:auto;padding:0.3rem;font-size:0.75rem;display:inline-block;vertical-align:middle;">
+          <option value="es" ${t.lang === 'es' ? 'selected' : ''}>ES</option>
+          <option value="en" ${t.lang === 'en' ? 'selected' : ''}>EN</option>
+        </select>
+        <button class="btn-notify-one" data-id="${t.id}" title="Send notification" style="background:var(--accent);color:white;border:none;padding:0.3rem 0.6rem;border-radius:4px;font-size:0.75rem;cursor:pointer;vertical-align:middle;">Send</button>
+      </td>
       <td><button class="btn-delete" data-delete-id="${t.id}" title="Delete">✕</button></td>
     `;
     tbody.appendChild(tr);
@@ -751,6 +757,30 @@ function renderTesterTable() {
         if (t) t.enrolled = cb.checked;
         renderTesterTable();
       } catch { showTesterMsg('Error updating tester', true); }
+    };
+  });
+
+  // Bind individual notify buttons
+  tbody.querySelectorAll('.btn-notify-one').forEach(btn => {
+    btn.onclick = async () => {
+      const id = btn.dataset.id;
+      const lang = tbody.querySelector(`.notify-lang[data-id="${id}"]`).value;
+      btn.disabled = true; btn.textContent = '...';
+      try {
+        const res = await fetch(API_BASE + '/api/testers/' + id + '/notify', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lang }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showTesterMsg('Notification sent', false);
+          testers = await fetchJSON(API_BASE + '/api/testers');
+          renderTesterTable();
+        } else {
+          showTesterMsg(data.error || 'Error sending', true);
+        }
+      } catch { showTesterMsg('Error sending notification', true); }
+      btn.disabled = false; btn.textContent = 'Send';
     };
   });
 

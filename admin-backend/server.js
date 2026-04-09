@@ -507,6 +507,56 @@ app.post('/api/testers/notify', async (req, res) => {
   res.json({ ok: true, sent, total: testers.length, errors: errors.length > 0 ? errors : undefined });
 });
 
+app.post('/api/testers/:id/notify', async (req, res) => {
+  const BREVO_KEY = process.env.BREVO_API_KEY;
+  if (!BREVO_KEY) return res.status(500).json({ error: 'Brevo API key not configured' });
+
+  const tester = db.prepare('SELECT * FROM testers WHERE id = ?').get(req.params.id);
+  if (!tester) return res.status(404).json({ error: 'Tester not found' });
+
+  const lang = (req.body && req.body.lang) || tester.lang || 'es';
+  const downloadUrl = 'https://play.google.com/apps/internaltest/4700433915880246135';
+  const templates = {
+    es: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:2rem;">
+      <h2 style="color:#1565C0;">Zoom-In Chile</h2>
+      <p>Hola {{name}},</p>
+      <p>La app ya está disponible para testing. Descárgala aquí:</p>
+      <p><a href="${downloadUrl}" style="display:inline-block;padding:12px 24px;background:#1565C0;color:white;text-decoration:none;border-radius:8px;font-weight:600;">Descargar App</a></p>
+      <p style="color:#888;font-size:0.85rem;">Gracias por ser parte de los primeros testers.</p>
+    </div>`,
+    en: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:2rem;">
+      <h2 style="color:#1565C0;">Zoom-In Chile</h2>
+      <p>Hi {{name}},</p>
+      <p>The app is now available for testing. Download it here:</p>
+      <p><a href="${downloadUrl}" style="display:inline-block;padding:12px 24px;background:#1565C0;color:white;text-decoration:none;border-radius:8px;font-weight:600;">Download App</a></p>
+      <p style="color:#888;font-size:0.85rem;">Thanks for being one of our early testers.</p>
+    </div>`,
+  };
+
+  const html = (templates[lang] || templates.es).replace(/\{\{name\}\}/g, tester.name);
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'accept': 'application/json', 'api-key': BREVO_KEY, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        sender: { name: 'Zoom-In Chile', email: 'no-reply@sabino.cl' },
+        to: [{ email: tester.email, name: tester.name }],
+        subject: 'Zoom-In Chile - Early Access',
+        htmlContent: html,
+      }),
+    });
+    if (response.ok) {
+      db.prepare('UPDATE testers SET notified = 1 WHERE id = ?').run(tester.id);
+      res.json({ ok: true });
+    } else {
+      const err = await response.text();
+      res.status(500).json({ error: err });
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ============================================================
 // START
 // ============================================================
