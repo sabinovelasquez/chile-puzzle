@@ -15,7 +15,7 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
     <button class="tm-close" aria-label="Close">&times;</button>
     <div class="tm-icon"><i class="ph ph-envelope-simple"></i></div>
     <h3 class="tm-title" data-es="&Uacute;nete como tester" data-en="Join as a tester">&Uacute;nete como tester</h3>
-    <p class="tm-desc" data-es="La app estar&aacute; pronto en Google Play y App Store. D&eacute;janos tus datos y te enviaremos el link de acceso anticipado." data-en="The app will be on Google Play &amp; App Store soon. Leave your info and we'll send you early access.">La app estar&aacute; pronto en Google Play y App Store. D&eacute;janos tus datos y te enviaremos el link de acceso anticipado.</p>
+    <p class="tm-desc" data-es="La app estar&aacute; pronto en Google Play y App Store. D&eacute;janos tus datos y te enviaremos el link de acceso anticipado. Usa el Gmail con el que tienes configurada tu Play Store." data-en="The app will be on Google Play &amp; App Store soon. Leave your info and we'll send you early access. Use the Gmail linked to your Play Store.">La app estar&aacute; pronto en Google Play y App Store. D&eacute;janos tus datos y te enviaremos el link de acceso anticipado. Usa el Gmail con el que tienes configurada tu Play Store.</p>
     <form class="tm-form" id="testerForm" data-api={apiUrl} novalidate>
       <input
         type="text"
@@ -29,9 +29,9 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
         type="text"
         name="email"
         class="tm-input"
-        data-placeholder-es="Email"
-        data-placeholder-en="Email"
-        placeholder="Email"
+        data-placeholder-es="Gmail (tu cuenta de Play Store)"
+        data-placeholder-en="Gmail (your Play Store account)"
+        placeholder="Gmail (tu cuenta de Play Store)"
       />
       <div class="tm-validation" id="testerValidation" style="display:none;"
         data-name-es="Ingresa tu nombre"

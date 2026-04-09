@@ -5,7 +5,9 @@
  * All CSS + JS is inline for easy extraction to a standalone HTML file.
  */
 interface Props {
-  image: string;
+  image?: string;
+  imageDir?: string;
+  imageCount?: number;
   locationName?: string;
   locationNameEn?: string;
   description?: string;
@@ -16,6 +18,8 @@ interface Props {
 
 const {
   image,
+  imageDir,
+  imageCount = 1,
   locationName = 'Ubicación',
   locationNameEn = 'Location',
   description = '',
@@ -29,7 +33,9 @@ const total = cols * rows;
 
 <div
   class="pg-root"
-  data-image={image}
+  data-image={image || ''}
+  data-image-dir={imageDir || ''}
+  data-image-count={imageCount}
   data-cols={cols}
   data-rows={rows}
   data-total={total}
@@ -266,7 +272,9 @@ const total = cols * rows;
     const root = document.querySelector('.pg-root');
     if (!root) return;
 
-    const IMAGE = root.dataset.image;
+    const imageDir = root.dataset.imageDir;
+    const imageCount = parseInt(root.dataset.imageCount) || 1;
+    const IMAGE = root.dataset.image || (imageDir + (Math.floor(Math.random() * imageCount) + 1) + '.jpg');
     const COLS = parseInt(root.dataset.cols);
     const ROWS = parseInt(root.dataset.rows);
     const TOTAL = parseInt(root.dataset.total);

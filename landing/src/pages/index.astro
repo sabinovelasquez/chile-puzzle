@@ -4,7 +4,8 @@ import TesterModal from '../components/TesterModal.astro';
 
 const baseUrl = import.meta.env.BASE_URL;
 const siteUrl = 'https://games.sabino.cl/zoominchile';
-const puzzleImage = `${baseUrl}puzzle-hero.jpg`;
+const puzzleHeroDir = `${baseUrl}puzzle-hero/`;
+const puzzleHeroCount = 3; // Number of images in puzzle-hero/
 ---
 
 <html lang="es" style="color-scheme: light only;">
@@ -847,11 +848,12 @@ const puzzleImage = `${baseUrl}puzzle-hero.jpg`;
         <div class="phone-frame">
           <div class="phone-screen">
             <PuzzleGame
-              image={puzzleImage}
-              locationName="Iglesia Sagrado Coraz&oacute;n"
-              locationNameEn="Sacred Heart Church"
-              description="Iglesia neorromanesca con fachada de ladrillo en Barr&oacute;n, Coquimbo"
-              descriptionEn="Neo-Romanesque church with brick facade in Barr&oacute;n, Coquimbo"
+              imageDir={puzzleHeroDir}
+              imageCount={puzzleHeroCount}
+              locationName="Demo web"
+              locationNameEn="Web demo"
+              description="Descarga la app para jugar con lugares reales de Chile"
+              descriptionEn="Download the app to play with real Chilean locations"
             />
           </div>
         </div>
