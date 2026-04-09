@@ -251,7 +251,10 @@
             <main class="editor-area" style="max-width:900px;margin:0 auto;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
                     <h2 style="margin:0;">Testers</h2>
-                    <button id="notifyTestersBtn" class="btn primary">Notify Enrolled</button>
+                    <div style="display:flex;gap:0.5rem;">
+                        <button id="refreshTestersBtn" class="btn" style="background:rgba(255,255,255,0.1);color:var(--text-secondary);">Refresh</button>
+                        <button id="notifyTestersBtn" class="btn primary">Notify Enrolled</button>
+                    </div>
                 </div>
                 <div id="testerMsg" style="display:none;padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.9rem;"></div>
                 <div id="testerStats" style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem;"></div>

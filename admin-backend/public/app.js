@@ -813,6 +813,17 @@ function showTesterMsg(text, isError) {
   setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
+document.getElementById('refreshTestersBtn').onclick = async () => {
+  const btn = document.getElementById('refreshTestersBtn');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    testers = await fetchJSON(API_BASE + '/api/testers');
+    renderTesterTable();
+    showTesterMsg('Refreshed', false);
+  } catch { showTesterMsg('Error refreshing', true); }
+  btn.disabled = false; btn.textContent = 'Refresh';
+};
+
 document.getElementById('notifyTestersBtn').onclick = async () => {
   const btn = document.getElementById('notifyTestersBtn');
   const enrolled = testers.filter(t => t.enrolled && !t.notified);
