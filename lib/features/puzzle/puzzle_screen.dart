@@ -43,6 +43,16 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
   final ValueNotifier<int> _moveCount = ValueNotifier(0);
   final ValueNotifier<bool> _imageLoaded = ValueNotifier(false);
 
+  final List<_PendingNotification> _notificationQueue = [];
+  bool _notificationShowing = false;
+
+  static const Map<int, String> _diffLabelsEs = {
+    3: 'Fácil', 4: 'Normal', 5: 'Difícil', 6: 'Experto',
+  };
+  static const Map<int, String> _diffLabelsEn = {
+    3: 'Easy', 4: 'Normal', 5: 'Hard', 6: 'Expert',
+  };
+
   late final StreamSubscription _timerSub;
 
   @override
@@ -117,28 +127,64 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
       _showReference = false;
     });
 
-    if (result.newTrophies.isNotEmpty && mounted) {
-      final langCode = Localizations.localeOf(context).languageCode;
-      for (final trophy in result.newTrophies) {
-        _showTopNotification(
-          icon: PhosphorIconsFill.trophy,
-          text: trophy.getLocalizedName(langCode),
-        );
-      }
+    if (!mounted) return;
+    final langCode = Localizations.localeOf(context).languageCode;
+
+    if (result.isNewBest) {
+      final delta = result.totalPoints - result.previousBest;
+      _enqueueNotification(
+        icon: PhosphorIconsFill.crown,
+        text: langCode == 'es'
+            ? '¡Nuevo récord! +$delta pts'
+            : 'New best! +$delta pts',
+      );
+    }
+
+    for (final trophy in result.newTrophies) {
+      _enqueueNotification(
+        icon: PhosphorIconsFill.trophy,
+        text: trophy.getLocalizedName(langCode),
+      );
     }
   }
 
-  void _showTopNotification({required PhosphorIconData icon, required String text}) {
+  void _enqueueNotification({required PhosphorIconData icon, required String text}) {
+    _notificationQueue.add(_PendingNotification(icon: icon, text: text));
+    if (!_notificationShowing) _drainNotifications();
+  }
+
+  Future<void> _drainNotifications() async {
+    _notificationShowing = true;
     final overlay = Overlay.of(context);
-    late OverlayEntry entry;
-    entry = OverlayEntry(
-      builder: (ctx) => _TopNotification(
-        icon: icon,
-        text: text,
-        onDismiss: () => entry.remove(),
-      ),
-    );
-    overlay.insert(entry);
+    while (_notificationQueue.isNotEmpty && mounted) {
+      final next = _notificationQueue.removeAt(0);
+      final completer = Completer<void>();
+      late OverlayEntry entry;
+      entry = OverlayEntry(
+        builder: (ctx) => _TopNotification(
+          icon: next.icon,
+          text: next.text,
+          onDismiss: () {
+            entry.remove();
+            if (!completer.isCompleted) completer.complete();
+          },
+        ),
+      );
+      overlay.insert(entry);
+      await completer.future;
+      // Small gap so the next one doesn't overlap the dismiss animation.
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+    _notificationShowing = false;
+  }
+
+  String _bestLabel(String langCode) {
+    final best = GameProgressService.getBestPoints(widget.location.id, widget.difficulty);
+    final labels = langCode == 'es' ? _diffLabelsEs : _diffLabelsEn;
+    final diffLabel = labels[widget.difficulty] ?? '${widget.difficulty} col';
+    final prefix = langCode == 'es' ? 'Mejor' : 'Best';
+    final pts = best ?? 0;
+    return '$prefix: $pts pts · $diffLabel';
   }
 
   @override
@@ -288,12 +334,12 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                         AnimatedOpacity(
                           opacity: _showDrawer ? 0.0 : 1.0,
                           duration: const Duration(milliseconds: 200),
-                          child: IgnorePointer(
-                            ignoring: _showDrawer,
-                            child: FloatingActionButton.small(
-                              onPressed: () => setState(() => _showDrawer = true),
-                              backgroundColor: AppTheme.accentBlue,
-                              child: const Icon(PhosphorIconsBold.trophy, size: 20, color: Colors.white),
+                          child: Text(
+                            _bestLabel(langCode),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -354,6 +400,12 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
       ),
     );
   }
+}
+
+class _PendingNotification {
+  final PhosphorIconData icon;
+  final String text;
+  const _PendingNotification({required this.icon, required this.text});
 }
 
 class _TopNotification extends StatefulWidget {

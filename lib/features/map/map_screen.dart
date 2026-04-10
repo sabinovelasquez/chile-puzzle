@@ -378,8 +378,7 @@ class _MapScreenState extends State<MapScreen> {
                 childAspectRatio: 1.5,
                 children: difficulties.map((diff) {
                   final key = '${loc.id}_$diff';
-                  final result = progress.completedPuzzles[key];
-                  final isCompleted = result != null;
+                  final isCompleted = progress.completedPuzzles.containsKey(key);
                   final color = _diffColors[diff] ?? AppTheme.accentBlue;
                   final label = labels[diff] ?? '$diff col';
                   final pts = _config.scoring.basePoints[diff] ?? 50;
@@ -424,7 +423,7 @@ class _MapScreenState extends State<MapScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  isCompleted ? '${result.points} pts' : '$diff cols · $pts pts',
+                                  '$diff cols · $pts pts',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 11, color: Colors.grey.shade600,
                                   ),

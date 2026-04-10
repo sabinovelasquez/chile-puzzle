@@ -12,6 +12,8 @@ class CompletionResult {
   final int helpPenalty;
   final int totalPoints;
   final List<TrophyModel> newTrophies;
+  final bool isNewBest;
+  final int previousBest;
 
   const CompletionResult({
     required this.basePoints,
@@ -20,6 +22,8 @@ class CompletionResult {
     required this.helpPenalty,
     required this.totalPoints,
     required this.newTrophies,
+    required this.isNewBest,
+    required this.previousBest,
   });
 }
 
@@ -70,20 +74,31 @@ class GameProgressService {
     if (SettingsService.multiSelect) helpPenalty += 20;
     final total = (base + timeBonus + efficiencyBonus - helpPenalty).clamp(0, 999999);
 
-    if (helpPenalty == 0) {
+    final key = '${locationId}_$difficulty';
+    final existing = _progress.completedPuzzles[key];
+    final previousBest = existing?.points ?? 0;
+    final isFirstCompletion = existing == null;
+    final isNewBest = !isFirstCompletion && total > previousBest;
+
+    if (helpPenalty == 0 && isFirstCompletion) {
       _progress.noHelpCompleted++;
     }
 
-    final key = '${locationId}_$difficulty';
-    _progress.completedPuzzles[key] = PuzzleResult(
-      locationId: locationId,
-      difficulty: difficulty,
-      points: total,
-      timeSecs: timeSecs,
-      moves: moves,
-      completedAt: DateTime.now(),
-    );
-    _progress.totalPoints += total;
+    if (isFirstCompletion || total > previousBest) {
+      _progress.completedPuzzles[key] = PuzzleResult(
+        locationId: locationId,
+        difficulty: difficulty,
+        points: total,
+        timeSecs: timeSecs,
+        moves: moves,
+        completedAt: DateTime.now(),
+      );
+    }
+
+    // Delta-only accumulation: first completion adds `total`, replays only add
+    // (total - previousBest) when improving. Prevents score inflation on replay.
+    final delta = isFirstCompletion ? total : (total - previousBest).clamp(0, 999999);
+    _progress.totalPoints += delta;
 
     final newTrophies = checkNewTrophies(allTrophies, allLocations);
 
@@ -96,7 +111,13 @@ class GameProgressService {
       helpPenalty: helpPenalty,
       totalPoints: total,
       newTrophies: newTrophies,
+      isNewBest: isNewBest,
+      previousBest: previousBest,
     );
+  }
+
+  static int? getBestPoints(String locationId, int difficulty) {
+    return _progress.completedPuzzles['${locationId}_$difficulty']?.points;
   }
 
   static List<TrophyModel> checkNewTrophies(
