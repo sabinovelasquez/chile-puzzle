@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chile_puzzle/core/models/player_progress.dart';
 import 'package:chile_puzzle/core/models/scoring_config.dart';
 import 'package:chile_puzzle/core/models/trophy_model.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/services/settings_service.dart';
+import 'package:chile_puzzle/core/services/mock_backend.dart';
 
 class CompletionResult {
   final int basePoints;
@@ -14,6 +16,7 @@ class CompletionResult {
   final List<TrophyModel> newTrophies;
   final bool isNewBest;
   final int previousBest;
+  final int difficulty;
 
   const CompletionResult({
     required this.basePoints,
@@ -24,6 +27,7 @@ class CompletionResult {
     required this.newTrophies,
     required this.isNewBest,
     required this.previousBest,
+    required this.difficulty,
   });
 }
 
@@ -104,6 +108,20 @@ class GameProgressService {
 
     await _save();
 
+    // Silent auto-submit to global leaderboard if the player has already
+    // opted in by storing initials (via a prior "enter ranking" tap).
+    // Fire-and-forget — never block UI on this, never surface errors.
+    final initials = _prefs.getString(_initialsKey);
+    if (initials != null && initials.length == 3) {
+      unawaited(MockBackend.submitScore(
+        initials: initials,
+        totalPoints: _progress.totalPoints,
+        puzzlesCompleted: _progress.completedCount,
+        timeSeconds: timeSecs,
+        moves: moves,
+      ));
+    }
+
     return CompletionResult(
       basePoints: base,
       timeBonus: timeBonus,
@@ -113,6 +131,7 @@ class GameProgressService {
       newTrophies: newTrophies,
       isNewBest: isNewBest,
       previousBest: previousBest,
+      difficulty: difficulty,
     );
   }
 

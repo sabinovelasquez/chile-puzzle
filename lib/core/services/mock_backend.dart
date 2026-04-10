@@ -142,4 +142,60 @@ class MockBackend {
     }
     return [];
   }
+
+  /// Fetch top 25 per-location leaderboard entries plus the qualifying score
+  /// (the 25th-place points, or 0 if fewer than 25 entries exist).
+  static Future<({List<Map<String, dynamic>> entries, int qualifyingScore})>
+      fetchLocationLeaderboard(String locationId, int difficulty) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/api/leaderboard').replace(
+        queryParameters: {
+          'locationId': locationId,
+          'difficulty': '$difficulty',
+        },
+      );
+      final response = await http.get(uri);
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        return (
+          entries: List<Map<String, dynamic>>.from(decoded['entries'] ?? []),
+          qualifyingScore: (decoded['qualifyingScore'] as int?) ?? 0,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching location leaderboard: $e');
+    }
+    return (entries: const <Map<String, dynamic>>[], qualifyingScore: 0);
+  }
+
+  /// Submit a per-location result. Returns {rank} or {error} on failure.
+  static Future<Map<String, dynamic>?> submitLocationScore({
+    required String initials,
+    required String locationId,
+    required int difficulty,
+    required int points,
+    int timeSeconds = 0,
+    int moves = 0,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/leaderboard'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'initials': initials,
+          'locationId': locationId,
+          'difficulty': difficulty,
+          'points': points,
+          'timeSeconds': timeSeconds,
+          'moves': moves,
+        }),
+      );
+      final decoded = json.decode(response.body);
+      if (response.statusCode == 200) return decoded;
+      return {'error': decoded['error'] ?? 'Unknown error'};
+    } catch (e) {
+      debugPrint('Error submitting location score: $e');
+    }
+    return null;
+  }
 }

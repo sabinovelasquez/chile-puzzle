@@ -358,6 +358,33 @@ app.post('/api/cleanup-uploads', (req, res) => {
 const BANNED_INITIALS = ['FUK', 'FKU', 'KKK', 'WTF', 'DIK', 'DIE', 'ASS', 'FAG', 'SEX', 'CUM', 'TIT', 'PIS', 'COK'];
 
 app.get('/api/leaderboard', (req, res) => {
+  const { locationId, difficulty } = req.query;
+
+  // Per-location branch
+  if (locationId && difficulty != null) {
+    const diff = parseInt(difficulty, 10);
+    const rows = db.prepare(`
+      SELECT initials, points, time_seconds, moves, created_at
+      FROM location_leaderboard
+      WHERE location_id = ? AND difficulty = ?
+      ORDER BY points DESC, time_seconds ASC, created_at ASC
+      LIMIT 25
+    `).all(locationId, diff);
+
+    const entries = rows.map((row, i) => ({
+      rank: i + 1,
+      initials: row.initials,
+      points: row.points,
+      totalPoints: row.points, // duplicate for reuse of global row widget
+      timeSeconds: row.time_seconds,
+      moves: row.moves,
+      createdAt: row.created_at,
+    }));
+    const qualifyingScore = rows.length >= 25 ? rows[24].points : 0;
+    return res.json({ entries, qualifyingScore });
+  }
+
+  // Global branch (existing)
   const limit = Math.min(parseInt(req.query.limit) || 50, 200);
   const rows = db.prepare(`
     SELECT id, initials, total_points, puzzles_completed, time_seconds, moves, created_at
@@ -379,7 +406,7 @@ app.get('/api/leaderboard', (req, res) => {
 });
 
 app.post('/api/leaderboard', (req, res) => {
-  const { initials, totalPoints, puzzlesCompleted, timeSeconds, moves } = req.body;
+  const { initials, locationId, difficulty, points, totalPoints, puzzlesCompleted, timeSeconds, moves } = req.body;
 
   if (!initials || !/^[A-Z]{3}$/.test(initials)) {
     return res.status(400).json({ error: 'Initials must be exactly 3 uppercase letters' });
@@ -387,6 +414,55 @@ app.post('/api/leaderboard', (req, res) => {
   if (BANNED_INITIALS.length && BANNED_INITIALS.includes(initials)) {
     return res.status(400).json({ error: 'Invalid initials' });
   }
+
+  // Per-location branch
+  if (locationId && difficulty != null && typeof points === 'number') {
+    if (points < 0) return res.status(400).json({ error: 'Invalid points' });
+    const diff = parseInt(difficulty, 10);
+
+    db.prepare(`
+      INSERT INTO location_leaderboard (location_id, difficulty, initials, points, time_seconds, moves)
+      VALUES (@locationId, @difficulty, @initials, @points, @timeSeconds, @moves)
+      ON CONFLICT(location_id, difficulty, initials) DO UPDATE SET
+        points = excluded.points,
+        time_seconds = excluded.time_seconds,
+        moves = excluded.moves,
+        created_at = datetime('now')
+      WHERE excluded.points > location_leaderboard.points
+    `).run({
+      locationId,
+      difficulty: diff,
+      initials,
+      points,
+      timeSeconds: timeSeconds || 0,
+      moves: moves || 0,
+    });
+
+    // Prune beyond top 25
+    db.prepare(`
+      DELETE FROM location_leaderboard
+      WHERE location_id = ? AND difficulty = ?
+        AND id NOT IN (
+          SELECT id FROM location_leaderboard
+          WHERE location_id = ? AND difficulty = ?
+          ORDER BY points DESC, time_seconds ASC
+          LIMIT 25
+        )
+    `).run(locationId, diff, locationId, diff);
+
+    // Compute rank (or null if pruned)
+    const rankRow = db.prepare(`
+      SELECT rank FROM (
+        SELECT initials, ROW_NUMBER() OVER (ORDER BY points DESC, time_seconds ASC) AS rank
+        FROM location_leaderboard
+        WHERE location_id = ? AND difficulty = ?
+      ) WHERE initials = ?
+    `).get(locationId, diff, initials);
+
+    return res.json({ rank: rankRow?.rank ?? null });
+  }
+
+  // Global branch (existing)
   if (typeof totalPoints !== 'number' || totalPoints < 0) {
     return res.status(400).json({ error: 'Invalid totalPoints' });
   }

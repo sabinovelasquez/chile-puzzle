@@ -7,7 +7,18 @@ import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/core/services/mock_backend.dart';
 
 class LeaderboardScreen extends StatefulWidget {
-  const LeaderboardScreen({super.key});
+  /// When both [locationId] and [difficulty] are provided, the screen
+  /// displays the per-location top 25 instead of the global leaderboard.
+  final String? locationId;
+  final int? difficulty;
+  final String? locationName;
+
+  const LeaderboardScreen({
+    super.key,
+    this.locationId,
+    this.difficulty,
+    this.locationName,
+  });
 
   @override
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
@@ -18,6 +29,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   bool _isLoading = true;
   bool _confettiFired = false;
 
+  bool get _isPerLocation =>
+      widget.locationId != null && widget.difficulty != null;
+
   @override
   void initState() {
     super.initState();
@@ -26,7 +40,16 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   Future<void> _loadLeaderboard() async {
     setState(() { _isLoading = true; });
-    final entries = await MockBackend.fetchLeaderboard(limit: 10);
+    List<Map<String, dynamic>> entries;
+    if (_isPerLocation) {
+      final result = await MockBackend.fetchLocationLeaderboard(
+        widget.locationId!,
+        widget.difficulty!,
+      );
+      entries = result.entries;
+    } else {
+      entries = await MockBackend.fetchLeaderboard(limit: 10);
+    }
     if (mounted) {
       setState(() { _entries = entries; _isLoading = false; });
       if (!_confettiFired && entries.isNotEmpty) {
@@ -35,6 +58,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       }
     }
   }
+
+  static const Map<int, String> _diffLabelsEs = {
+    3: 'Fácil', 4: 'Normal', 5: 'Difícil', 6: 'Experto',
+  };
+  static const Map<int, String> _diffLabelsEn = {
+    3: 'Easy', 4: 'Normal', 5: 'Hard', 6: 'Expert',
+  };
 
   void _launchConfetti() {
     const colors = [Color(0xffbb0000), Color(0xffffffff)];
@@ -76,9 +106,37 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   Widget build(BuildContext context) {
     final langCode = Localizations.localeOf(context).languageCode;
 
+    String title;
+    String? subtitle;
+    if (_isPerLocation) {
+      title = widget.locationName ?? (langCode == 'es' ? 'Ranking' : 'Leaderboard');
+      final labels = langCode == 'es' ? _diffLabelsEs : _diffLabelsEn;
+      subtitle = labels[widget.difficulty] ?? '${widget.difficulty} col';
+    } else {
+      title = langCode == 'es' ? 'Ranking' : 'Leaderboard';
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(langCode == 'es' ? 'Ranking' : 'Leaderboard'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (subtitle != null)
+              Text(
+                subtitle,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white70,
+                ),
+              ),
+          ],
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -106,7 +164,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                       return _LeaderboardRow(
                         rank: entry['rank'] as int,
                         initials: entry['initials'] as String,
-                        points: entry['totalPoints'] as int,
+                        points: (entry['totalPoints'] ?? entry['points']) as int,
                       );
                     },
                   ),

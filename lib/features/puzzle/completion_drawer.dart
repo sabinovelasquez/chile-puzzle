@@ -270,9 +270,11 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      // Enter ranking button
+                      // Per-location ranking button
                       _RankingButton(
-                        totalPoints: GameProgressService.progress.totalPoints,
+                        location: loc,
+                        difficulty: result.difficulty,
+                        runPoints: result.totalPoints,
                         timeSecs: widget.timeSecs,
                         moves: widget.moves,
                         enabled: !_navigating,
@@ -353,65 +355,107 @@ class _FavoriteButtonState extends State<_FavoriteButton> {
 }
 
 class _RankingButton extends StatefulWidget {
-  final int totalPoints;
+  final LocationModel location;
+  final int difficulty;
+  final int runPoints;
   final int timeSecs;
   final int moves;
   final bool enabled;
-  const _RankingButton({required this.totalPoints, this.timeSecs = 0, this.moves = 0, this.enabled = true});
+
+  const _RankingButton({
+    required this.location,
+    required this.difficulty,
+    required this.runPoints,
+    this.timeSecs = 0,
+    this.moves = 0,
+    this.enabled = true,
+  });
 
   @override
   State<_RankingButton> createState() => _RankingButtonState();
 }
 
 class _RankingButtonState extends State<_RankingButton> {
+  bool _loading = true;
   bool _submitting = false;
+  int _qualifyingScore = 0;
   int? _rank;
 
-  Future<void> _submitScore() async {
+  @override
+  void initState() {
+    super.initState();
+    _fetchQualifyingScore();
+  }
+
+  Future<void> _fetchQualifyingScore() async {
+    final result = await MockBackend.fetchLocationLeaderboard(
+      widget.location.id,
+      widget.difficulty,
+    );
+    if (!mounted) return;
+    setState(() {
+      _qualifyingScore = result.qualifyingScore;
+      _loading = false;
+    });
+  }
+
+  void _openLeaderboard() {
+    final langCode = Localizations.localeOf(context).languageCode;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LeaderboardScreen(
+          locationId: widget.location.id,
+          difficulty: widget.difficulty,
+          locationName: widget.location.getLocalizedName(langCode),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _enterRanking() async {
     final langCode = Localizations.localeOf(context).languageCode;
     final currentInitials = GameProgressService.leaderboardInitials;
 
     final initials = await showInitialsInput(
       context,
       currentInitials: currentInitials,
-      totalPoints: widget.totalPoints,
+      totalPoints: widget.runPoints,
     );
     if (initials == null) return;
     await GameProgressService.setLeaderboardInitials(initials);
 
     setState(() => _submitting = true);
-    final progress = GameProgressService.progress;
-    final result = await MockBackend.submitScore(
+    final result = await MockBackend.submitLocationScore(
       initials: initials,
-      totalPoints: progress.totalPoints,
-      puzzlesCompleted: progress.completedCount,
+      locationId: widget.location.id,
+      difficulty: widget.difficulty,
+      points: widget.runPoints,
       timeSeconds: widget.timeSecs,
       moves: widget.moves,
     );
-    if (mounted) {
-      if (result != null && result.containsKey('error')) {
-        setState(() => _submitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(langCode == 'es'
-                ? 'No puedes usar esas iniciales'
-                : 'Cannot use those initials'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-      setState(() {
-        _submitting = false;
-        _rank = result?['rank'];
-      });
-      if (result != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(langCode == 'es'
-              ? '¡Posición #${result['rank']}!'
-              : 'Ranked #${result['rank']}!')),
-        );
-      }
+    if (!mounted) return;
+
+    if (result != null && result.containsKey('error')) {
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(langCode == 'es'
+              ? 'No puedes usar esas iniciales'
+              : 'Cannot use those initials'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _submitting = false;
+      _rank = result?['rank'] as int?;
+    });
+
+    if (_rank != null) {
+      _openLeaderboard();
     }
   }
 
@@ -421,12 +465,29 @@ class _RankingButtonState extends State<_RankingButton> {
     final disabled = !widget.enabled;
     final color = disabled ? Colors.grey.shade400 : AppTheme.accentPurple;
 
+    // Loading: spinner pill
+    if (_loading) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2, color: color),
+          ),
+        ),
+      );
+    }
+
+    // After successful submit: show rank + open leaderboard on tap
     if (_rank != null) {
       return GestureDetector(
-        onTap: disabled ? null : () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
-        ),
+        onTap: disabled ? null : _openLeaderboard,
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -440,7 +501,7 @@ class _RankingButtonState extends State<_RankingButton> {
               Icon(PhosphorIconsFill.trophy, size: 18, color: color),
               const SizedBox(width: 8),
               Text(
-                langCode == 'es' ? '#$_rank — Ver ranking' : '#$_rank — View ranking',
+                langCode == 'es' ? 'ranking #$_rank' : 'ranked #$_rank',
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 14, fontWeight: FontWeight.w700, color: color,
                 ),
@@ -450,8 +511,48 @@ class _RankingButtonState extends State<_RankingButton> {
         ),
       );
     }
+
+    // Qualified (or leaderboard has <25 entries): show "ingresar al ranking"
+    final qualified = widget.runPoints >= _qualifyingScore || _qualifyingScore == 0;
+
+    if (qualified) {
+      return GestureDetector(
+        onTap: (_submitting || disabled) ? null : _enterRanking,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_submitting)
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: color),
+                )
+              else ...[
+                Icon(PhosphorIconsBold.listNumbers, size: 18, color: color),
+                const SizedBox(width: 8),
+                Text(
+                  langCode == 'es' ? 'ingresar al ranking' : 'enter ranking',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, fontWeight: FontWeight.w600, color: color,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Not qualified: "ver ranking"
     return GestureDetector(
-      onTap: (_submitting || disabled) ? null : _submitScore,
+      onTap: disabled ? null : _openLeaderboard,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 10),
@@ -462,18 +563,14 @@ class _RankingButtonState extends State<_RankingButton> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (_submitting)
-              const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-            else ...[
-              Icon(PhosphorIconsBold.listNumbers, size: 18, color: color),
-              const SizedBox(width: 8),
-              Text(
-                langCode == 'es' ? 'Entrar al ranking' : 'Enter ranking',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13, fontWeight: FontWeight.w600, color: color,
-                ),
+            Icon(PhosphorIconsBold.listNumbers, size: 18, color: color),
+            const SizedBox(width: 8),
+            Text(
+              langCode == 'es' ? 'ver ranking' : 'view ranking',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13, fontWeight: FontWeight.w600, color: color,
               ),
-            ],
+            ),
           ],
         ),
       ),
