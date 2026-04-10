@@ -90,6 +90,7 @@ const LOCATION_INSERT_COLS = `
   crop_normal_x, crop_normal_y, crop_normal_w, crop_normal_h,
   crop_hard_x, crop_hard_y, crop_hard_w, crop_hard_h,
   crop_expert_x, crop_expert_y, crop_expert_w, crop_expert_h,
+  image_d3, image_d4, image_d5, image_d6,
   difficulty
 `;
 const LOCATION_INSERT_VALS = `
@@ -102,18 +103,49 @@ const LOCATION_INSERT_VALS = `
   @crop_normal_x, @crop_normal_y, @crop_normal_w, @crop_normal_h,
   @crop_hard_x, @crop_hard_y, @crop_hard_w, @crop_hard_h,
   @crop_expert_x, @crop_expert_y, @crop_expert_w, @crop_expert_h,
+  @image_d3, @image_d4, @image_d5, @image_d6,
   @difficulty
 `;
 const insertLocationStmt = db.prepare(`INSERT INTO locations (${LOCATION_INSERT_COLS}) VALUES (${LOCATION_INSERT_VALS})`);
 
+// Helpers for detecting crop changes (triggers per-diff re-render on save).
+const CROP_COLS = [
+  'crop_easy_x','crop_easy_y','crop_easy_w','crop_easy_h',
+  'crop_normal_x','crop_normal_y','crop_normal_w','crop_normal_h',
+  'crop_hard_x','crop_hard_y','crop_hard_w','crop_hard_h',
+  'crop_expert_x','crop_expert_y','crop_expert_w','crop_expert_h',
+];
+function cropsDiffer(rowA, rowB) {
+  if (!rowA || !rowB) return true;
+  return CROP_COLS.some(c => Math.abs((rowA[c] || 0) - (rowB[c] || 0)) > 1e-9);
+}
+async function regenerateAndUpdateImages(id) {
+  const row = db.prepare('SELECT * FROM locations WHERE id = ?').get(id);
+  if (!row) return null;
+  const results = await renderPerDiffCrops(rowToLocation(row));
+  if (!results) return null;
+  db.prepare(`
+    UPDATE locations
+    SET image_d3 = @image_d3, image_d4 = @image_d4, image_d5 = @image_d5, image_d6 = @image_d6
+    WHERE id = @id
+  `).run({ id, ...results });
+  return results;
+}
+
 // CREATE location
-app.post('/api/locations', (req, res) => {
+app.post('/api/locations', async (req, res) => {
   const obj = req.body;
   if (!obj.id) return res.status(400).json({ error: 'Missing id' });
 
   const params = locationToParams(obj);
   try {
     insertLocationStmt.run(params);
+    // If the caller included an original image + per-diff crops, render them now
+    // so the new record is immediately playable on new Flutter clients.
+    if (params.original_image) {
+      try { await regenerateAndUpdateImages(obj.id); }
+      catch (e) { console.error('renderPerDiffCrops (POST) failed:', e.message); }
+    }
     res.json({ success: true, id: obj.id });
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -121,10 +153,13 @@ app.post('/api/locations', (req, res) => {
 });
 
 // UPDATE location
-app.put('/api/locations/:id', (req, res) => {
+app.put('/api/locations/:id', async (req, res) => {
   const obj = { ...req.body, id: req.params.id };
   const params = locationToParams(obj);
   params.updated_at = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+  // Read the stored crops BEFORE the update so we can decide whether to re-render.
+  const before = db.prepare('SELECT * FROM locations WHERE id = ?').get(req.params.id);
 
   const result = db.prepare(`
     UPDATE locations SET
@@ -147,12 +182,28 @@ app.put('/api/locations/:id', (req, res) => {
   `).run(params);
 
   if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
-  res.json({ success: true });
+
+  // Re-render per-difficulty images when:
+  //   1. The original file still exists on this record, AND
+  //   2. Either the crops changed OR there are no pre-rendered images yet.
+  let rendered = false;
+  if (params.original_image) {
+    const noneYet = !before?.image_d3 && !before?.image_d4 && !before?.image_d5 && !before?.image_d6;
+    if (cropsDiffer(before, params) || noneYet) {
+      try {
+        await regenerateAndUpdateImages(req.params.id);
+        rendered = true;
+      } catch (e) {
+        console.error('renderPerDiffCrops (PUT) failed:', e.message);
+      }
+    }
+  }
+  res.json({ success: true, rendered });
 });
 
 // BATCH STUB — create N inactive locations from upload results in one shot.
 // Body: { uploads: [{ url, thumbnail, original, width, height }, ...] }
-app.post('/api/locations/batch-stub', (req, res) => {
+app.post('/api/locations/batch-stub', async (req, res) => {
   const uploads = Array.isArray(req.body?.uploads) ? req.body.uploads : null;
   if (!uploads || uploads.length === 0) {
     return res.status(400).json({ error: 'Expected uploads: [...]' });
@@ -193,6 +244,12 @@ app.post('/api/locations/batch-stub', (req, res) => {
   });
   try {
     tx();
+    // Render per-difficulty crops for each new stub so they're immediately
+    // playable on Flutter clients that consume imagesByDifficulty.
+    for (const id of ids) {
+      try { await regenerateAndUpdateImages(id); }
+      catch (e) { console.error(`renderPerDiffCrops (batch-stub ${id}) failed:`, e.message); }
+    }
     const rows = db.prepare(
       `SELECT * FROM locations WHERE id IN (${ids.map((_, i) => `@id${i}`).join(',')})`
     ).all(Object.fromEntries(ids.map((id, i) => [`id${i}`, id])));
@@ -206,6 +263,22 @@ app.post('/api/locations/batch-stub', (req, res) => {
 app.delete('/api/locations/:id', (req, res) => {
   const result = db.prepare('DELETE FROM locations WHERE id = @id').run({ id: req.params.id });
   if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ success: true });
+});
+
+// DELETE the raw original file for a location (space reclaim).
+// The per-difficulty pre-rendered images stay intact; re-cropping later
+// requires a fresh upload. original_width/height stay for reference.
+app.delete('/api/locations/:id/original', (req, res) => {
+  const row = db.prepare('SELECT original_image FROM locations WHERE id = ?')
+                .get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  if (!row.original_image) return res.json({ success: true, alreadyEmpty: true });
+
+  const filePath = path.join(uploadsDir, path.basename(row.original_image));
+  try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (_) {}
+  db.prepare("UPDATE locations SET original_image = '' WHERE id = ?")
+    .run(req.params.id);
   res.json({ success: true });
 });
 
@@ -385,6 +458,46 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
     });
   }
 });
+
+// Renders 4 per-difficulty cropped JPEGs from the raw original file on disk.
+// Returns { image_d3, image_d4, image_d5, image_d6 } URL paths, or null if the
+// original file is missing (legacy locations fall back to the single `image`).
+async function renderPerDiffCrops(loc) {
+  const origPath = loc.originalImage
+    ? path.join(uploadsDir, path.basename(loc.originalImage))
+    : null;
+  if (!origPath || !fs.existsSync(origPath)) return null;
+
+  // Read post-rotate dimensions so crop coords (normalized 0-1 against the
+  // rotated image the admin sees in the cropper) map correctly.
+  const rawMeta = await sharp(origPath).metadata();
+  const o = rawMeta.orientation || 1;
+  const rotated = (o >= 5 && o <= 8)
+    ? { w: rawMeta.height || 0, h: rawMeta.width || 0 }
+    : { w: rawMeta.width || 0,  h: rawMeta.height || 0 };
+  if (!rotated.w || !rotated.h) return null;
+
+  const baseName = path.basename(loc.image || origPath).replace(/\.[^.]+$/, '');
+  const results = {};
+  for (const diff of ['3', '4', '5', '6']) {
+    const c = loc.cropsByDifficulty?.[diff];
+    if (!c) continue;
+    const left   = Math.max(0, Math.min(rotated.w - 1, Math.round(c.x * rotated.w)));
+    const top    = Math.max(0, Math.min(rotated.h - 1, Math.round(c.y * rotated.h)));
+    const width  = Math.max(1, Math.min(rotated.w - left, Math.round(c.w * rotated.w)));
+    const height = Math.max(1, Math.min(rotated.h - top,  Math.round(c.h * rotated.h)));
+    const outName = `${baseName}_d${diff}.jpg`;
+    const outPath = path.join(uploadsDir, outName);
+    await sharp(origPath)
+      .rotate()                                       // honor EXIF orientation
+      .extract({ left, top, width, height })
+      .resize(3000, 3000, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85 })
+      .toFile(outPath);
+    results[`image_d${diff}`] = `${URL_PREFIX}/uploads/${outName}`;
+  }
+  return results;
+}
 
 // Batch generate thumbnails for existing locations
 app.post('/api/generate-thumbnails', async (req, res) => {
