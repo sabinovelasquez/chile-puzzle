@@ -106,24 +106,33 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Tip card (above points)
-                    if (loc.getLocalizedTip(langCode).isNotEmpty) ...[
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppTheme.trophyGold.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          loc.getLocalizedTip(langCode),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13, color: Colors.grey.shade800, height: 1.4,
+                    // Tip card (above points) — per-difficulty when available, else base tip
+                    Builder(builder: (_) {
+                      final tipText = result != null
+                          ? loc.getLocalizedTipForDifficulty(langCode, result.difficulty)
+                          : loc.getLocalizedTip(langCode);
+                      if (tipText.isEmpty) return const SizedBox.shrink();
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppTheme.trophyGold.withValues(alpha: 0.06),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              tipText,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13, color: Colors.grey.shade800, height: 1.4,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                          const SizedBox(height: 16),
+                        ],
+                      );
+                    }),
 
                     // Action buttons
                     SizedBox(

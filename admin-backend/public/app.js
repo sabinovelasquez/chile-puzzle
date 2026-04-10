@@ -44,6 +44,9 @@ const fZone = document.getElementById('locZone');
 const fLat = document.getElementById('locLat'), fLng = document.getElementById('locLng');
 const fImage = document.getElementById('locImage'), fThumb = document.getElementById('locThumbnail');
 const fTipEn = document.getElementById('locTipEn'), fTipEs = document.getElementById('locTipEs');
+const fTipNormalEn = document.getElementById('locTipNormalEn'), fTipNormalEs = document.getElementById('locTipNormalEs');
+const fTipHardEn = document.getElementById('locTipHardEn'), fTipHardEs = document.getElementById('locTipHardEs');
+const fTipExpertEn = document.getElementById('locTipExpertEn'), fTipExpertEs = document.getElementById('locTipExpertEs');
 const fRequiredPoints = document.getElementById('locRequiredPoints');
 const fCropX = document.getElementById('locCropX'), fCropY = document.getElementById('locCropY');
 const fCropW = document.getElementById('locCropW'), fCropH = document.getElementById('locCropH');
@@ -167,6 +170,10 @@ function openLocEditor(id) {
   setTimeout(() => { locMap.invalidateSize(); updateMapFromFields(); }, 100);
   fImage.value = loc.image || ''; fThumb.value = loc.thumbnail || '';
   fTipEn.value = loc.tip.en || ''; fTipEs.value = loc.tip.es || '';
+  const tbd = loc.tipsByDifficulty || {};
+  fTipNormalEn.value = tbd['4']?.en || ''; fTipNormalEs.value = tbd['4']?.es || '';
+  fTipHardEn.value   = tbd['5']?.en || ''; fTipHardEs.value   = tbd['5']?.es || '';
+  fTipExpertEn.value = tbd['6']?.en || ''; fTipExpertEs.value = tbd['6']?.es || '';
   const crop = loc.crop || {};
   fCropX.value = crop.x ?? 0.15; fCropY.value = crop.y ?? 0.15;
   fCropW.value = crop.w ?? 0.7; fCropH.value = crop.h ?? 0.7;
@@ -188,6 +195,9 @@ document.getElementById('addLocationBtn').onclick = () => {
   initMap();
   setTimeout(() => { locMap.invalidateSize(); updateMapFromFields(); }, 100);
   fImage.value = ''; fThumb.value = ''; fTipEn.value = ''; fTipEs.value = '';
+  fTipNormalEn.value = ''; fTipNormalEs.value = '';
+  fTipHardEn.value = ''; fTipHardEs.value = '';
+  fTipExpertEn.value = ''; fTipExpertEs.value = '';
   fCropX.value = 0.15; fCropY.value = 0.15; fCropW.value = 0.7; fCropH.value = 0.7;
   imgPreviewC.style.display = 'none'; fImageUpload.value = '';
   cropToolHide();
@@ -214,6 +224,11 @@ locForm.onsubmit = async (e) => {
     latitude: parseFloat(fLat.value), longitude: parseFloat(fLng.value),
     image: fImage.value, thumbnail: fThumb.value,
     tip: { en: fTipEn.value, es: fTipEs.value },
+    tipsByDifficulty: {
+      '4': { en: fTipNormalEn.value, es: fTipNormalEs.value },
+      '5': { en: fTipHardEn.value,   es: fTipHardEs.value   },
+      '6': { en: fTipExpertEn.value, es: fTipExpertEs.value },
+    },
     crop: { x: parseFloat(fCropX.value), y: parseFloat(fCropY.value), w: parseFloat(fCropW.value), h: parseFloat(fCropH.value) },
     difficulty: [3, 4, 5, 6]
   };
