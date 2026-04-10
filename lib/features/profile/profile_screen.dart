@@ -4,6 +4,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:chile_puzzle/core/models/game_config.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/models/trophy_model.dart';
+import 'package:chile_puzzle/core/services/audio_service.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'package:chile_puzzle/core/services/settings_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
@@ -90,23 +91,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                MediaQuery(
-                  data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
-                  child: ElevatedButton.icon(
-                    onPressed: () => _showSettingsDialog(context, langCode),
-                    icon: Icon(PhosphorIconsBold.gear, size: 20, color: Colors.grey.shade700),
-                    label: Text(
-                      langCode == 'es' ? 'Ajustes' : 'Settings',
-                      style: TextStyle(color: Colors.grey.shade700),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(200, 44),
-                      backgroundColor: Colors.grey.shade200,
-                      elevation: 0,
                     ),
                   ),
                 ),
@@ -327,17 +311,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showSettingsDialog(BuildContext context, String langCode) {
-    showDialog(
-      context: context,
-      builder: (_) => _SettingsDialog(langCode: langCode),
-    );
-  }
+}
+
+void showSettingsDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (_) => const _SettingsDialog(),
+  );
 }
 
 class _SettingsDialog extends StatefulWidget {
-  final String langCode;
-  const _SettingsDialog({required this.langCode});
+  const _SettingsDialog();
 
   @override
   State<_SettingsDialog> createState() => _SettingsDialogState();
@@ -346,13 +330,21 @@ class _SettingsDialog extends StatefulWidget {
 class _SettingsDialogState extends State<_SettingsDialog> {
   @override
   Widget build(BuildContext context) {
-    final es = widget.langCode == 'es';
+    final langCode = Localizations.localeOf(context).languageCode;
+    final es = langCode == 'es';
+
+    int totalPenalty = 0;
+    if (SettingsService.referenceImage) totalPenalty += 10;
+    if (SettingsService.edgeShine) totalPenalty += 5;
+    if (SettingsService.lockInPlace) totalPenalty += 15;
+    if (SettingsService.multiSelect) totalPenalty += 20;
+
     return MediaQuery(
       data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
       child: Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -372,52 +364,115 @@ class _SettingsDialogState extends State<_SettingsDialog> {
                 ],
               ),
               const SizedBox(height: 16),
+              // Language row — taps toggle ES ↔ EN
               _settingRow(
-                icon: PhosphorIconsFill.image,
+                icon: PhosphorIconsFill.globe,
                 iconColor: AppTheme.accentBlue,
-                label: es ? 'Imagen de referencia' : 'Reference image',
-                subtitle: es ? 'Mostrar imagen completa en el puzzle' : 'Show full image during puzzle',
-                value: SettingsService.referenceImage,
-                onChanged: (v) async {
-                  await SettingsService.setReferenceImage(v);
-                  setState(() {});
+                label: es ? 'Idioma' : 'Language',
+                subtitle: es ? 'Español' : 'English',
+                trailing: Icon(
+                  PhosphorIconsBold.arrowsLeftRight,
+                  size: 22,
+                  color: Colors.grey.shade400,
+                ),
+                onTap: () {
+                  final newLocale = es ? const Locale('en') : const Locale('es');
+                  ChilePuzzleApp.setLocale(context, newLocale);
                 },
               ),
               Divider(color: Colors.grey.shade200, height: 1),
-              _settingRow(
+              _toggleRow(
+                icon: AudioService.isMuted
+                    ? PhosphorIconsFill.speakerSlash
+                    : PhosphorIconsFill.speakerHigh,
+                iconColor: AppTheme.accentGreen,
+                label: es ? 'Sonido' : 'Sound',
+                subtitle: es ? 'Efectos de sonido del juego' : 'Game sound effects',
+                value: !AudioService.isMuted,
+                onChanged: (v) async {
+                  await AudioService.toggleMute();
+                  setState(() {});
+                },
+              ),
+              // Subtle separator before penalty-bearing settings
+              const SizedBox(height: 10),
+              Container(height: 1, color: Colors.grey.shade300),
+              const SizedBox(height: 6),
+              _toggleRow(
                 icon: PhosphorIconsFill.sparkle,
                 iconColor: AppTheme.trophyGold,
-                label: es ? 'Brillo al encajar' : 'Edge shine',
+                label: es ? 'Brillo' : 'Shine',
                 subtitle: es ? 'Brillo cuando la pieza es correcta' : 'Shimmer when piece is correct',
                 value: SettingsService.edgeShine,
+                penalty: 5,
                 onChanged: (v) async {
                   await SettingsService.setEdgeShine(v);
                   setState(() {});
                 },
               ),
               Divider(color: Colors.grey.shade200, height: 1),
-              _settingRow(
+              _toggleRow(
+                icon: PhosphorIconsFill.image,
+                iconColor: AppTheme.accentBlue,
+                label: es ? 'Imagen de referencia' : 'Reference image',
+                subtitle: es ? 'Mostrar imagen completa en el puzzle' : 'Show full image during puzzle',
+                value: SettingsService.referenceImage,
+                penalty: 10,
+                onChanged: (v) async {
+                  await SettingsService.setReferenceImage(v);
+                  setState(() {});
+                },
+              ),
+              Divider(color: Colors.grey.shade200, height: 1),
+              _toggleRow(
                 icon: PhosphorIconsFill.lockSimple,
                 iconColor: AppTheme.accentGreen,
                 label: es ? 'Fijar en su lugar' : 'Lock in place',
                 subtitle: es ? 'Fijar piezas correctas' : 'Lock correctly placed pieces',
                 value: SettingsService.lockInPlace,
+                penalty: 15,
                 onChanged: (v) async {
                   await SettingsService.setLockInPlace(v);
                   setState(() {});
                 },
               ),
               Divider(color: Colors.grey.shade200, height: 1),
-              _settingRow(
+              _toggleRow(
                 icon: PhosphorIconsFill.squaresFour,
                 iconColor: AppTheme.accentPurple,
                 label: es ? 'Multi-selección' : 'Multi-select',
                 subtitle: es ? 'Mover piezas agrupadas juntas' : 'Move grouped pieces together',
                 value: SettingsService.multiSelect,
+                penalty: 20,
                 onChanged: (v) async {
                   await SettingsService.setMultiSelect(v);
                   setState(() {});
                 },
+              ),
+              const SizedBox(height: 10),
+              Container(height: 1, color: Colors.grey.shade300),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      es ? 'Penalización total' : 'Total penalty',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    totalPenalty > 0 ? '-$totalPenalty pts' : '0 pts',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: totalPenalty > 0 ? Colors.red.shade400 : Colors.grey.shade500,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -426,13 +481,14 @@ class _SettingsDialogState extends State<_SettingsDialog> {
     );
   }
 
-  Widget _settingRow({
+  Widget _toggleRow({
     required PhosphorIconData icon,
     required Color iconColor,
     required String label,
     required String subtitle,
     required bool value,
     required ValueChanged<bool> onChanged,
+    int? penalty,
   }) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -460,11 +516,63 @@ class _SettingsDialogState extends State<_SettingsDialog> {
                 ],
               ),
             ),
+            if (penalty != null && value) ...[
+              Text(
+                '-$penalty',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.red.shade400,
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
             Icon(
               value ? PhosphorIconsFill.checkCircle : PhosphorIconsBold.circle,
               size: 28,
               color: value ? AppTheme.accentBlue : Colors.grey.shade400,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _settingRow({
+    required PhosphorIconData icon,
+    required Color iconColor,
+    required String label,
+    required String subtitle,
+    required Widget trailing,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 56),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: iconColor),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade500),
+                  ),
+                ],
+              ),
+            ),
+            trailing,
           ],
         ),
       ),

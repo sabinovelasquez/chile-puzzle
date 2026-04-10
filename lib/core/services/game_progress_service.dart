@@ -65,6 +65,7 @@ class GameProgressService {
 
     int helpPenalty = 0;
     if (SettingsService.referenceImage) helpPenalty += 10;
+    if (SettingsService.edgeShine) helpPenalty += 5;
     if (SettingsService.lockInPlace) helpPenalty += 15;
     if (SettingsService.multiSelect) helpPenalty += 20;
     final total = (base + timeBonus + efficiencyBonus - helpPenalty).clamp(0, 999999);

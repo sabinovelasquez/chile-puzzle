@@ -12,7 +12,6 @@ import 'package:chile_puzzle/features/puzzle/puzzle_screen.dart';
 import 'package:chile_puzzle/features/profile/profile_screen.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 import 'package:chile_puzzle/features/auth/auth_service.dart';
-import 'package:chile_puzzle/core/services/audio_service.dart';
 import 'package:chile_puzzle/main.dart';
 
 // Difficulty label helpers
@@ -602,14 +601,11 @@ class _MapScreenState extends State<MapScreen> {
             label: _compactNumber(progress.totalPoints),
             labelColor: AppTheme.trophyGold,
           ),
-          // Sound toggle
+          // Settings
           IconButton(
-            onPressed: () async {
-              await AudioService.toggleMute();
-              setState(() {});
-            },
+            onPressed: () => showSettingsDialog(context),
             icon: Icon(
-              AudioService.isMuted ? PhosphorIconsBold.speakerSlash : PhosphorIconsBold.speakerHigh,
+              PhosphorIconsBold.gear,
               size: 20, color: Colors.grey.shade600,
             ),
             visualDensity: VisualDensity.compact,

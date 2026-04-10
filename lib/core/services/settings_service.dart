@@ -9,7 +9,7 @@ class SettingsService {
   static const _multiSelectKey = 'setting_multi_select';
 
   static bool _referenceImage = false;
-  static bool _edgeShine = true;
+  static bool _edgeShine = false;
   static bool _lockInPlace = false;
   static bool _multiSelect = false;
 
@@ -21,7 +21,7 @@ class SettingsService {
   static Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
     _referenceImage = _prefs.getBool(_referenceImageKey) ?? false;
-    _edgeShine = _prefs.getBool(_edgeShineKey) ?? true;
+    _edgeShine = _prefs.getBool(_edgeShineKey) ?? false;
     _lockInPlace = _prefs.getBool(_lockInPlaceKey) ?? false;
     _multiSelect = _prefs.getBool(_multiSelectKey) ?? false;
   }
