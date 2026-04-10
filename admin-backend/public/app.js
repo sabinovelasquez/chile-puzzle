@@ -435,17 +435,17 @@ let cropScale = 1;
 let cropDrag = null;
 
 // Difficulty interpolation (mirrors Flutter getCropForDifficulty)
-// t=0 → admin crop (easy), t=1 → full image (expert)
+// t=0 → full image (easy), t=1 → admin crop (expert)
 function interpolateCrop(t) {
   const cx = parseFloat(fCropX.value) || 0;
   const cy = parseFloat(fCropY.value) || 0;
   const cw = parseFloat(fCropW.value) || 0.7;
   const ch = parseFloat(fCropH.value) || 0.7;
   return {
-    x: cx * (1 - t),
-    y: cy * (1 - t),
-    w: cw + (1 - cw) * t,
-    h: ch + (1 - ch) * t,
+    x: cx * t,
+    y: cy * t,
+    w: 1 - (1 - cw) * t,
+    h: 1 - (1 - ch) * t,
   };
 }
 

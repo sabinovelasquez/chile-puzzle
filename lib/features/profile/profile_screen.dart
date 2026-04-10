@@ -223,76 +223,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }),
           const SizedBox(height: 16),
 
-          // Settings card
-          MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+          // Settings button → opens dialog
+          GestureDetector(
+            onTap: () => _showSettingsDialog(context, langCode),
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Icon(PhosphorIconsFill.gear, size: 20, color: Colors.grey.shade600),
-                      const SizedBox(width: 8),
-                      Text(
-                        langCode == 'es' ? 'Ajustes' : 'Settings',
-                        style: GoogleFonts.spaceGrotesk(fontSize: 16, fontWeight: FontWeight.w700),
-                      ),
-                    ],
+                  Icon(PhosphorIconsFill.gear, size: 22, color: Colors.grey.shade600),
+                  const SizedBox(width: 12),
+                  Text(
+                    langCode == 'es' ? 'Ajustes' : 'Settings',
+                    style: GoogleFonts.spaceGrotesk(fontSize: 16, fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(height: 12),
-                  _settingRow(
-                    icon: PhosphorIconsFill.image,
-                    iconColor: AppTheme.accentBlue,
-                    label: langCode == 'es' ? 'Imagen de referencia' : 'Reference image',
-                    subtitle: langCode == 'es' ? 'Mostrar imagen completa en el puzzle' : 'Show full image during puzzle',
-                    value: SettingsService.referenceImage,
-                    onChanged: (v) async {
-                      await SettingsService.setReferenceImage(v);
-                      setState(() {});
-                    },
-                  ),
-                  Divider(color: Colors.grey.shade200, height: 1),
-                  _settingRow(
-                    icon: PhosphorIconsFill.sparkle,
-                    iconColor: AppTheme.trophyGold,
-                    label: langCode == 'es' ? 'Brillo al encajar' : 'Edge shine',
-                    subtitle: langCode == 'es' ? 'Brillo cuando la pieza es correcta' : 'Shimmer when piece is correct',
-                    value: SettingsService.edgeShine,
-                    onChanged: (v) async {
-                      await SettingsService.setEdgeShine(v);
-                      setState(() {});
-                    },
-                  ),
-                  Divider(color: Colors.grey.shade200, height: 1),
-                  _settingRow(
-                    icon: PhosphorIconsFill.lockSimple,
-                    iconColor: AppTheme.accentGreen,
-                    label: langCode == 'es' ? 'Fijar en su lugar' : 'Lock in place',
-                    subtitle: langCode == 'es' ? 'Fijar piezas correctas' : 'Lock correctly placed pieces',
-                    value: SettingsService.lockInPlace,
-                    onChanged: (v) async {
-                      await SettingsService.setLockInPlace(v);
-                      setState(() {});
-                    },
-                  ),
-                  Divider(color: Colors.grey.shade200, height: 1),
-                  _settingRow(
-                    icon: PhosphorIconsFill.squaresFour,
-                    iconColor: AppTheme.accentPurple,
-                    label: langCode == 'es' ? 'Multi-selección' : 'Multi-select',
-                    subtitle: langCode == 'es' ? 'Mover piezas agrupadas juntas' : 'Move grouped pieces together',
-                    value: SettingsService.multiSelect,
-                    onChanged: (v) async {
-                      await SettingsService.setMultiSelect(v);
-                      setState(() {});
-                    },
-                  ),
+                  const Spacer(),
+                  Icon(PhosphorIconsBold.caretRight, size: 16, color: Colors.grey.shade400),
                 ],
               ),
             ),
@@ -382,6 +331,105 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 32),
         ],
+      ),
+    );
+  }
+
+  void _showSettingsDialog(BuildContext context, String langCode) {
+    showDialog(
+      context: context,
+      builder: (_) => _SettingsDialog(langCode: langCode),
+    );
+  }
+}
+
+class _SettingsDialog extends StatefulWidget {
+  final String langCode;
+  const _SettingsDialog({required this.langCode});
+
+  @override
+  State<_SettingsDialog> createState() => _SettingsDialogState();
+}
+
+class _SettingsDialogState extends State<_SettingsDialog> {
+  @override
+  Widget build(BuildContext context) {
+    final es = widget.langCode == 'es';
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+      child: Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(PhosphorIconsFill.gear, size: 22, color: Colors.grey.shade600),
+                  const SizedBox(width: 8),
+                  Text(
+                    es ? 'Ajustes' : 'Settings',
+                    style: GoogleFonts.spaceGrotesk(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Icon(PhosphorIconsBold.x, size: 20, color: Colors.grey.shade400),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _settingRow(
+                icon: PhosphorIconsFill.image,
+                iconColor: AppTheme.accentBlue,
+                label: es ? 'Imagen de referencia' : 'Reference image',
+                subtitle: es ? 'Mostrar imagen completa en el puzzle' : 'Show full image during puzzle',
+                value: SettingsService.referenceImage,
+                onChanged: (v) async {
+                  await SettingsService.setReferenceImage(v);
+                  setState(() {});
+                },
+              ),
+              Divider(color: Colors.grey.shade200, height: 1),
+              _settingRow(
+                icon: PhosphorIconsFill.sparkle,
+                iconColor: AppTheme.trophyGold,
+                label: es ? 'Brillo al encajar' : 'Edge shine',
+                subtitle: es ? 'Brillo cuando la pieza es correcta' : 'Shimmer when piece is correct',
+                value: SettingsService.edgeShine,
+                onChanged: (v) async {
+                  await SettingsService.setEdgeShine(v);
+                  setState(() {});
+                },
+              ),
+              Divider(color: Colors.grey.shade200, height: 1),
+              _settingRow(
+                icon: PhosphorIconsFill.lockSimple,
+                iconColor: AppTheme.accentGreen,
+                label: es ? 'Fijar en su lugar' : 'Lock in place',
+                subtitle: es ? 'Fijar piezas correctas' : 'Lock correctly placed pieces',
+                value: SettingsService.lockInPlace,
+                onChanged: (v) async {
+                  await SettingsService.setLockInPlace(v);
+                  setState(() {});
+                },
+              ),
+              Divider(color: Colors.grey.shade200, height: 1),
+              _settingRow(
+                icon: PhosphorIconsFill.squaresFour,
+                iconColor: AppTheme.accentPurple,
+                label: es ? 'Multi-selección' : 'Multi-select',
+                subtitle: es ? 'Mover piezas agrupadas juntas' : 'Move grouped pieces together',
+                value: SettingsService.multiSelect,
+                onChanged: (v) async {
+                  await SettingsService.setMultiSelect(v);
+                  setState(() {});
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -348,7 +348,7 @@ class _PuzzleEngineState extends State<PuzzleEngine>
   Widget _buildPieceWidget(PuzzlePieceModel piece, double borderOpacity) {
     final showBorder = !piece.isCorrect && borderOpacity > 0.01;
 
-    // Crop: interpolated from focus region (easiest) to full image (hardest)
+    // Crop: interpolated from full image (easiest) to focus region (hardest)
     final crop = widget.location.getCropForDifficulty(widget.difficulty);
     final cX = crop[0], cY = crop[1], cW = crop[2], cH = crop[3];
     final imgW = boardWidth / cW;

@@ -11,7 +11,7 @@ class LocationModel {
   final Map<String, String> tip;
   final List<int> difficultyLevels;
   final int requiredPoints;
-  // Crop region for easiest difficulty (normalized 0-1). Expert shows full image.
+  // Crop region for hardest difficulty (normalized 0-1). Easy shows full image.
   final double cropX;
   final double cropY;
   final double cropW;
@@ -35,20 +35,20 @@ class LocationModel {
   });
 
   /// Returns the crop rect for a given difficulty, interpolated between
-  /// the admin-defined focus crop (easiest) and full image (hardest).
+  /// full image (easiest) and the admin-defined focus crop (hardest).
   List<double> getCropForDifficulty(int difficulty) {
     if (difficultyLevels.length <= 1) return [0, 0, 1, 1];
     final sorted = List<int>.from(difficultyLevels)..sort();
     final minD = sorted.first;
     final maxD = sorted.last;
     if (minD == maxD) return [0, 0, 1, 1];
-    // t=0 for easiest (tight crop), t=1 for hardest (full image)
+    // t=0 for easiest (full image), t=1 for hardest (tight crop)
     final t = (difficulty - minD) / (maxD - minD);
     return [
-      cropX * (1 - t),
-      cropY * (1 - t),
-      cropW + (1 - cropW) * t,
-      cropH + (1 - cropH) * t,
+      cropX * t,
+      cropY * t,
+      1 - (1 - cropW) * t,
+      1 - (1 - cropH) * t,
     ];
   }
 
