@@ -449,31 +449,33 @@ class _SettingsDialogState extends State<_SettingsDialog> {
                   setState(() {});
                 },
               ),
-              const SizedBox(height: 10),
-              Container(height: 1, color: Colors.grey.shade300),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      es ? 'Penalización total' : 'Total penalty',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.grey.shade700,
+              if (totalPenalty > 0) ...[
+                const SizedBox(height: 10),
+                Container(height: 1, color: Colors.grey.shade300),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        es ? 'Penalización total' : 'Total penalty',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade700,
+                        ),
                       ),
                     ),
-                  ),
-                  Text(
-                    totalPenalty > 0 ? '-$totalPenalty pts' : '0 pts',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: totalPenalty > 0 ? Colors.red.shade400 : Colors.grey.shade500,
+                    Text(
+                      '-$totalPenalty pts',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.red.shade400,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
