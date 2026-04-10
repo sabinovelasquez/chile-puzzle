@@ -129,7 +129,7 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: widget.onHide,
+                        onPressed: _navigating ? null : widget.onHide,
                         icon: const Icon(PhosphorIconsBold.image, size: 18),
                         label: Text(langCode == 'es' ? 'Ver foto' : 'View photo'),
                       ),
@@ -156,8 +156,10 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
 
                     // Google Maps link
                     GestureDetector(
-                      onTap: _openInGoogleMaps,
-                      child: Container(
+                      onTap: _navigating ? null : _openInGoogleMaps,
+                      child: Opacity(
+                        opacity: _navigating ? 0.4 : 1.0,
+                        child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         decoration: BoxDecoration(
@@ -197,6 +199,7 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                             Icon(PhosphorIconsBold.arrowRight, size: 16, color: Colors.grey.shade400),
                           ],
                         ),
+                      ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -278,7 +281,7 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                     ],
 
                     // Favorite toggle
-                    _FavoriteButton(locationId: loc.id),
+                    _FavoriteButton(locationId: loc.id, enabled: !_navigating),
                       ],
                     ),
                   ),
@@ -294,7 +297,8 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
 
 class _FavoriteButton extends StatefulWidget {
   final String locationId;
-  const _FavoriteButton({required this.locationId});
+  final bool enabled;
+  const _FavoriteButton({required this.locationId, this.enabled = true});
 
   @override
   State<_FavoriteButton> createState() => _FavoriteButtonState();
@@ -306,11 +310,15 @@ class _FavoriteButtonState extends State<_FavoriteButton> {
     final isFav = GameProgressService.isFavorite(widget.locationId);
     final langCode = Localizations.localeOf(context).languageCode;
     return GestureDetector(
-      onTap: () async {
-        await GameProgressService.toggleFavorite(widget.locationId);
-        setState(() {});
-      },
-      child: Container(
+      onTap: widget.enabled
+          ? () async {
+              await GameProgressService.toggleFavorite(widget.locationId);
+              setState(() {});
+            }
+          : null,
+      child: Opacity(
+        opacity: widget.enabled ? 1.0 : 0.4,
+        child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
@@ -338,6 +346,7 @@ class _FavoriteButtonState extends State<_FavoriteButton> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -226,21 +226,12 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                       );
                     },
                   ),
-                  // Close button when viewing photo (drawer hidden)
+                  // Tap anywhere to bring back the drawer when viewing the photo
                   if (_completed && !_showDrawer)
-                    Positioned(
-                      top: 12,
-                      right: 12,
+                    Positioned.fill(
                       child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
                         onTap: () => setState(() => _showDrawer = true),
-                        child: Container(
-                          width: 44, height: 44,
-                          decoration: const BoxDecoration(
-                            color: Colors.black54,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(PhosphorIconsBold.x, size: 22, color: Colors.white),
-                        ),
                       ),
                     ),
                   // Completion drawer
