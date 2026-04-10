@@ -3,11 +3,13 @@ import 'package:chile_puzzle/core/models/player_progress.dart';
 import 'package:chile_puzzle/core/models/scoring_config.dart';
 import 'package:chile_puzzle/core/models/trophy_model.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
+import 'package:chile_puzzle/core/services/settings_service.dart';
 
 class CompletionResult {
   final int basePoints;
   final int timeBonus;
   final int efficiencyBonus;
+  final int helpPenalty;
   final int totalPoints;
   final List<TrophyModel> newTrophies;
 
@@ -15,6 +17,7 @@ class CompletionResult {
     required this.basePoints,
     required this.timeBonus,
     required this.efficiencyBonus,
+    required this.helpPenalty,
     required this.totalPoints,
     required this.newTrophies,
   });
@@ -59,7 +62,16 @@ class GameProgressService {
     final efficiencyBonus = moves < (totalPieces * 1.5).ceil()
         ? (base * scoring.moveEfficiencyBonusPercent / 100).round()
         : 0;
-    final total = base + timeBonus + efficiencyBonus;
+
+    int helpPenalty = 0;
+    if (SettingsService.referenceImage) helpPenalty += 10;
+    if (SettingsService.lockInPlace) helpPenalty += 15;
+    if (SettingsService.multiSelect) helpPenalty += 20;
+    final total = (base + timeBonus + efficiencyBonus - helpPenalty).clamp(0, 999999);
+
+    if (helpPenalty == 0) {
+      _progress.noHelpCompleted++;
+    }
 
     final key = '${locationId}_$difficulty';
     _progress.completedPuzzles[key] = PuzzleResult(
@@ -80,6 +92,7 @@ class GameProgressService {
       basePoints: base,
       timeBonus: timeBonus,
       efficiencyBonus: efficiencyBonus,
+      helpPenalty: helpPenalty,
       totalPoints: total,
       newTrophies: newTrophies,
     );
@@ -118,6 +131,9 @@ class GameProgressService {
           if (zoneLocIds.isNotEmpty) {
             earned = zoneLocIds.every((id) => _progress.isLocationCompleted(id));
           }
+          break;
+        case 'noHelpCompleted':
+          earned = _progress.noHelpCompleted >= (cond['threshold'] as int);
           break;
       }
 

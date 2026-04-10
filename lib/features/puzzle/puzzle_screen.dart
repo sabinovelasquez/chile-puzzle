@@ -181,55 +181,51 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                       return const Center(child: CircularProgressIndicator());
                     },
                   ),
-                  // Reference image overlay
-                  if (_showReference && !_completed)
-                    Positioned.fill(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _showReference = false),
-                        child: Container(
-                          color: Colors.black,
-                          child: CachedNetworkImage(
-                            imageUrl: widget.location.image,
-                            fit: BoxFit.contain,
-                            errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                  // Reference image overlay + button (only after image loads)
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _imageLoaded,
+                    builder: (_, loaded, __) {
+                      if (!loaded || _completed || !SettingsService.referenceImage) {
+                        return const SizedBox.shrink();
+                      }
+                      return Stack(
+                        children: [
+                          if (_showReference)
+                            Positioned.fill(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _showReference = false),
+                                child: Container(
+                                  color: Colors.black,
+                                  child: CachedNetworkImage(
+                                    imageUrl: widget.location.image,
+                                    fit: BoxFit.contain,
+                                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: GestureDetector(
+                              onTap: () => setState(() => _showReference = !_showReference),
+                              child: Container(
+                                width: 40, height: 40,
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _showReference ? PhosphorIconsBold.x : PhosphorIconsBold.image,
+                                  size: 20, color: Colors.white,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                  // Reference image button
-                  if (!_completed && SettingsService.referenceImage && !_showReference)
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: GestureDetector(
-                        onTap: () => setState(() => _showReference = true),
-                        child: Container(
-                          width: 40, height: 40,
-                          decoration: const BoxDecoration(
-                            color: Colors.black54,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(PhosphorIconsBold.image, size: 20, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  // Reference close button
-                  if (_showReference && !_completed)
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: GestureDetector(
-                        onTap: () => setState(() => _showReference = false),
-                        child: Container(
-                          width: 40, height: 40,
-                          decoration: const BoxDecoration(
-                            color: Colors.black54,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(PhosphorIconsBold.x, size: 20, color: Colors.white),
-                        ),
-                      ),
-                    ),
+                        ],
+                      );
+                    },
+                  ),
                   // Close button when viewing photo (drawer hidden)
                   if (_completed && !_showDrawer)
                     Positioned(

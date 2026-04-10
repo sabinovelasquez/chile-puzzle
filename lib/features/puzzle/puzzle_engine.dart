@@ -57,6 +57,10 @@ class _PuzzleEngineState extends State<PuzzleEngine>
   // Shine effect controllers
   final Map<int, AnimationController> _shineControllers = {};
 
+  // Lock rejection shake
+  int? _shakingPieceId;
+  AnimationController? _shakeController;
+
   Stopwatch get _stopwatch => widget.stopwatch;
   int get _moveCount => widget.moveCount.value;
   set _moveCount(int v) => widget.moveCount.value = v;
@@ -97,6 +101,7 @@ class _PuzzleEngineState extends State<PuzzleEngine>
     for (final c in _shineControllers.values) {
       c.dispose();
     }
+    _shakeController?.dispose();
     super.dispose();
   }
 
@@ -147,7 +152,10 @@ class _PuzzleEngineState extends State<PuzzleEngine>
 
   void _onDragStart(PuzzlePieceModel piece, DragStartDetails details) {
     if (isCompleted || !widget.imageLoaded.value) return;
-    if (SettingsService.lockInPlace && piece.isCorrect) return;
+    if (SettingsService.lockInPlace && piece.isCorrect) {
+      _triggerShakeRejection(piece.id);
+      return;
+    }
     setState(() {
       _draggingId = piece.id;
       _draggingGroup = SettingsService.multiSelect ? _findGroup(piece) : null;
@@ -282,6 +290,23 @@ class _PuzzleEngineState extends State<PuzzleEngine>
         setState(() {
           _shineControllers.remove(pieceId);
         });
+      }
+    });
+  }
+
+  void _triggerShakeRejection(int pieceId) {
+    _shakeController?.dispose();
+    final controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _shakeController = controller;
+    setState(() => _shakingPieceId = pieceId);
+    controller.forward().then((_) {
+      controller.dispose();
+      if (_shakeController == controller) _shakeController = null;
+      if (mounted) {
+        setState(() => _shakingPieceId = null);
       }
     });
   }
@@ -475,12 +500,32 @@ class _PuzzleEngineState extends State<PuzzleEngine>
                                   );
                                 },
                               ),
-                            // Lock icon
-                            if (SettingsService.lockInPlace && piece.isCorrect && !isCompleted)
-                              Positioned(
-                                bottom: 2, right: 2,
-                                child: Icon(PhosphorIconsFill.lockSimple, size: 12,
-                                  color: Colors.white.withValues(alpha: 0.4)),
+                            // Shake rejection lock icon
+                            if (_shakingPieceId == piece.id && _shakeController != null)
+                              AnimatedBuilder(
+                                animation: _shakeController!,
+                                builder: (_, __) {
+                                  final t = _shakeController!.value;
+                                  final shakeOffset = t < 0.6
+                                      ? sin(t / 0.6 * pi * 4) * 4.0
+                                      : 0.0;
+                                  final opacity = t < 0.6 ? 1.0 : (1.0 - (t - 0.6) / 0.4).clamp(0.0, 1.0);
+                                  return Positioned.fill(
+                                    child: Opacity(
+                                      opacity: opacity,
+                                      child: Transform.translate(
+                                        offset: Offset(shakeOffset, 0),
+                                        child: Center(
+                                          child: Icon(
+                                            PhosphorIconsFill.lockSimple,
+                                            size: 24,
+                                            color: Colors.white.withValues(alpha: 0.8),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                           ],
                         ),

@@ -235,6 +235,16 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                                 value: '+${result.efficiencyBonus}',
                               ),
                             ],
+                            if (result.helpPenalty > 0) ...[
+                              const SizedBox(height: 10),
+                              _PointsRow(
+                                icon: PhosphorIconsBold.shieldWarning,
+                                iconColor: Colors.red.shade400,
+                                label: langCode == 'es' ? 'Penalización ayuda' : 'Help penalty',
+                                value: '-${result.helpPenalty}',
+                                valueColor: Colors.red.shade400,
+                              ),
+                            ],
                             const SizedBox(height: 10),
                             Divider(color: Colors.grey.shade200, height: 1),
                             const SizedBox(height: 10),
@@ -467,12 +477,14 @@ class _PointsRow extends StatelessWidget {
   final Color iconColor;
   final String label;
   final String value;
+  final Color? valueColor;
 
   const _PointsRow({
     required this.icon,
     required this.iconColor,
     required this.label,
     required this.value,
+    this.valueColor,
   });
 
   @override
@@ -484,7 +496,12 @@ class _PointsRow extends StatelessWidget {
         Expanded(
           child: Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade600)),
         ),
-        Text(value, style: GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.w700)),
+        Text(
+          value,
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 14, fontWeight: FontWeight.w700, color: valueColor,
+          ),
+        ),
       ],
     );
   }

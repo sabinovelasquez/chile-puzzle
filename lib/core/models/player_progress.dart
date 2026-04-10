@@ -41,12 +41,14 @@ class PlayerProgress {
   Map<String, PuzzleResult> completedPuzzles; // key: "locationId_difficulty"
   List<String> earnedTrophyIds;
   List<String> favoriteLocationIds;
+  int noHelpCompleted;
 
   PlayerProgress({
     this.totalPoints = 0,
     Map<String, PuzzleResult>? completedPuzzles,
     List<String>? earnedTrophyIds,
     List<String>? favoriteLocationIds,
+    this.noHelpCompleted = 0,
   })  : completedPuzzles = completedPuzzles ?? {},
         earnedTrophyIds = earnedTrophyIds ?? [],
         favoriteLocationIds = favoriteLocationIds ?? [];
@@ -56,6 +58,7 @@ class PlayerProgress {
         'completedPuzzles': completedPuzzles.map((k, v) => MapEntry(k, v.toJson())),
         'earnedTrophyIds': earnedTrophyIds,
         'favoriteLocationIds': favoriteLocationIds,
+        'noHelpCompleted': noHelpCompleted,
       });
 
   factory PlayerProgress.fromJsonString(String jsonStr) {
@@ -69,6 +72,7 @@ class PlayerProgress {
       completedPuzzles: puzzles,
       earnedTrophyIds: List<String>.from(map['earnedTrophyIds'] ?? []),
       favoriteLocationIds: List<String>.from(map['favoriteLocationIds'] ?? []),
+      noHelpCompleted: map['noHelpCompleted'] as int? ?? 0,
     );
   }
 

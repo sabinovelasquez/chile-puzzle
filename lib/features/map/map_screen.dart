@@ -602,13 +602,6 @@ class _MapScreenState extends State<MapScreen> {
             label: _compactNumber(progress.totalPoints),
             labelColor: AppTheme.trophyGold,
           ),
-          // Trophies pill
-          _AppBarPill(
-            icon: PhosphorIconsBold.medal,
-            iconColor: AppTheme.accentGreen,
-            label: '${progress.earnedTrophyIds.length}',
-            labelColor: AppTheme.accentGreen,
-          ),
           // Sound toggle
           IconButton(
             onPressed: () async {
@@ -1077,32 +1070,35 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: selected ? AppTheme.accentBlue : Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 14, color: selected ? Colors.white : Colors.grey.shade600),
-                const SizedBox(width: 4),
-              ],
-              Text(
-                label,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? Colors.white : Colors.grey.shade700,
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+      child: Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: selected ? AppTheme.accentBlue : Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 14, color: selected ? Colors.white : Colors.grey.shade600),
+                  const SizedBox(width: 4),
+                ],
+                Text(
+                  label,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? Colors.white : Colors.grey.shade700,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1125,25 +1121,28 @@ class _AppBarPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: iconColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: iconColor),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 13, fontWeight: FontWeight.w700, color: labelColor,
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: iconColor.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: iconColor),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 13, fontWeight: FontWeight.w700, color: labelColor,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -93,6 +93,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 12),
+                MediaQuery(
+                  data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showSettingsDialog(context, langCode),
+                    icon: Icon(PhosphorIconsBold.gear, size: 20, color: Colors.grey.shade700),
+                    label: Text(
+                      langCode == 'es' ? 'Ajustes' : 'Settings',
+                      style: TextStyle(color: Colors.grey.shade700),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(200, 44),
+                      backgroundColor: Colors.grey.shade200,
+                      elevation: 0,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 20),
               ],
             ),
@@ -221,31 +238,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             );
           }),
-          const SizedBox(height: 16),
-
-          // Settings button → opens dialog
-          GestureDetector(
-            onTap: () => _showSettingsDialog(context, langCode),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  Icon(PhosphorIconsFill.gear, size: 22, color: Colors.grey.shade600),
-                  const SizedBox(width: 12),
-                  Text(
-                    langCode == 'es' ? 'Ajustes' : 'Settings',
-                    style: GoogleFonts.spaceGrotesk(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
-                  const Spacer(),
-                  Icon(PhosphorIconsBold.caretRight, size: 16, color: Colors.grey.shade400),
-                ],
-              ),
-            ),
-          ),
           const SizedBox(height: 16),
 
           // Ranking button
@@ -442,33 +434,39 @@ class _SettingsDialogState extends State<_SettingsDialog> {
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: iconColor),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade500),
-                ),
-              ],
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onChanged(!value),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 56),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: iconColor),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade500),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Switch.adaptive(
-            value: value,
-            onChanged: onChanged,
-            activeTrackColor: AppTheme.accentBlue,
-          ),
-        ],
+            Icon(
+              value ? PhosphorIconsFill.checkCircle : PhosphorIconsBold.circle,
+              size: 28,
+              color: value ? AppTheme.accentBlue : Colors.grey.shade400,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -650,7 +648,7 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'v1.5.0',
+              'v1.6.0',
               style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade400),
             ),
           ),
