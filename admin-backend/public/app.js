@@ -33,6 +33,81 @@ async function deleteJSON(url) {
   if (!res.ok) throw new Error(res.status);
 }
 
+// --- Toast + loader helpers ---
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.borderColor = isError ? 'rgba(248,81,73,0.6)' : 'var(--glass-border)';
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+let _loaderEl = null;
+function showLoader(msg = 'Loading…') {
+  if (!_loaderEl) {
+    _loaderEl = document.createElement('div');
+    _loaderEl.className = 'loader-overlay';
+    _loaderEl.innerHTML = '<div class="spinner"></div><div class="loader-msg"></div>';
+    document.body.appendChild(_loaderEl);
+  }
+  _loaderEl.querySelector('.loader-msg').textContent = msg;
+  _loaderEl.style.display = 'flex';
+}
+function hideLoader() { if (_loaderEl) _loaderEl.style.display = 'none'; }
+
+function startBtnSpinner(btn, busyText = 'Saving…') {
+  if (!btn) return;
+  btn.dataset.originalText = btn.textContent;
+  btn.innerHTML = '<span class="spinner sm"></span>' + busyText;
+  btn.classList.add('busy');
+  btn.disabled = true;
+}
+function stopBtnSpinner(btn) {
+  if (!btn) return;
+  btn.textContent = btn.dataset.originalText || 'Save';
+  btn.classList.remove('busy');
+  btn.disabled = false;
+}
+
+// --- Mobile drawer ---
+(function initDrawer() {
+  const btn = document.getElementById('menuBtn');
+  const backdrop = document.getElementById('drawerBackdrop');
+  if (!btn || !backdrop) return;
+  btn.onclick = () => document.body.classList.toggle('drawer-open');
+  backdrop.onclick = () => document.body.classList.remove('drawer-open');
+
+  // Mirror the tab bar as a stacked list inside every sidebar (mobile-only via CSS)
+  document.querySelectorAll('.tab-content .sidebar').forEach(sidebar => {
+    const list = document.createElement('div');
+    list.className = 'mobile-tab-list';
+    document.querySelectorAll('.tab-bar .tab').forEach(tab => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = tab.textContent;
+      b.dataset.tab = tab.dataset.tab;
+      if (tab.classList.contains('active')) b.classList.add('active');
+      b.onclick = () => {
+        tab.click();
+        document.body.classList.remove('drawer-open');
+      };
+      list.appendChild(b);
+    });
+    sidebar.prepend(list);
+  });
+
+  // Keep all mirror lists in sync when any tab is activated
+  document.querySelectorAll('.tab-bar .tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.mobile-tab-list button').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === tab.dataset.tab);
+      });
+    });
+  });
+})();
+
 // ============================================================
 // LOCATIONS
 // ============================================================
@@ -43,17 +118,69 @@ const fNameEn = document.getElementById('locNameEn'), fNameEs = document.getElem
 const fZone = document.getElementById('locZone');
 const fLat = document.getElementById('locLat'), fLng = document.getElementById('locLng');
 const fImage = document.getElementById('locImage'), fThumb = document.getElementById('locThumbnail');
+const fOriginal = document.getElementById('locOriginal');
+const fOriginalW = document.getElementById('locOriginalW');
+const fOriginalH = document.getElementById('locOriginalH');
+const fActive = document.getElementById('locActive');
 const fTipEn = document.getElementById('locTipEn'), fTipEs = document.getElementById('locTipEs');
 const fTipNormalEn = document.getElementById('locTipNormalEn'), fTipNormalEs = document.getElementById('locTipNormalEs');
 const fTipHardEn = document.getElementById('locTipHardEn'), fTipHardEs = document.getElementById('locTipHardEs');
 const fTipExpertEn = document.getElementById('locTipExpertEn'), fTipExpertEs = document.getElementById('locTipExpertEs');
 const fRequiredPoints = document.getElementById('locRequiredPoints');
-const fCropX = document.getElementById('locCropX'), fCropY = document.getElementById('locCropY');
-const fCropW = document.getElementById('locCropW'), fCropH = document.getElementById('locCropH');
 const fGmapsLink = document.getElementById('locGmapsLink');
 const fImageUpload = document.getElementById('locImageUpload');
-const imgPreviewC = document.getElementById('imagePreviewContainer');
-const imgPreview = document.getElementById('imagePreview');
+const fReplaceUpload = document.getElementById('locReplaceUpload');
+const uploadProgressEl = document.getElementById('uploadProgress');
+const pixelationWarningEl = document.getElementById('pixelationWarning');
+
+// Per-difficulty editor state
+const DEFAULT_CROPS = {
+  '3': { x: 0,    y: 0,    w: 1,    h: 1    },
+  '4': { x: 0.1,  y: 0.1,  w: 0.8,  h: 0.8  },
+  '5': { x: 0.13, y: 0.13, w: 0.74, h: 0.74 },
+  '6': { x: 0.15, y: 0.15, w: 0.7,  h: 0.7  },
+};
+const DIFF_META = {
+  '3': { label: 'EASY',   color: '#238636' },
+  '4': { label: 'NORMAL', color: '#d29922' },
+  '5': { label: 'HARD',   color: '#58a6ff' },
+  '6': { label: 'EXPERT', color: '#bc8cff' },
+};
+let cropsByDifficulty = JSON.parse(JSON.stringify(DEFAULT_CROPS));
+let activeDifficulty = '3';
+const SENTINEL = '—';
+
+function setActiveDifficulty(diff) {
+  activeDifficulty = String(diff);
+  locForm.dataset.diff = activeDifficulty;
+  document.querySelectorAll('.crop-preview-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.diff === activeDifficulty);
+  });
+  cropToolDraw();
+  updatePixelationWarning();
+}
+
+function setActiveLang(lang) {
+  locForm.dataset.lang = lang;
+  document.querySelectorAll('#langToggle button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+}
+
+document.querySelectorAll('#langToggle button').forEach(btn => {
+  btn.onclick = () => setActiveLang(btn.dataset.lang);
+});
+
+document.querySelectorAll('.crop-preview-item').forEach(el => {
+  el.onclick = () => setActiveDifficulty(el.dataset.diff);
+});
+
+document.getElementById('copyIdBtn').onclick = () => {
+  if (!fId.value) return;
+  navigator.clipboard.writeText(fId.value)
+    .then(() => showToast('ID copied'))
+    .catch(() => showToast('Copy failed', true));
+};
 
 // --- Map picker (Leaflet + OpenStreetMap) ---
 let locMap = null, locMarker = null;
@@ -115,28 +242,69 @@ fZone.addEventListener('change', () => {
   populatePointsDropdown(fZone.value, parseInt(fRequiredPoints.value) || 0);
 });
 
-fNameEn.addEventListener('input', () => {
-  if (!fId.disabled) {
-    fId.value = fNameEn.value.toLowerCase().trim()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+// Multi-file upload → batch-stub (the ONLY way to create new locations)
+fImageUpload.addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  const label = document.querySelector('.upload-label');
+  label.classList.add('busy');
+  uploadProgressEl.hidden = false;
+  uploadProgressEl.textContent = `0/${files.length} uploading…`;
+  const uploaded = [];
+  try {
+    for (let i = 0; i < files.length; i++) {
+      const fd = new FormData();
+      fd.append('image', files[i]);
+      const r = await fetch(API_BASE + '/api/upload', { method: 'POST', body: fd });
+      if (!r.ok) throw new Error('upload failed (' + r.status + ')');
+      uploaded.push(await r.json());
+      uploadProgressEl.textContent = `${i + 1}/${files.length} uploading…`;
+    }
+    uploadProgressEl.textContent = 'Creating locations…';
+    const r = await fetch(API_BASE + '/api/locations/batch-stub', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uploads: uploaded }),
+    });
+    if (!r.ok) throw new Error('batch-stub failed (' + r.status + ')');
+    const { rows } = await r.json();
+    locations = [...(rows || []), ...locations];
+    renderLocList();
+    if (rows && rows.length) openLocEditor(rows[0].id);
+    showToast(`${rows.length} location(s) created (inactive)`);
+  } catch (err) {
+    showToast('Upload error: ' + err.message, true);
+  } finally {
+    label.classList.remove('busy');
+    uploadProgressEl.hidden = true;
+    fImageUpload.value = '';
   }
 });
 
-fImageUpload.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const fd = new FormData(); fd.append('image', file);
+// Replace image on the currently-edited location
+fReplaceUpload.addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const fd = new FormData();
+  fd.append('image', f);
+  showLoader('Uploading…');
   try {
     const r = await fetch(API_BASE + '/api/upload', { method: 'POST', body: fd });
+    if (!r.ok) throw new Error('upload failed');
     const d = await r.json();
-    if (d.url) {
-      fImage.value = d.url;
-      fThumb.value = d.thumbnail || d.url;
-      imgPreview.src = d.url; imgPreviewC.style.display = 'block';
-      cropToolLoad(d.url);
-    }
-  } catch { alert('Error uploading image'); }
+    fImage.value = d.url || '';
+    fThumb.value = d.thumbnail || d.url || '';
+    fOriginal.value = d.original || '';
+    fOriginalW.value = d.width || 0;
+    fOriginalH.value = d.height || 0;
+    cropToolLoad(fImage.value);
+    showToast('Image replaced — remember to Save');
+  } catch {
+    showToast('Upload error', true);
+  } finally {
+    hideLoader();
+    fReplaceUpload.value = '';
+  }
 });
 
 function renderLocList() {
@@ -144,8 +312,14 @@ function renderLocList() {
   el.innerHTML = '';
   locations.forEach(loc => {
     const div = document.createElement('div');
-    div.className = `item ${currentEditId === loc.id ? 'active' : ''}`;
-    div.innerHTML = `<strong>${loc.name.es || loc.id}</strong><small>${loc.region}</small>`;
+    const isInactive = loc.active === false;
+    div.className = 'item' +
+      (isInactive ? ' inactive' : '') +
+      (currentEditId === loc.id ? ' active' : '');
+    const displayName = (loc.name?.es && loc.name.es !== SENTINEL) ? loc.name.es : loc.id;
+    const displayRegion = (loc.region && loc.region !== SENTINEL) ? loc.region : '—';
+    const badge = isInactive ? ' <span class="inactive-badge">inactive</span>' : '';
+    div.innerHTML = `<strong>${esc(displayName)}</strong><small>${esc(displayRegion)}${badge}</small>`;
     div.onclick = () => openLocEditor(loc.id);
     el.appendChild(div);
   });
@@ -160,49 +334,44 @@ function openLocEditor(id) {
   const loc = locations.find(l => l.id === id);
   if (!loc) return;
   locForm.classList.remove('hidden'); locEmpty.classList.add('hidden');
-  fId.value = loc.id; fId.disabled = true;
-  fNameEn.value = loc.name.en || ''; fNameEs.value = loc.name.es || '';
-  fZone.value = loc.region || '';
-  populatePointsDropdown(loc.region || '', loc.requiredPoints || 0);
+  fId.value = loc.id;
+  // Strip sentinel placeholders so users see an empty field to fill in
+  fNameEn.value = loc.name?.en === SENTINEL ? '' : (loc.name?.en || '');
+  fNameEs.value = loc.name?.es === SENTINEL ? '' : (loc.name?.es || '');
+  const region = loc.region === SENTINEL ? '' : (loc.region || '');
+  fZone.value = region || (zones[0]?.id || '');
+  populatePointsDropdown(fZone.value, loc.requiredPoints || 0);
   fRequiredPoints.value = loc.requiredPoints || 0;
-  fLat.value = loc.latitude || 0; fLng.value = loc.longitude || 0;
+  fLat.value = loc.latitude || -33.4569;
+  fLng.value = loc.longitude || -70.6483;
   initMap();
   setTimeout(() => { locMap.invalidateSize(); updateMapFromFields(); }, 100);
-  fImage.value = loc.image || ''; fThumb.value = loc.thumbnail || '';
-  fTipEn.value = loc.tip.en || ''; fTipEs.value = loc.tip.es || '';
+  fImage.value = loc.image || '';
+  fThumb.value = loc.thumbnail || '';
+  fOriginal.value = loc.originalImage || '';
+  fOriginalW.value = loc.originalWidth || 0;
+  fOriginalH.value = loc.originalHeight || 0;
+  fActive.checked = loc.active !== false;
+  fTipEn.value = loc.tip?.en || ''; fTipEs.value = loc.tip?.es || '';
   const tbd = loc.tipsByDifficulty || {};
   fTipNormalEn.value = tbd['4']?.en || ''; fTipNormalEs.value = tbd['4']?.es || '';
   fTipHardEn.value   = tbd['5']?.en || ''; fTipHardEs.value   = tbd['5']?.es || '';
   fTipExpertEn.value = tbd['6']?.en || ''; fTipExpertEs.value = tbd['6']?.es || '';
-  const crop = loc.crop || {};
-  fCropX.value = crop.x ?? 0.15; fCropY.value = crop.y ?? 0.15;
-  fCropW.value = crop.w ?? 0.7; fCropH.value = crop.h ?? 0.7;
-  if (fImage.value) { imgPreview.src = fImage.value; cropToolLoad(fImage.value); }
-  else { imgPreviewC.style.display = 'none'; cropToolHide(); }
+  // Load per-difficulty crops (fall back to sensible defaults)
+  const src = loc.cropsByDifficulty || {};
+  cropsByDifficulty = {
+    '3': { ...DEFAULT_CROPS['3'], ...(src['3'] || {}) },
+    '4': { ...DEFAULT_CROPS['4'], ...(src['4'] || {}) },
+    '5': { ...DEFAULT_CROPS['5'], ...(src['5'] || {}) },
+    '6': { ...DEFAULT_CROPS['6'], ...(src['6'] || loc.crop || {}) },
+  };
+  setActiveLang('es');
+  setActiveDifficulty('3');
+  if (fImage.value) cropToolLoad(fImage.value);
+  else cropToolHide();
   fImageUpload.value = '';
   renderLocList();
 }
-
-document.getElementById('addLocationBtn').onclick = () => {
-  currentEditId = 'new_' + Date.now();
-  locForm.classList.remove('hidden'); locEmpty.classList.add('hidden');
-  fId.value = ''; fId.disabled = false;
-  fNameEn.value = ''; fNameEs.value = '';
-  fZone.value = zones.length ? zones[0].id : '';
-  populatePointsDropdown(fZone.value, 0);
-  fRequiredPoints.value = 0;
-  fLat.value = -33.4569; fLng.value = -70.6483;
-  initMap();
-  setTimeout(() => { locMap.invalidateSize(); updateMapFromFields(); }, 100);
-  fImage.value = ''; fThumb.value = ''; fTipEn.value = ''; fTipEs.value = '';
-  fTipNormalEn.value = ''; fTipNormalEs.value = '';
-  fTipHardEn.value = ''; fTipHardEs.value = '';
-  fTipExpertEn.value = ''; fTipExpertEs.value = '';
-  fCropX.value = 0.15; fCropY.value = 0.15; fCropW.value = 0.7; fCropH.value = 0.7;
-  imgPreviewC.style.display = 'none'; fImageUpload.value = '';
-  cropToolHide();
-  renderLocList();
-};
 
 document.getElementById('deleteLocationBtn').onclick = async () => {
   if (!confirm('Delete this location?')) return;
@@ -215,33 +384,50 @@ document.getElementById('deleteLocationBtn').onclick = async () => {
 
 locForm.onsubmit = async (e) => {
   e.preventDefault();
-  const isNew = !fId.disabled;
+  const saveBtn = document.getElementById('saveLocBtn');
   const id = fId.value.trim();
+  if (!id) { showToast('Missing ID', true); return; }
+  if (!fNameEn.value.trim() || !fNameEs.value.trim()) {
+    showToast('Name EN and ES are required', true); return;
+  }
+  if (!fTipEn.value.trim() || !fTipEs.value.trim()) {
+    showToast('Easy tip (EN and ES) is required', true); return;
+  }
   const obj = {
-    id, name: { en: fNameEn.value, es: fNameEs.value },
+    id,
+    name: { en: fNameEn.value.trim(), es: fNameEs.value.trim() },
     region: fZone.value,
     requiredPoints: parseInt(fRequiredPoints.value) || 0,
-    latitude: parseFloat(fLat.value), longitude: parseFloat(fLng.value),
-    image: fImage.value, thumbnail: fThumb.value,
-    tip: { en: fTipEn.value, es: fTipEs.value },
+    latitude: parseFloat(fLat.value),
+    longitude: parseFloat(fLng.value),
+    image: fImage.value,
+    thumbnail: fThumb.value,
+    originalImage: fOriginal.value,
+    originalWidth: parseInt(fOriginalW.value) || 0,
+    originalHeight: parseInt(fOriginalH.value) || 0,
+    active: fActive.checked,
+    tip: { en: fTipEn.value.trim(), es: fTipEs.value.trim() },
     tipsByDifficulty: {
-      '4': { en: fTipNormalEn.value, es: fTipNormalEs.value },
-      '5': { en: fTipHardEn.value,   es: fTipHardEs.value   },
-      '6': { en: fTipExpertEn.value, es: fTipExpertEs.value },
+      '4': { en: fTipNormalEn.value.trim(), es: fTipNormalEs.value.trim() },
+      '5': { en: fTipHardEn.value.trim(),   es: fTipHardEs.value.trim()   },
+      '6': { en: fTipExpertEn.value.trim(), es: fTipExpertEs.value.trim() },
     },
-    crop: { x: parseFloat(fCropX.value), y: parseFloat(fCropY.value), w: parseFloat(fCropW.value), h: parseFloat(fCropH.value) },
-    difficulty: [3, 4, 5, 6]
+    cropsByDifficulty,
+    crop: cropsByDifficulty['6'], // legacy mirror (server also enforces this)
+    difficulty: [3, 4, 5, 6],
   };
-  if (isNew) {
-    if (locations.find(l => l.id === id)) { alert('ID already exists!'); return; }
-    await postJSON(API_BASE + '/api/locations', obj);
-    locations.push(obj); fId.disabled = true; currentEditId = id;
-  } else {
+  startBtnSpinner(saveBtn, 'Saving…');
+  try {
     await putJSON(API_BASE + '/api/locations/' + id, obj);
     const idx = locations.findIndex(l => l.id === id);
-    if (idx > -1) locations[idx] = obj;
+    if (idx > -1) locations[idx] = { ...locations[idx], ...obj };
+    renderLocList();
+    showToast('Saved');
+  } catch (err) {
+    showToast('Save error: ' + err.message, true);
+  } finally {
+    stopBtnSpinner(saveBtn);
   }
-  renderLocList();
 };
 
 // ============================================================
@@ -449,29 +635,19 @@ let cropImg = null;
 let cropScale = 1;
 let cropDrag = null;
 
-// Difficulty interpolation (mirrors Flutter getCropForDifficulty)
-// t=0 → full image (easy), t=1 → admin crop (expert)
-function interpolateCrop(t) {
-  const cx = parseFloat(fCropX.value) || 0;
-  const cy = parseFloat(fCropY.value) || 0;
-  const cw = parseFloat(fCropW.value) || 0.7;
-  const ch = parseFloat(fCropH.value) || 0.7;
-  return {
-    x: cx * t,
-    y: cy * t,
-    w: 1 - (1 - cw) * t,
-    h: 1 - (1 - ch) * t,
-  };
-}
-
 // Phone aspect ratio for crop region (9:16 portrait)
 const PHONE_RATIO = 16 / 9; // h/w in normalized coords relative to image
+
+function getActiveCrop() { return cropsByDifficulty[activeDifficulty]; }
+function setActiveCrop(x, y, w, h) {
+  cropsByDifficulty[activeDifficulty] = { x, y, w, h };
+}
 
 function cropToolHide() {
   cropContainer.style.display = 'none';
   cropPreviews.style.display = 'none';
   cropNoImage.style.display = 'block';
-  imgPreviewC.style.display = 'none';
+  pixelationWarningEl.hidden = true;
   cropImg = null;
 }
 
@@ -481,13 +657,17 @@ function cropToolLoad(url) {
   img.onload = () => {
     cropImg = img;
     cropNoImage.style.display = 'none';
-    imgPreviewC.style.display = 'none'; // hide redundant preview
     cropContainer.style.display = 'block';
     cropPreviews.style.display = 'block';
+    // If this is a freshly uploaded image and original dimensions are unknown,
+    // fall back to natural size so the pixelation warning still works.
+    if (!parseInt(fOriginalW.value)) fOriginalW.value = img.naturalWidth || 0;
+    if (!parseInt(fOriginalH.value)) fOriginalH.value = img.naturalHeight || 0;
     cropToolResize();
     cropToolDraw();
+    updatePixelationWarning();
   };
-  img.onerror = () => { cropToolHide(); if (fImage.value) { imgPreviewC.style.display = 'block'; } };
+  img.onerror = () => cropToolHide();
   img.src = url;
 }
 
@@ -512,11 +692,8 @@ function cropToolResize() {
 function cropGetRect() {
   const cw = cropCanvas.width / cropScale;
   const ch = cropCanvas.height / cropScale;
-  const x = parseFloat(fCropX.value) || 0;
-  const y = parseFloat(fCropY.value) || 0;
-  const w = parseFloat(fCropW.value) || 0.5;
-  const h = parseFloat(fCropH.value) || 0.5;
-  return { px: x * cw, py: y * ch, pw: w * cw, ph: h * ch, cw, ch };
+  const c = getActiveCrop();
+  return { px: c.x * cw, py: c.y * ch, pw: c.w * cw, ph: c.h * ch, cw, ch };
 }
 
 function cropToolDraw() {
@@ -534,14 +711,16 @@ function cropToolDraw() {
   cropCtx.fillRect(0, r.py, r.px, r.ph);
   cropCtx.fillRect(r.px + r.pw, r.py, cw - r.px - r.pw, r.ph);
 
-  // Border
-  cropCtx.strokeStyle = '#238636';
+  const meta = DIFF_META[activeDifficulty];
+
+  // Border (colored by active difficulty)
+  cropCtx.strokeStyle = meta.color;
   cropCtx.lineWidth = 2;
   cropCtx.strokeRect(r.px, r.py, r.pw, r.ph);
 
   // Corner handles
   const hs = 8;
-  cropCtx.fillStyle = '#238636';
+  cropCtx.fillStyle = meta.color;
   for (const [cx, cy] of [[r.px, r.py], [r.px + r.pw, r.py], [r.px, r.py + r.ph], [r.px + r.pw, r.py + r.ph]]) {
     cropCtx.fillRect(cx - hs / 2, cy - hs / 2, hs, hs);
   }
@@ -560,10 +739,10 @@ function cropToolDraw() {
     cropCtx.stroke();
   }
 
-  // "EXPERT" label
-  cropCtx.fillStyle = '#bc8cff';
+  // Active difficulty label
+  cropCtx.fillStyle = meta.color;
   cropCtx.font = 'bold 11px Outfit, sans-serif';
-  cropCtx.fillText('EXPERT', r.px + 6, r.py + 16);
+  cropCtx.fillText(meta.label, r.px + 6, r.py + 16);
 
   // Draw difficulty preview thumbnails
   drawCropPreviews();
@@ -572,14 +751,13 @@ function cropToolDraw() {
 function drawCropPreviews() {
   if (!cropImg) return;
   const diffs = [
-    { id: 'prevEasy',   t: 0,     color: '#238636' },
-    { id: 'prevNormal', t: 1 / 3, color: '#d29922' },
-    { id: 'prevHard',   t: 2 / 3, color: '#58a6ff' },
-    { id: 'prevExpert', t: 1,     color: '#bc8cff' },
+    { id: 'prevEasy',   diff: '3' },
+    { id: 'prevNormal', diff: '4' },
+    { id: 'prevHard',   diff: '5' },
+    { id: 'prevExpert', diff: '6' },
   ];
   const natW = cropImg.naturalWidth;
   const natH = cropImg.naturalHeight;
-  // Fixed phone-shaped preview: 80px wide, 9:16 ratio
   const prevW = 80;
   const prevH = Math.round(prevW * PHONE_RATIO);
   const dpr = window.devicePixelRatio || 1;
@@ -587,7 +765,7 @@ function drawCropPreviews() {
   for (const d of diffs) {
     const canvas = document.getElementById(d.id);
     if (!canvas) continue;
-    const crop = interpolateCrop(d.t);
+    const crop = cropsByDifficulty[d.diff] || DEFAULT_CROPS[d.diff];
     const sx = crop.x * natW;
     const sy = crop.y * natH;
     const sw = crop.w * natW;
@@ -601,10 +779,25 @@ function drawCropPreviews() {
     ctx.fillStyle = '#111';
     ctx.fillRect(0, 0, prevW, prevH);
     ctx.drawImage(cropImg, sx, sy, sw, sh, 0, 0, prevW, prevH);
-    // Rounded border
-    ctx.strokeStyle = d.color;
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = DIFF_META[d.diff].color;
+    ctx.lineWidth = d.diff === activeDifficulty ? 3 : 1.5;
     ctx.strokeRect(1, 1, prevW - 2, prevH - 2);
+  }
+}
+
+function updatePixelationWarning() {
+  if (!pixelationWarningEl) return;
+  const origW = parseInt(fOriginalW.value) || 0;
+  if (origW === 0) { pixelationWarningEl.hidden = true; return; }
+  const crop = getActiveCrop();
+  const cropPx = Math.round((crop.w || 0) * origW);
+  const THRESH = 400;
+  if (cropPx > 0 && cropPx < THRESH) {
+    pixelationWarningEl.textContent =
+      `Crop width (${cropPx}px) is smaller than the thumbnail target (${THRESH}px). The image may look pixelated at this difficulty.`;
+    pixelationWarningEl.hidden = false;
+  } else {
+    pixelationWarningEl.hidden = true;
   }
 }
 
@@ -659,11 +852,14 @@ function cropSetValues(x, y, w, h) {
   }
   x = Math.max(0, Math.min(1 - w, x));
   y = Math.max(0, Math.min(1 - h, y));
-  fCropX.value = x.toFixed(2);
-  fCropY.value = y.toFixed(2);
-  fCropW.value = w.toFixed(2);
-  fCropH.value = h.toFixed(2);
+  setActiveCrop(
+    parseFloat(x.toFixed(4)),
+    parseFloat(y.toFixed(4)),
+    parseFloat(w.toFixed(4)),
+    parseFloat(h.toFixed(4)),
+  );
   cropToolDraw();
+  updatePixelationWarning();
 }
 
 function cropStartDrag(e) {
@@ -685,10 +881,7 @@ function cropStartDrag(e) {
   }
   cropDrag = {
     type: hit, startX: x, startY: y,
-    origCrop: {
-      x: parseFloat(fCropX.value), y: parseFloat(fCropY.value),
-      w: parseFloat(fCropW.value), h: parseFloat(fCropH.value),
-    }
+    origCrop: { ...getActiveCrop() },
   };
   if (hit === 'move') cropCanvas.style.cursor = 'grabbing';
 }
@@ -876,20 +1069,27 @@ document.getElementById('notifyTestersBtn').onclick = async () => {
 // INIT
 // ============================================================
 async function init() {
-  const [locResult, zonesResult, trophiesResult, scoringResult, testersResult] = await Promise.all([
-    fetchJSON(API_BASE + '/api/locations'),
-    fetchJSON(API_BASE + '/api/zones'),
-    fetchJSON(API_BASE + '/api/trophies'),
-    fetchJSON(API_BASE + '/api/scoring'),
-    fetchJSON(API_BASE + '/api/testers'),
-  ]);
-  // Support both paginated {data:[...]} and legacy array responses
-  locations = Array.isArray(locResult) ? locResult : (locResult.data || []);
-  zones = zonesResult;
-  trophies = trophiesResult;
-  scoring = scoringResult;
-  testers = testersResult;
-  renderLocList(); renderZoneList(); renderTrophyList(); renderTesterTable();
-  populateZoneDropdown(); populateScoring();
+  showLoader('Loading…');
+  try {
+    const [locResult, zonesResult, trophiesResult, scoringResult, testersResult] = await Promise.all([
+      fetchJSON(API_BASE + '/api/locations?all=1&limit=1000'),
+      fetchJSON(API_BASE + '/api/zones'),
+      fetchJSON(API_BASE + '/api/trophies'),
+      fetchJSON(API_BASE + '/api/scoring'),
+      fetchJSON(API_BASE + '/api/testers'),
+    ]);
+    // Support both paginated {data:[...]} and legacy array responses
+    locations = Array.isArray(locResult) ? locResult : (locResult.data || []);
+    zones = zonesResult;
+    trophies = trophiesResult;
+    scoring = scoringResult;
+    testers = testersResult;
+    renderLocList(); renderZoneList(); renderTrophyList(); renderTesterTable();
+    populateZoneDropdown(); populateScoring();
+  } catch (e) {
+    showToast('Load failed: ' + e.message, true);
+  } finally {
+    hideLoader();
+  }
 }
 init();

@@ -10,8 +10,11 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
+    <div id="drawerBackdrop"></div>
+    <div id="toast"></div>
     <div class="glass-container">
         <header>
+            <button id="menuBtn" class="icon-btn mobile-only" aria-label="Menu">☰</button>
             <h1>Chile Puzzle Admin</h1>
             <nav class="tab-bar">
                 <button class="tab active" data-tab="locations">Locations</button>
@@ -24,29 +27,44 @@
 
         <!-- LOCATIONS TAB -->
         <div class="dashboard tab-content active" data-tab="locations">
-            <aside class="sidebar">
-                <button id="addLocationBtn" class="btn primary">+ Add Location</button>
+            <aside class="sidebar" id="locSidebar">
+                <label for="locImageUpload" class="btn primary upload-label">
+                    <span class="upload-label-text">+ Upload image(s)</span>
+                </label>
+                <input type="file" id="locImageUpload" accept="image/*" multiple hidden>
+                <div id="uploadProgress" class="upload-progress" hidden></div>
                 <div id="locationList" class="item-list"></div>
             </aside>
             <main class="editor-area">
-                <form id="editorForm" class="hidden">
-                    <h2>Edit Location</h2>
-                    <div class="form-group">
-                        <label>ID (unique)</label>
-                        <input type="text" id="locId" placeholder="ej: valle_de_la_luna" required>
+                <form id="editorForm" class="hidden" data-lang="es" data-diff="3">
+                    <div class="editor-top-row">
+                        <h2>Edit Location</h2>
+                        <label class="active-toggle">
+                            <input type="checkbox" id="locActive">
+                            <span>Published</span>
+                        </label>
+                    </div>
+                    <div class="lang-toggle" id="langToggle">
+                        <button type="button" data-lang="es" class="active">ES</button>
+                        <button type="button" data-lang="en">EN</button>
+                    </div>
+                    <div class="form-group id-row">
+                        <label>ID <small style="opacity:0.7">(auto-generated)</small></label>
+                        <div class="id-copy-row">
+                            <input type="text" id="locId" disabled>
+                            <button type="button" id="copyIdBtn" class="icon-btn" title="Copy">⎘</button>
+                        </div>
                     </div>
                     <div class="grid-2">
-                        <div class="form-group"><label>Name (EN)</label><input type="text" id="locNameEn" required></div>
-                        <div class="form-group"><label>Name (ES)</label><input type="text" id="locNameEs" required></div>
-                    </div>
-                    <div class="grid-2">
+                        <div class="form-group lang-en"><label>Name (EN)</label><input type="text" id="locNameEn"></div>
+                        <div class="form-group lang-es"><label>Name (ES)</label><input type="text" id="locNameEs"></div>
                         <div class="form-group">
                             <label>Zone</label>
-                            <select id="locZone" required></select>
+                            <select id="locZone"></select>
                         </div>
                         <div class="form-group">
                             <label>Required Points to Unlock</label>
-                            <select id="locRequiredPoints" required></select>
+                            <select id="locRequiredPoints"></select>
                         </div>
                     </div>
                     <div class="grid-2">
@@ -55,71 +73,70 @@
                     </div>
                     <div id="locMap"></div>
                     <a id="locGmapsLink" href="#" target="_blank" rel="noopener" class="gmaps-link">Open in Google Maps ↗</a>
-                    <div class="form-group">
-                        <label>Image</label>
-                        <input type="file" id="locImageUpload" accept="image/*" style="background:rgba(0,0,0,0.5);">
-                        <input type="hidden" id="locImage">
-                        <input type="hidden" id="locThumbnail">
-                        <div id="imagePreviewContainer" style="margin-top:10px;display:none;">
-                            <img id="imagePreview" src="" alt="Preview" style="max-width:100%;max-height:200px;border-radius:8px;">
-                        </div>
+                    <input type="hidden" id="locImage">
+                    <input type="hidden" id="locThumbnail">
+                    <input type="hidden" id="locOriginal">
+                    <input type="hidden" id="locOriginalW" value="0">
+                    <input type="hidden" id="locOriginalH" value="0">
+                    <div class="form-group" style="margin:6px 0 0;">
+                        <label class="replace-image-label" for="locReplaceUpload" style="cursor:pointer;color:var(--accent);font-size:0.85rem;">↻ Replace image</label>
+                        <input type="file" id="locReplaceUpload" accept="image/*" hidden>
                     </div>
-                    <div class="grid-2">
-                        <div class="form-group"><label>Tip — Easy (base, EN)</label><textarea id="locTipEn" rows="2" maxlength="200" required></textarea></div>
-                        <div class="form-group"><label>Tip — Easy (base, ES)</label><textarea id="locTipEs" rows="2" maxlength="200" required></textarea></div>
-                    </div>
-                    <details style="margin:8px 0 16px;">
-                        <summary style="cursor:pointer;color:var(--text-secondary);font-size:0.9rem;">Override tips per difficulty (optional — defaults to Easy)</summary>
-                        <div class="grid-2" style="margin-top:10px;">
-                            <div class="form-group"><label>Tip — Normal (EN)</label><textarea id="locTipNormalEn" rows="2" maxlength="200"></textarea></div>
-                            <div class="form-group"><label>Tip — Normal (ES)</label><textarea id="locTipNormalEs" rows="2" maxlength="200"></textarea></div>
-                        </div>
-                        <div class="grid-2">
-                            <div class="form-group"><label>Tip — Hard (EN)</label><textarea id="locTipHardEn" rows="2" maxlength="200"></textarea></div>
-                            <div class="form-group"><label>Tip — Hard (ES)</label><textarea id="locTipHardEs" rows="2" maxlength="200"></textarea></div>
-                        </div>
-                        <div class="grid-2">
-                            <div class="form-group"><label>Tip — Expert (EN)</label><textarea id="locTipExpertEn" rows="2" maxlength="200"></textarea></div>
-                            <div class="form-group"><label>Tip — Expert (ES)</label><textarea id="locTipExpertEs" rows="2" maxlength="200"></textarea></div>
-                        </div>
-                    </details>
-                    <h3 style="margin-top:16px;font-size:14px;color:#888;">Crop — Hard Difficulty Focus Area</h3>
-                    <p class="crop-help">Drag to move. Drag edges/corners to resize. This defines the zoomed-in area for the hardest difficulty. Easier difficulties interpolate toward the full image.</p>
+
+                    <h3 class="section-heading">Per-difficulty crops & tips</h3>
+                    <p class="crop-help">Click a difficulty below to edit its crop + tip. Drag inside the canvas to move/resize the focus area.</p>
                     <div id="cropToolContainer" class="crop-tool" style="display:none;">
                         <canvas id="cropCanvas"></canvas>
                     </div>
-                    <div id="cropNoImage" style="color:var(--text-secondary);font-size:0.85rem;padding:1rem 0;">Upload or set an image URL first to use the visual crop tool.</div>
-                    <input type="hidden" id="locCropX" value="0.15">
-                    <input type="hidden" id="locCropY" value="0.15">
-                    <input type="hidden" id="locCropW" value="0.7">
-                    <input type="hidden" id="locCropH" value="0.7">
+                    <div id="cropNoImage" style="color:var(--text-secondary);font-size:0.85rem;padding:1rem 0;">Upload an image first to edit crops.</div>
+                    <div id="pixelationWarning" class="warning-bar" hidden></div>
                     <div id="cropPreviews" style="display:none;margin-top:12px;">
-                        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">Preview per difficulty:</p>
                         <div class="crop-preview-grid">
-                            <div class="crop-preview-item">
+                            <div class="crop-preview-item" data-diff="3">
                                 <canvas id="prevEasy"></canvas>
-                                <span class="crop-preview-label" style="color:#238636;">Easy (3 col)</span>
+                                <span class="crop-preview-label" style="color:#238636;">Easy</span>
                             </div>
-                            <div class="crop-preview-item">
+                            <div class="crop-preview-item" data-diff="4">
                                 <canvas id="prevNormal"></canvas>
-                                <span class="crop-preview-label" style="color:#d29922;">Normal (4 col)</span>
+                                <span class="crop-preview-label" style="color:#d29922;">Normal</span>
                             </div>
-                            <div class="crop-preview-item">
+                            <div class="crop-preview-item" data-diff="5">
                                 <canvas id="prevHard"></canvas>
-                                <span class="crop-preview-label" style="color:#58a6ff;">Hard (5 col)</span>
+                                <span class="crop-preview-label" style="color:#58a6ff;">Hard</span>
                             </div>
-                            <div class="crop-preview-item">
+                            <div class="crop-preview-item" data-diff="6">
                                 <canvas id="prevExpert"></canvas>
-                                <span class="crop-preview-label" style="color:#bc8cff;">Expert (6 col)</span>
+                                <span class="crop-preview-label" style="color:#bc8cff;">Expert</span>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Tip pairs — one visible at a time based on [data-lang] + [data-diff] -->
+                    <div class="tip-pairs">
+                        <div class="tip-pair" data-diff="3">
+                            <div class="form-group lang-en"><label>Tip — Easy (EN) <small>required</small></label><textarea id="locTipEn" rows="2" maxlength="200"></textarea></div>
+                            <div class="form-group lang-es"><label>Tip — Easy (ES) <small>required</small></label><textarea id="locTipEs" rows="2" maxlength="200"></textarea></div>
+                        </div>
+                        <div class="tip-pair" data-diff="4">
+                            <div class="form-group lang-en"><label>Tip — Normal (EN) <small>fallback: Easy</small></label><textarea id="locTipNormalEn" rows="2" maxlength="200"></textarea></div>
+                            <div class="form-group lang-es"><label>Tip — Normal (ES) <small>fallback: Easy</small></label><textarea id="locTipNormalEs" rows="2" maxlength="200"></textarea></div>
+                        </div>
+                        <div class="tip-pair" data-diff="5">
+                            <div class="form-group lang-en"><label>Tip — Hard (EN) <small>fallback: Easy</small></label><textarea id="locTipHardEn" rows="2" maxlength="200"></textarea></div>
+                            <div class="form-group lang-es"><label>Tip — Hard (ES) <small>fallback: Easy</small></label><textarea id="locTipHardEs" rows="2" maxlength="200"></textarea></div>
+                        </div>
+                        <div class="tip-pair" data-diff="6">
+                            <div class="form-group lang-en"><label>Tip — Expert (EN) <small>fallback: Easy</small></label><textarea id="locTipExpertEn" rows="2" maxlength="200"></textarea></div>
+                            <div class="form-group lang-es"><label>Tip — Expert (ES) <small>fallback: Easy</small></label><textarea id="locTipExpertEs" rows="2" maxlength="200"></textarea></div>
+                        </div>
+                    </div>
+
                     <div class="actions">
-                        <button type="submit" class="btn success">Save</button>
+                        <button type="submit" class="btn success" id="saveLocBtn">Save</button>
                         <button type="button" id="deleteLocationBtn" class="btn danger">Delete</button>
                     </div>
                 </form>
-                <div id="emptyState" class="empty-state"><p>Select or add a location.</p></div>
+                <div id="emptyState" class="empty-state"><p>Upload image(s) to create new locations, or pick one from the list.</p></div>
             </main>
         </div>
 
