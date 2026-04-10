@@ -38,7 +38,7 @@ class AudioService {
   /// Piece placed (any swap)
   static void playPiecePlaced() {
     if (_muted || _pieceSound == null) return;
-    _soloud.play(_pieceSound!, volume: 0.5);
+    _soloud.play(_pieceSound!);
   }
 
   /// Puzzle completed
