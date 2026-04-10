@@ -545,10 +545,10 @@ function cropToolDraw() {
     cropCtx.stroke();
   }
 
-  // "EASY" label
-  cropCtx.fillStyle = '#238636';
+  // "EXPERT" label
+  cropCtx.fillStyle = '#bc8cff';
   cropCtx.font = 'bold 11px Outfit, sans-serif';
-  cropCtx.fillText('EASY', r.px + 6, r.py + 16);
+  cropCtx.fillText('EXPERT', r.px + 6, r.py + 16);
 
   // Draw difficulty preview thumbnails
   drawCropPreviews();
