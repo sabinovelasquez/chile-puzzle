@@ -86,10 +86,14 @@ app.post('/api/locations', (req, res) => {
     db.prepare(`
       INSERT INTO locations
         (id, name_en, name_es, region, required_points, latitude, longitude,
-         image, thumbnail, tip_en, tip_es, crop_x, crop_y, crop_w, crop_h, difficulty)
+         image, thumbnail, tip_en, tip_es,
+         tip_normal_en, tip_normal_es, tip_hard_en, tip_hard_es, tip_expert_en, tip_expert_es,
+         crop_x, crop_y, crop_w, crop_h, difficulty)
       VALUES
         (@id, @name_en, @name_es, @region, @required_points, @latitude, @longitude,
-         @image, @thumbnail, @tip_en, @tip_es, @crop_x, @crop_y, @crop_w, @crop_h, @difficulty)
+         @image, @thumbnail, @tip_en, @tip_es,
+         @tip_normal_en, @tip_normal_es, @tip_hard_en, @tip_hard_es, @tip_expert_en, @tip_expert_es,
+         @crop_x, @crop_y, @crop_w, @crop_h, @difficulty)
     `).run(params);
     res.json({ success: true, id: obj.id });
   } catch (e) {
@@ -109,6 +113,9 @@ app.put('/api/locations/:id', (req, res) => {
       required_points = @required_points, latitude = @latitude, longitude = @longitude,
       image = @image, thumbnail = @thumbnail,
       tip_en = @tip_en, tip_es = @tip_es,
+      tip_normal_en = @tip_normal_en, tip_normal_es = @tip_normal_es,
+      tip_hard_en = @tip_hard_en, tip_hard_es = @tip_hard_es,
+      tip_expert_en = @tip_expert_en, tip_expert_es = @tip_expert_es,
       crop_x = @crop_x, crop_y = @crop_y, crop_w = @crop_w, crop_h = @crop_h,
       difficulty = @difficulty, updated_at = @updated_at
     WHERE id = @id

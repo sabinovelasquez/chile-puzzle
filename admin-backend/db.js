@@ -122,6 +122,18 @@ try {
   db.exec('ALTER TABLE scoring ADD COLUMN tester_spots INTEGER NOT NULL DEFAULT 100');
 }
 
+// Migrate: add per-difficulty tip overrides (fallback to tip_en/tip_es when empty)
+try {
+  db.prepare('SELECT tip_normal_en FROM locations LIMIT 0').get();
+} catch (_) {
+  db.exec("ALTER TABLE locations ADD COLUMN tip_normal_en TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE locations ADD COLUMN tip_normal_es TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE locations ADD COLUMN tip_hard_en   TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE locations ADD COLUMN tip_hard_es   TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE locations ADD COLUMN tip_expert_en TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE locations ADD COLUMN tip_expert_es TEXT NOT NULL DEFAULT ''");
+}
+
 // Ensure scoring has a default row
 const scoringRow = db.prepare('SELECT id FROM scoring WHERE id = 1').get();
 if (!scoringRow) {
@@ -141,6 +153,11 @@ function rowToLocation(row) {
     image: row.image,
     thumbnail: row.thumbnail,
     tip: { en: row.tip_en, es: row.tip_es },
+    tipsByDifficulty: {
+      '4': { en: row.tip_normal_en || '', es: row.tip_normal_es || '' },
+      '5': { en: row.tip_hard_en   || '', es: row.tip_hard_es   || '' },
+      '6': { en: row.tip_expert_en || '', es: row.tip_expert_es || '' },
+    },
     crop: { x: row.crop_x, y: row.crop_y, w: row.crop_w, h: row.crop_h },
     difficulty: JSON.parse(row.difficulty),
     createdAt: row.created_at,
@@ -148,6 +165,7 @@ function rowToLocation(row) {
 }
 
 function locationToParams(obj) {
+  const t = obj.tipsByDifficulty || {};
   return {
     id: obj.id,
     name_en: obj.name?.en || '',
@@ -160,6 +178,12 @@ function locationToParams(obj) {
     thumbnail: obj.thumbnail || obj.image || '',
     tip_en: obj.tip?.en || '',
     tip_es: obj.tip?.es || '',
+    tip_normal_en: t['4']?.en || '',
+    tip_normal_es: t['4']?.es || '',
+    tip_hard_en:   t['5']?.en || '',
+    tip_hard_es:   t['5']?.es || '',
+    tip_expert_en: t['6']?.en || '',
+    tip_expert_es: t['6']?.es || '',
     crop_x: obj.crop?.x ?? 0.15,
     crop_y: obj.crop?.y ?? 0.15,
     crop_w: obj.crop?.w ?? 0.7,
