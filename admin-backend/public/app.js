@@ -785,16 +785,26 @@ function drawCropPreviews() {
   }
 }
 
+// Puzzle renders fullscreen (BoxFit.contain) on device screens.
+// Most modern Android phones are FHD (1080px wide) — target that for crisp rendering.
+// We read dimensions from the loaded cropImg itself: that's the served 2000px-capped
+// JPEG (post-EXIF-rotation) — the exact image Flutter clients display — so the
+// warning is self-correcting for any legacy rows with stale originalWidth/Height.
+const FULLSCREEN_TARGET = 1080;
+
 function updatePixelationWarning() {
   if (!pixelationWarningEl) return;
-  const origW = parseInt(fOriginalW.value) || 0;
-  if (origW === 0) { pixelationWarningEl.hidden = true; return; }
+  if (!cropImg || !cropImg.naturalWidth) { pixelationWarningEl.hidden = true; return; }
+  const servedW = cropImg.naturalWidth;
+  const servedH = cropImg.naturalHeight;
   const crop = getActiveCrop();
-  const cropPx = Math.round((crop.w || 0) * origW);
-  const THRESH = 400;
-  if (cropPx > 0 && cropPx < THRESH) {
+  const cropPxW = Math.round((crop.w || 0) * servedW);
+  const cropPxH = Math.round((crop.h || 0) * servedH);
+  // The limiting dimension is whichever is smaller — that's what pixelates first.
+  const cropPx = Math.min(cropPxW, cropPxH);
+  if (cropPx > 0 && cropPx < FULLSCREEN_TARGET) {
     pixelationWarningEl.textContent =
-      `Crop width (${cropPx}px) is smaller than the thumbnail target (${THRESH}px). The image may look pixelated at this difficulty.`;
+      `Crop is ${cropPxW}×${cropPxH}px — below the ${FULLSCREEN_TARGET}px target for crisp fullscreen rendering on FHD devices.`;
     pixelationWarningEl.hidden = false;
   } else {
     pixelationWarningEl.hidden = true;

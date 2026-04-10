@@ -326,9 +326,17 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
     const optimized = req.file.path + '.jpg';
 
     // Read dimensions from the original upload so the admin can warn
-    // when a crop would be smaller than the thumbnail resolution.
+    // when a crop would be too small to render crisply fullscreen.
+    // EXIF orientations 5-8 indicate 90°/270° rotation → swap W/H so the
+    // values match the rotated output we actually serve to clients.
     let meta = { width: 0, height: 0 };
-    try { meta = await sharp(req.file.path).rotate().metadata(); } catch (_) {}
+    try {
+      const raw = await sharp(req.file.path).metadata();
+      const o = raw.orientation || 1;
+      meta = (o >= 5 && o <= 8)
+        ? { width: raw.height || 0, height: raw.width || 0 }
+        : { width: raw.width || 0, height: raw.height || 0 };
+    } catch (_) {}
 
     // Preserve the untouched original (same extension as upload) for future re-crops.
     const origExt = path.extname(req.file.originalname).toLowerCase() || '.jpg';
