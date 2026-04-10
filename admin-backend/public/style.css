@@ -501,6 +501,7 @@ form[data-diff="6"] .tip-pair[data-diff="6"] { display: block; }
     gap: 0.5rem;
 }
 .warning-bar::before { content: "⚠"; font-size: 1rem; }
+.warning-bar[hidden] { display: none; }
 
 /* ---------- Clickable preview thumbnails ---------- */
 .crop-preview-item {
