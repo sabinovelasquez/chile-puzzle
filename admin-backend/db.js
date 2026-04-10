@@ -75,6 +75,19 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_lb_points ON leaderboard(total_points DESC);
 
+  CREATE TABLE IF NOT EXISTS location_leaderboard (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    location_id TEXT NOT NULL,
+    difficulty INTEGER NOT NULL,
+    initials TEXT NOT NULL CHECK(length(initials) = 3),
+    points INTEGER NOT NULL DEFAULT 0,
+    time_seconds INTEGER NOT NULL DEFAULT 0,
+    moves INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(location_id, difficulty, initials)
+  );
+  CREATE INDEX IF NOT EXISTS idx_loc_lb ON location_leaderboard(location_id, difficulty, points DESC, time_seconds ASC);
+
   CREATE TABLE IF NOT EXISTS testers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
