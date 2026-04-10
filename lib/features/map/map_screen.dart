@@ -12,7 +12,6 @@ import 'package:chile_puzzle/features/puzzle/puzzle_screen.dart';
 import 'package:chile_puzzle/features/profile/profile_screen.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 import 'package:chile_puzzle/features/auth/auth_service.dart';
-import 'package:chile_puzzle/core/services/audio_service.dart';
 import 'package:chile_puzzle/main.dart';
 
 // Difficulty label helpers
@@ -379,8 +378,7 @@ class _MapScreenState extends State<MapScreen> {
                 childAspectRatio: 1.5,
                 children: difficulties.map((diff) {
                   final key = '${loc.id}_$diff';
-                  final result = progress.completedPuzzles[key];
-                  final isCompleted = result != null;
+                  final isCompleted = progress.completedPuzzles.containsKey(key);
                   final color = _diffColors[diff] ?? AppTheme.accentBlue;
                   final label = labels[diff] ?? '$diff col';
                   final pts = _config.scoring.basePoints[diff] ?? 50;
@@ -425,7 +423,7 @@ class _MapScreenState extends State<MapScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  isCompleted ? '${result.points} pts' : '$diff cols · $pts pts',
+                                  '$diff cols · $pts pts',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 11, color: Colors.grey.shade600,
                                   ),
@@ -602,14 +600,11 @@ class _MapScreenState extends State<MapScreen> {
             label: _compactNumber(progress.totalPoints),
             labelColor: AppTheme.trophyGold,
           ),
-          // Sound toggle
+          // Settings
           IconButton(
-            onPressed: () async {
-              await AudioService.toggleMute();
-              setState(() {});
-            },
+            onPressed: () => showSettingsDialog(context),
             icon: Icon(
-              AudioService.isMuted ? PhosphorIconsBold.speakerSlash : PhosphorIconsBold.speakerHigh,
+              PhosphorIconsBold.gear,
               size: 20, color: Colors.grey.shade600,
             ),
             visualDensity: VisualDensity.compact,

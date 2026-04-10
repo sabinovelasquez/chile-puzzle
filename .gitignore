@@ -57,3 +57,6 @@ admin-backend/.env
 
 # Local deploy script
 deploy.sh
+
+# Audio source backups (for A/B auditioning, not shipped)
+.audio-originals/

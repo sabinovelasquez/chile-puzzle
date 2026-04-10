@@ -191,6 +191,19 @@ try {
   tx(rows);
 }
 
+// Migrate: add per-difficulty pre-rendered image paths.
+// These are generated server-side by sharp.extract() from the raw original,
+// so each difficulty gets its own high-resolution cropped JPEG instead of
+// relying on Flutter's runtime OverflowBox clipping of the single image.
+try {
+  db.prepare('SELECT image_d3 FROM locations LIMIT 0').get();
+} catch (_) {
+  db.exec("ALTER TABLE locations ADD COLUMN image_d3 TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE locations ADD COLUMN image_d4 TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE locations ADD COLUMN image_d5 TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE locations ADD COLUMN image_d6 TEXT NOT NULL DEFAULT ''");
+}
+
 // Ensure scoring has a default row
 const scoringRow = db.prepare('SELECT id FROM scoring WHERE id = 1').get();
 if (!scoringRow) {
@@ -226,6 +239,12 @@ function rowToLocation(row) {
       '5': { x: row.crop_hard_x,   y: row.crop_hard_y,   w: row.crop_hard_w,   h: row.crop_hard_h   },
       '6': { x: row.crop_expert_x, y: row.crop_expert_y, w: row.crop_expert_w, h: row.crop_expert_h },
     },
+    imagesByDifficulty: {
+      '3': row.image_d3 || '',
+      '4': row.image_d4 || '',
+      '5': row.image_d5 || '',
+      '6': row.image_d6 || '',
+    },
     difficulty: JSON.parse(row.difficulty),
     createdAt: row.created_at,
   };
@@ -234,6 +253,7 @@ function rowToLocation(row) {
 function locationToParams(obj) {
   const t = obj.tipsByDifficulty || {};
   const c = obj.cropsByDifficulty || {};
+  const i = obj.imagesByDifficulty || {};
   const defCrop = { x: 0.15, y: 0.15, w: 0.7, h: 0.7 };
   const easy   = c['3'] || { x: 0, y: 0, w: 1, h: 1 };
   const normal = c['4'] || defCrop;
@@ -268,6 +288,10 @@ function locationToParams(obj) {
     crop_normal_x: normal.x, crop_normal_y: normal.y, crop_normal_w: normal.w, crop_normal_h: normal.h,
     crop_hard_x: hard.x, crop_hard_y: hard.y, crop_hard_w: hard.w, crop_hard_h: hard.h,
     crop_expert_x: expert.x, crop_expert_y: expert.y, crop_expert_w: expert.w, crop_expert_h: expert.h,
+    image_d3: i['3'] || '',
+    image_d4: i['4'] || '',
+    image_d5: i['5'] || '',
+    image_d6: i['6'] || '',
     difficulty: JSON.stringify(obj.difficulty || [3, 4, 5, 6]),
   };
 }

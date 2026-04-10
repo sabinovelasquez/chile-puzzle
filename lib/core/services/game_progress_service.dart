@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chile_puzzle/core/models/player_progress.dart';
 import 'package:chile_puzzle/core/models/scoring_config.dart';
 import 'package:chile_puzzle/core/models/trophy_model.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/services/settings_service.dart';
+import 'package:chile_puzzle/core/services/mock_backend.dart';
 
 class CompletionResult {
   final int basePoints;
@@ -12,6 +14,9 @@ class CompletionResult {
   final int helpPenalty;
   final int totalPoints;
   final List<TrophyModel> newTrophies;
+  final bool isNewBest;
+  final int previousBest;
+  final int difficulty;
 
   const CompletionResult({
     required this.basePoints,
@@ -20,6 +25,9 @@ class CompletionResult {
     required this.helpPenalty,
     required this.totalPoints,
     required this.newTrophies,
+    required this.isNewBest,
+    required this.previousBest,
+    required this.difficulty,
   });
 }
 
@@ -65,28 +73,54 @@ class GameProgressService {
 
     int helpPenalty = 0;
     if (SettingsService.referenceImage) helpPenalty += 10;
+    if (SettingsService.edgeShine) helpPenalty += 5;
     if (SettingsService.lockInPlace) helpPenalty += 15;
     if (SettingsService.multiSelect) helpPenalty += 20;
     final total = (base + timeBonus + efficiencyBonus - helpPenalty).clamp(0, 999999);
 
-    if (helpPenalty == 0) {
+    final key = '${locationId}_$difficulty';
+    final existing = _progress.completedPuzzles[key];
+    final previousBest = existing?.points ?? 0;
+    final isFirstCompletion = existing == null;
+    final isNewBest = !isFirstCompletion && total > previousBest;
+
+    if (helpPenalty == 0 && isFirstCompletion) {
       _progress.noHelpCompleted++;
     }
 
-    final key = '${locationId}_$difficulty';
-    _progress.completedPuzzles[key] = PuzzleResult(
-      locationId: locationId,
-      difficulty: difficulty,
-      points: total,
-      timeSecs: timeSecs,
-      moves: moves,
-      completedAt: DateTime.now(),
-    );
-    _progress.totalPoints += total;
+    if (isFirstCompletion || total > previousBest) {
+      _progress.completedPuzzles[key] = PuzzleResult(
+        locationId: locationId,
+        difficulty: difficulty,
+        points: total,
+        timeSecs: timeSecs,
+        moves: moves,
+        completedAt: DateTime.now(),
+      );
+    }
+
+    // Delta-only accumulation: first completion adds `total`, replays only add
+    // (total - previousBest) when improving. Prevents score inflation on replay.
+    final delta = isFirstCompletion ? total : (total - previousBest).clamp(0, 999999);
+    _progress.totalPoints += delta;
 
     final newTrophies = checkNewTrophies(allTrophies, allLocations);
 
     await _save();
+
+    // Silent auto-submit to global leaderboard if the player has already
+    // opted in by storing initials (via a prior "enter ranking" tap).
+    // Fire-and-forget — never block UI on this, never surface errors.
+    final initials = _prefs.getString(_initialsKey);
+    if (initials != null && initials.length == 3) {
+      unawaited(MockBackend.submitScore(
+        initials: initials,
+        totalPoints: _progress.totalPoints,
+        puzzlesCompleted: _progress.completedCount,
+        timeSeconds: timeSecs,
+        moves: moves,
+      ));
+    }
 
     return CompletionResult(
       basePoints: base,
@@ -95,7 +129,14 @@ class GameProgressService {
       helpPenalty: helpPenalty,
       totalPoints: total,
       newTrophies: newTrophies,
+      isNewBest: isNewBest,
+      previousBest: previousBest,
+      difficulty: difficulty,
     );
+  }
+
+  static int? getBestPoints(String locationId, int difficulty) {
+    return _progress.completedPuzzles['${locationId}_$difficulty']?.points;
   }
 
   static List<TrophyModel> checkNewTrophies(

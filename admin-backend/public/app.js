@@ -132,6 +132,12 @@ const fImageUpload = document.getElementById('locImageUpload');
 const fReplaceUpload = document.getElementById('locReplaceUpload');
 const uploadProgressEl = document.getElementById('uploadProgress');
 const pixelationWarningEl = document.getElementById('pixelationWarning');
+const deleteOrigBtn = document.getElementById('deleteOrigBtn');
+
+function refreshDeleteOrigBtn() {
+  if (!deleteOrigBtn) return;
+  deleteOrigBtn.hidden = !fOriginal.value;
+}
 
 // Per-difficulty editor state
 const DEFAULT_CROPS = {
@@ -298,12 +304,38 @@ fReplaceUpload.addEventListener('change', async (e) => {
     fOriginalW.value = d.width || 0;
     fOriginalH.value = d.height || 0;
     cropToolLoad(fImage.value);
+    refreshDeleteOrigBtn();
     showToast('Image replaced — remember to Save');
   } catch {
     showToast('Upload error', true);
   } finally {
     hideLoader();
     fReplaceUpload.value = '';
+  }
+});
+
+// Delete the raw original file for the current location.
+// Pre-rendered per-difficulty images stay intact; re-cropping later
+// requires a fresh upload.
+deleteOrigBtn.addEventListener('click', async () => {
+  if (!currentEditId || !fOriginal.value) return;
+  const ok = confirm(
+    'Delete the raw original file for this location?\n\n' +
+    'The per-difficulty images stay intact, but re-cropping later will require a new upload.'
+  );
+  if (!ok) return;
+  try {
+    const r = await fetch(API_BASE + '/api/locations/' + currentEditId + '/original', {
+      method: 'DELETE',
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    fOriginal.value = '';
+    const idx = locations.findIndex(l => l.id === currentEditId);
+    if (idx > -1) locations[idx].originalImage = '';
+    refreshDeleteOrigBtn();
+    showToast('Original file deleted');
+  } catch (err) {
+    showToast('Delete error: ' + err.message, true);
   }
 });
 
@@ -351,6 +383,7 @@ function openLocEditor(id) {
   fOriginal.value = loc.originalImage || '';
   fOriginalW.value = loc.originalWidth || 0;
   fOriginalH.value = loc.originalHeight || 0;
+  refreshDeleteOrigBtn();
   fActive.checked = loc.active !== false;
   fTipEn.value = loc.tip?.en || ''; fTipEs.value = loc.tip?.es || '';
   const tbd = loc.tipsByDifficulty || {};
@@ -416,7 +449,20 @@ locForm.onsubmit = async (e) => {
     crop: cropsByDifficulty['6'], // legacy mirror (server also enforces this)
     difficulty: [3, 4, 5, 6],
   };
-  startBtnSpinner(saveBtn, 'Saving…');
+  // If the original file is still on disk AND the crops changed from what's stored,
+  // the backend will re-render the 4 per-difficulty JPEGs — warn the user via the label.
+  const stored = locations.find(l => l.id === id);
+  const storedCrops = stored?.cropsByDifficulty || {};
+  const cropsChanged = !stored || ['3','4','5','6'].some(d => {
+    const a = cropsByDifficulty[d] || {};
+    const b = storedCrops[d] || {};
+    return Math.abs((a.x || 0) - (b.x || 0)) > 1e-9
+        || Math.abs((a.y || 0) - (b.y || 0)) > 1e-9
+        || Math.abs((a.w || 0) - (b.w || 0)) > 1e-9
+        || Math.abs((a.h || 0) - (b.h || 0)) > 1e-9;
+  });
+  const willRegen = !!fOriginal.value && cropsChanged;
+  startBtnSpinner(saveBtn, willRegen ? 'Regenerating images…' : 'Saving…');
   try {
     await putJSON(API_BASE + '/api/locations/' + id, obj);
     const idx = locations.findIndex(l => l.id === id);
@@ -787,24 +833,43 @@ function drawCropPreviews() {
 
 // Puzzle renders fullscreen (BoxFit.contain) on device screens.
 // Most modern Android phones are FHD (1080px wide) — target that for crisp rendering.
-// We read dimensions from the loaded cropImg itself: that's the served 2000px-capped
-// JPEG (post-EXIF-rotation) — the exact image Flutter clients display — so the
-// warning is self-correcting for any legacy rows with stale originalWidth/Height.
+// When the raw original file is still on disk, the admin save pipeline crops from it
+// and caps the result at RENDER_CAP. Simulate that math to warn BEFORE saving.
+// Locations without an original file fall back to measuring the served 2000px JPEG.
 const FULLSCREEN_TARGET = 1080;
+const RENDER_CAP = 3000;
 
 function updatePixelationWarning() {
   if (!pixelationWarningEl) return;
   if (!cropImg || !cropImg.naturalWidth) { pixelationWarningEl.hidden = true; return; }
-  const servedW = cropImg.naturalWidth;
-  const servedH = cropImg.naturalHeight;
   const crop = getActiveCrop();
-  const cropPxW = Math.round((crop.w || 0) * servedW);
-  const cropPxH = Math.round((crop.h || 0) * servedH);
+  if (!crop || !crop.w || !crop.h) { pixelationWarningEl.hidden = true; return; }
+
+  const origW = parseInt(fOriginalW.value) || 0;
+  const origH = parseInt(fOriginalH.value) || 0;
+  const hasOriginal = !!fOriginal.value && origW > 0 && origH > 0;
+
+  let renderedW, renderedH, sourceLabel;
+  if (hasOriginal) {
+    // Per-diff render: crop from the 4K original, then Sharp fit:inside RENDER_CAP.
+    const srcPxW = Math.round(crop.w * origW);
+    const srcPxH = Math.round(crop.h * origH);
+    const scale = Math.min(RENDER_CAP / srcPxW, RENDER_CAP / srcPxH, 1);
+    renderedW = Math.round(srcPxW * scale);
+    renderedH = Math.round(srcPxH * scale);
+    sourceLabel = 'rendered crop';
+  } else {
+    // Legacy fallback: crop is extracted from the served 2000px JPEG at runtime.
+    renderedW = Math.round(crop.w * cropImg.naturalWidth);
+    renderedH = Math.round(crop.h * cropImg.naturalHeight);
+    sourceLabel = 'crop';
+  }
+
   // The limiting dimension is whichever is smaller — that's what pixelates first.
-  const cropPx = Math.min(cropPxW, cropPxH);
-  if (cropPx > 0 && cropPx < FULLSCREEN_TARGET) {
+  const minDim = Math.min(renderedW, renderedH);
+  if (minDim > 0 && minDim < FULLSCREEN_TARGET) {
     pixelationWarningEl.textContent =
-      `Crop is ${cropPxW}×${cropPxH}px — below the ${FULLSCREEN_TARGET}px target for crisp fullscreen rendering on FHD devices.`;
+      `Rendered ${sourceLabel} is ${renderedW}×${renderedH}px — below the ${FULLSCREEN_TARGET}px target for crisp fullscreen rendering on FHD devices.`;
     pixelationWarningEl.hidden = false;
   } else {
     pixelationWarningEl.hidden = true;
