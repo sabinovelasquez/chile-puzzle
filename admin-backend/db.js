@@ -134,6 +134,63 @@ try {
   db.exec("ALTER TABLE locations ADD COLUMN tip_expert_es TEXT NOT NULL DEFAULT ''");
 }
 
+// Migrate: add active flag, original image metadata, and 16 per-difficulty crop columns.
+// Backfill per-diff crops from legacy crop_* using the same interpolation formula
+// as LocationModel.getCropForDifficulty() in Flutter (t = 0, 1/3, 2/3, 1).
+try {
+  db.prepare('SELECT active FROM locations LIMIT 0').get();
+} catch (_) {
+  db.exec("ALTER TABLE locations ADD COLUMN active INTEGER NOT NULL DEFAULT 1");
+  db.exec("ALTER TABLE locations ADD COLUMN original_image TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE locations ADD COLUMN original_width INTEGER NOT NULL DEFAULT 0");
+  db.exec("ALTER TABLE locations ADD COLUMN original_height INTEGER NOT NULL DEFAULT 0");
+
+  // Easy = full image (t=0)
+  db.exec("ALTER TABLE locations ADD COLUMN crop_easy_x REAL NOT NULL DEFAULT 0");
+  db.exec("ALTER TABLE locations ADD COLUMN crop_easy_y REAL NOT NULL DEFAULT 0");
+  db.exec("ALTER TABLE locations ADD COLUMN crop_easy_w REAL NOT NULL DEFAULT 1");
+  db.exec("ALTER TABLE locations ADD COLUMN crop_easy_h REAL NOT NULL DEFAULT 1");
+  // Normal (t=1/3) — backfill computed below
+  db.exec("ALTER TABLE locations ADD COLUMN crop_normal_x REAL NOT NULL DEFAULT 0");
+  db.exec("ALTER TABLE locations ADD COLUMN crop_normal_y REAL NOT NULL DEFAULT 0");
+  db.exec("ALTER TABLE locations ADD COLUMN crop_normal_w REAL NOT NULL DEFAULT 1");
+  db.exec("ALTER TABLE locations ADD COLUMN crop_normal_h REAL NOT NULL DEFAULT 1");
+  // Hard (t=2/3)
+  db.exec("ALTER TABLE locations ADD COLUMN crop_hard_x REAL NOT NULL DEFAULT 0");
+  db.exec("ALTER TABLE locations ADD COLUMN crop_hard_y REAL NOT NULL DEFAULT 0");
+  db.exec("ALTER TABLE locations ADD COLUMN crop_hard_w REAL NOT NULL DEFAULT 1");
+  db.exec("ALTER TABLE locations ADD COLUMN crop_hard_h REAL NOT NULL DEFAULT 1");
+  // Expert (t=1) = current single crop
+  db.exec("ALTER TABLE locations ADD COLUMN crop_expert_x REAL NOT NULL DEFAULT 0.15");
+  db.exec("ALTER TABLE locations ADD COLUMN crop_expert_y REAL NOT NULL DEFAULT 0.15");
+  db.exec("ALTER TABLE locations ADD COLUMN crop_expert_w REAL NOT NULL DEFAULT 0.7");
+  db.exec("ALTER TABLE locations ADD COLUMN crop_expert_h REAL NOT NULL DEFAULT 0.7");
+
+  // Backfill from existing crop_x/y/w/h (lerp between full image and stored crop)
+  const rows = db.prepare('SELECT id, crop_x, crop_y, crop_w, crop_h FROM locations').all();
+  const update = db.prepare(`
+    UPDATE locations SET
+      crop_easy_x=0, crop_easy_y=0, crop_easy_w=1, crop_easy_h=1,
+      crop_normal_x=@nx, crop_normal_y=@ny, crop_normal_w=@nw, crop_normal_h=@nh,
+      crop_hard_x=@hx,   crop_hard_y=@hy,   crop_hard_w=@hw,   crop_hard_h=@hh,
+      crop_expert_x=@ex, crop_expert_y=@ey, crop_expert_w=@ew, crop_expert_h=@eh
+    WHERE id=@id
+  `);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const tx = db.transaction((rows) => {
+    for (const r of rows) {
+      const ex = r.crop_x, ey = r.crop_y, ew = r.crop_w, eh = r.crop_h;
+      update.run({
+        id: r.id,
+        nx: lerp(0, ex, 1 / 3), ny: lerp(0, ey, 1 / 3), nw: lerp(1, ew, 1 / 3), nh: lerp(1, eh, 1 / 3),
+        hx: lerp(0, ex, 2 / 3), hy: lerp(0, ey, 2 / 3), hw: lerp(1, ew, 2 / 3), hh: lerp(1, eh, 2 / 3),
+        ex, ey, ew, eh,
+      });
+    }
+  });
+  tx(rows);
+}
+
 // Ensure scoring has a default row
 const scoringRow = db.prepare('SELECT id FROM scoring WHERE id = 1').get();
 if (!scoringRow) {
@@ -152,6 +209,10 @@ function rowToLocation(row) {
     longitude: row.longitude,
     image: row.image,
     thumbnail: row.thumbnail,
+    originalImage: row.original_image || '',
+    originalWidth: row.original_width || 0,
+    originalHeight: row.original_height || 0,
+    active: row.active !== 0,
     tip: { en: row.tip_en, es: row.tip_es },
     tipsByDifficulty: {
       '4': { en: row.tip_normal_en || '', es: row.tip_normal_es || '' },
@@ -159,6 +220,12 @@ function rowToLocation(row) {
       '6': { en: row.tip_expert_en || '', es: row.tip_expert_es || '' },
     },
     crop: { x: row.crop_x, y: row.crop_y, w: row.crop_w, h: row.crop_h },
+    cropsByDifficulty: {
+      '3': { x: row.crop_easy_x,   y: row.crop_easy_y,   w: row.crop_easy_w,   h: row.crop_easy_h   },
+      '4': { x: row.crop_normal_x, y: row.crop_normal_y, w: row.crop_normal_w, h: row.crop_normal_h },
+      '5': { x: row.crop_hard_x,   y: row.crop_hard_y,   w: row.crop_hard_w,   h: row.crop_hard_h   },
+      '6': { x: row.crop_expert_x, y: row.crop_expert_y, w: row.crop_expert_w, h: row.crop_expert_h },
+    },
     difficulty: JSON.parse(row.difficulty),
     createdAt: row.created_at,
   };
@@ -166,6 +233,14 @@ function rowToLocation(row) {
 
 function locationToParams(obj) {
   const t = obj.tipsByDifficulty || {};
+  const c = obj.cropsByDifficulty || {};
+  const defCrop = { x: 0.15, y: 0.15, w: 0.7, h: 0.7 };
+  const easy   = c['3'] || { x: 0, y: 0, w: 1, h: 1 };
+  const normal = c['4'] || defCrop;
+  const hard   = c['5'] || defCrop;
+  const expert = c['6'] || obj.crop || defCrop;
+  // Legacy crop_* mirrors Expert so Flutter's interpolation keeps working
+  // until the app is updated to read cropsByDifficulty directly.
   return {
     id: obj.id,
     name_en: obj.name?.en || '',
@@ -176,6 +251,10 @@ function locationToParams(obj) {
     longitude: obj.longitude || 0,
     image: obj.image || '',
     thumbnail: obj.thumbnail || obj.image || '',
+    original_image: obj.originalImage || '',
+    original_width: obj.originalWidth || 0,
+    original_height: obj.originalHeight || 0,
+    active: obj.active === false ? 0 : 1,
     tip_en: obj.tip?.en || '',
     tip_es: obj.tip?.es || '',
     tip_normal_en: t['4']?.en || '',
@@ -184,10 +263,11 @@ function locationToParams(obj) {
     tip_hard_es:   t['5']?.es || '',
     tip_expert_en: t['6']?.en || '',
     tip_expert_es: t['6']?.es || '',
-    crop_x: obj.crop?.x ?? 0.15,
-    crop_y: obj.crop?.y ?? 0.15,
-    crop_w: obj.crop?.w ?? 0.7,
-    crop_h: obj.crop?.h ?? 0.7,
+    crop_x: expert.x, crop_y: expert.y, crop_w: expert.w, crop_h: expert.h,
+    crop_easy_x: easy.x, crop_easy_y: easy.y, crop_easy_w: easy.w, crop_easy_h: easy.h,
+    crop_normal_x: normal.x, crop_normal_y: normal.y, crop_normal_w: normal.w, crop_normal_h: normal.h,
+    crop_hard_x: hard.x, crop_hard_y: hard.y, crop_hard_w: hard.w, crop_hard_h: hard.h,
+    crop_expert_x: expert.x, crop_expert_y: expert.y, crop_expert_w: expert.w, crop_expert_h: expert.h,
     difficulty: JSON.stringify(obj.difficulty || [3, 4, 5, 6]),
   };
 }

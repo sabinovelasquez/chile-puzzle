@@ -27,17 +27,21 @@ app.get('/api/locations', (req, res) => {
   const zone = req.query.zone || null;
   const q = req.query.q || null;
   const isNew = req.query.new === '1';
+  const all = req.query.all === '1';
   const ids = req.query.ids ? req.query.ids.split(',').filter(Boolean) : null;
 
   let where = [];
   let params = {};
 
   if (ids && ids.length > 0) {
-    // When filtering by IDs, ignore other filters
+    // When filtering by IDs, ignore other filters (but still respect `all`)
     const placeholders = ids.map((id, i) => `@id${i}`).join(',');
     ids.forEach((id, i) => { params[`id${i}`] = id; });
     where.push(`l.id IN (${placeholders})`);
+    if (!all) where.push('l.active = 1');
   } else {
+    // Default: hide inactive stubs from Flutter. Admin opts in with ?all=1
+    if (!all) where.push('l.active = 1');
     if (zone) {
       where.push('l.region = @zone');
       params.zone = zone;
@@ -76,6 +80,32 @@ app.get('/api/locations', (req, res) => {
   res.json({ data, total, page, pageSize: limit });
 });
 
+const LOCATION_INSERT_COLS = `
+  id, name_en, name_es, region, required_points, latitude, longitude,
+  image, thumbnail, original_image, original_width, original_height, active,
+  tip_en, tip_es,
+  tip_normal_en, tip_normal_es, tip_hard_en, tip_hard_es, tip_expert_en, tip_expert_es,
+  crop_x, crop_y, crop_w, crop_h,
+  crop_easy_x, crop_easy_y, crop_easy_w, crop_easy_h,
+  crop_normal_x, crop_normal_y, crop_normal_w, crop_normal_h,
+  crop_hard_x, crop_hard_y, crop_hard_w, crop_hard_h,
+  crop_expert_x, crop_expert_y, crop_expert_w, crop_expert_h,
+  difficulty
+`;
+const LOCATION_INSERT_VALS = `
+  @id, @name_en, @name_es, @region, @required_points, @latitude, @longitude,
+  @image, @thumbnail, @original_image, @original_width, @original_height, @active,
+  @tip_en, @tip_es,
+  @tip_normal_en, @tip_normal_es, @tip_hard_en, @tip_hard_es, @tip_expert_en, @tip_expert_es,
+  @crop_x, @crop_y, @crop_w, @crop_h,
+  @crop_easy_x, @crop_easy_y, @crop_easy_w, @crop_easy_h,
+  @crop_normal_x, @crop_normal_y, @crop_normal_w, @crop_normal_h,
+  @crop_hard_x, @crop_hard_y, @crop_hard_w, @crop_hard_h,
+  @crop_expert_x, @crop_expert_y, @crop_expert_w, @crop_expert_h,
+  @difficulty
+`;
+const insertLocationStmt = db.prepare(`INSERT INTO locations (${LOCATION_INSERT_COLS}) VALUES (${LOCATION_INSERT_VALS})`);
+
 // CREATE location
 app.post('/api/locations', (req, res) => {
   const obj = req.body;
@@ -83,18 +113,7 @@ app.post('/api/locations', (req, res) => {
 
   const params = locationToParams(obj);
   try {
-    db.prepare(`
-      INSERT INTO locations
-        (id, name_en, name_es, region, required_points, latitude, longitude,
-         image, thumbnail, tip_en, tip_es,
-         tip_normal_en, tip_normal_es, tip_hard_en, tip_hard_es, tip_expert_en, tip_expert_es,
-         crop_x, crop_y, crop_w, crop_h, difficulty)
-      VALUES
-        (@id, @name_en, @name_es, @region, @required_points, @latitude, @longitude,
-         @image, @thumbnail, @tip_en, @tip_es,
-         @tip_normal_en, @tip_normal_es, @tip_hard_en, @tip_hard_es, @tip_expert_en, @tip_expert_es,
-         @crop_x, @crop_y, @crop_w, @crop_h, @difficulty)
-    `).run(params);
+    insertLocationStmt.run(params);
     res.json({ success: true, id: obj.id });
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -112,17 +131,75 @@ app.put('/api/locations/:id', (req, res) => {
       name_en = @name_en, name_es = @name_es, region = @region,
       required_points = @required_points, latitude = @latitude, longitude = @longitude,
       image = @image, thumbnail = @thumbnail,
+      original_image = @original_image, original_width = @original_width, original_height = @original_height,
+      active = @active,
       tip_en = @tip_en, tip_es = @tip_es,
       tip_normal_en = @tip_normal_en, tip_normal_es = @tip_normal_es,
       tip_hard_en = @tip_hard_en, tip_hard_es = @tip_hard_es,
       tip_expert_en = @tip_expert_en, tip_expert_es = @tip_expert_es,
       crop_x = @crop_x, crop_y = @crop_y, crop_w = @crop_w, crop_h = @crop_h,
+      crop_easy_x = @crop_easy_x, crop_easy_y = @crop_easy_y, crop_easy_w = @crop_easy_w, crop_easy_h = @crop_easy_h,
+      crop_normal_x = @crop_normal_x, crop_normal_y = @crop_normal_y, crop_normal_w = @crop_normal_w, crop_normal_h = @crop_normal_h,
+      crop_hard_x = @crop_hard_x, crop_hard_y = @crop_hard_y, crop_hard_w = @crop_hard_w, crop_hard_h = @crop_hard_h,
+      crop_expert_x = @crop_expert_x, crop_expert_y = @crop_expert_y, crop_expert_w = @crop_expert_w, crop_expert_h = @crop_expert_h,
       difficulty = @difficulty, updated_at = @updated_at
     WHERE id = @id
   `).run(params);
 
   if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ success: true });
+});
+
+// BATCH STUB — create N inactive locations from upload results in one shot.
+// Body: { uploads: [{ url, thumbnail, original, width, height }, ...] }
+app.post('/api/locations/batch-stub', (req, res) => {
+  const uploads = Array.isArray(req.body?.uploads) ? req.body.uploads : null;
+  if (!uploads || uploads.length === 0) {
+    return res.status(400).json({ error: 'Expected uploads: [...]' });
+  }
+  const ts = Date.now();
+  const ids = [];
+  const tx = db.transaction(() => {
+    uploads.forEach((u, i) => {
+      const id = `loc_${ts}_${i}`;
+      ids.push(id);
+      insertLocationStmt.run(locationToParams({
+        id,
+        // Sentinels avoid NOT NULL constraint without schema changes.
+        // Admin form clears them on focus so they don't contaminate real data.
+        name: { en: '—', es: '—' },
+        region: '—',
+        requiredPoints: 0,
+        latitude: 0,
+        longitude: 0,
+        image: u.url || '',
+        thumbnail: u.thumbnail || u.url || '',
+        originalImage: u.original || '',
+        originalWidth: u.width || 0,
+        originalHeight: u.height || 0,
+        active: false,
+        tip: { en: '', es: '' },
+        tipsByDifficulty: {},
+        crop: { x: 0.15, y: 0.15, w: 0.7, h: 0.7 },
+        cropsByDifficulty: {
+          '3': { x: 0, y: 0, w: 1, h: 1 },
+          '4': { x: 0, y: 0, w: 1, h: 1 },
+          '5': { x: 0.05, y: 0.05, w: 0.9, h: 0.9 },
+          '6': { x: 0.15, y: 0.15, w: 0.7, h: 0.7 },
+        },
+        difficulty: [3, 4, 5, 6],
+      }));
+    });
+  });
+  try {
+    tx();
+    const rows = db.prepare(
+      `SELECT * FROM locations WHERE id IN (${ids.map((_, i) => `@id${i}`).join(',')})`
+    ).all(Object.fromEntries(ids.map((id, i) => [`id${i}`, id])));
+    res.json({ ids, rows: rows.map(rowToLocation) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // DELETE location
@@ -248,6 +325,17 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
     const baseName = path.basename(req.file.path);
     const optimized = req.file.path + '.jpg';
 
+    // Read dimensions from the original upload so the admin can warn
+    // when a crop would be smaller than the thumbnail resolution.
+    let meta = { width: 0, height: 0 };
+    try { meta = await sharp(req.file.path).rotate().metadata(); } catch (_) {}
+
+    // Preserve the untouched original (same extension as upload) for future re-crops.
+    const origExt = path.extname(req.file.originalname).toLowerCase() || '.jpg';
+    const origName = baseName + '_orig' + origExt;
+    const origPath = path.join(uploadsDir, origName);
+    fs.copyFileSync(req.file.path, origPath);
+
     // Full-size optimized image
     await sharp(req.file.path)
       .rotate()
@@ -263,13 +351,16 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
       .jpeg({ quality: 70 })
       .toFile(thumbPath);
 
-    // Clean up original upload
+    // Clean up temp upload
     fs.unlinkSync(req.file.path);
 
     const fullName = baseName + '.jpg';
     res.json({
       url: `${URL_PREFIX}/uploads/${fullName}`,
       thumbnail: `${URL_PREFIX}/uploads/${thumbName}`,
+      original: `${URL_PREFIX}/uploads/${origName}`,
+      width: meta.width || 0,
+      height: meta.height || 0,
     });
   } catch (e) {
     // Fallback: keep original
@@ -280,6 +371,9 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
     res.json({
       url: `${URL_PREFIX}/uploads/${fallbackName}`,
       thumbnail: `${URL_PREFIX}/uploads/${fallbackName}`,
+      original: `${URL_PREFIX}/uploads/${fallbackName}`,
+      width: 0,
+      height: 0,
     });
   }
 });
