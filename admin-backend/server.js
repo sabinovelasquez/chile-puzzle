@@ -282,6 +282,25 @@ app.delete('/api/locations/:id/original', (req, res) => {
   res.json({ success: true });
 });
 
+// Bulk regenerate per-difficulty crops for every location whose original
+// file is still on disk. Idempotent — safe to rerun. Legacy locations
+// without an _orig file are skipped (need a fresh upload).
+app.post('/api/regenerate-crops', async (req, res) => {
+  const rows = db.prepare("SELECT id FROM locations WHERE original_image != ''").all();
+  const results = { total: rows.length, rendered: [], skipped: [], errors: [] };
+  for (const row of rows) {
+    try {
+      const out = await regenerateAndUpdateImages(row.id);
+      if (out) results.rendered.push(row.id);
+      else results.skipped.push(row.id);
+    } catch (e) {
+      console.error('regenerate-crops failed for', row.id, e.message);
+      results.errors.push({ id: row.id, error: e.message });
+    }
+  }
+  res.json(results);
+});
+
 // ============================================================
 // ZONES — Full array GET/POST (few items)
 // ============================================================
