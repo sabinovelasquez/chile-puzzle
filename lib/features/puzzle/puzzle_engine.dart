@@ -74,8 +74,10 @@ class _PuzzleEngineState extends State<PuzzleEngine>
     );
     // Start timer only after image loads
     widget.imageLoaded.addListener(_onImageLoaded);
-    // Preload image
-    final imageProvider = CachedNetworkImageProvider(widget.location.image);
+    // Preload image (per-difficulty pre-cropped when available, else the single image)
+    final imageProvider = CachedNetworkImageProvider(
+      widget.location.getImageForDifficulty(widget.difficulty),
+    );
     imageProvider.resolve(ImageConfiguration.empty).addListener(
       ImageStreamListener(
         (_, __) {
@@ -373,8 +375,14 @@ class _PuzzleEngineState extends State<PuzzleEngine>
   Widget _buildPieceWidget(PuzzlePieceModel piece, double borderOpacity) {
     final showBorder = !piece.isCorrect && borderOpacity > 0.01;
 
-    // Crop: interpolated from full image (easiest) to focus region (hardest)
-    final crop = widget.location.getCropForDifficulty(widget.difficulty);
+    // When the backend provides a pre-rendered per-difficulty image, the whole
+    // image IS the crop — skip the interpolation math. Otherwise fall back to
+    // runtime extraction of the interpolated crop from the single image.
+    final useCropped = widget.location.hasPreRenderedCrop(widget.difficulty);
+    final imageUrl = widget.location.getImageForDifficulty(widget.difficulty);
+    final crop = useCropped
+        ? const [0.0, 0.0, 1.0, 1.0]
+        : widget.location.getCropForDifficulty(widget.difficulty);
     final cX = crop[0], cY = crop[1], cW = crop[2], cH = crop[3];
     final imgW = boardWidth / cW;
     final imgH = boardHeight / cH;
@@ -404,7 +412,7 @@ class _PuzzleEngineState extends State<PuzzleEngine>
           maxHeight: imgH,
           alignment: Alignment(ax, ay),
           child: CachedNetworkImage(
-            imageUrl: widget.location.image,
+            imageUrl: imageUrl,
             width: imgW,
             height: imgH,
             fit: BoxFit.cover,

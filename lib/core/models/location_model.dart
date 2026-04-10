@@ -12,6 +12,10 @@ class LocationModel {
   /// Optional per-difficulty tip overrides. Keyed by difficulty (4/5/6).
   /// When an override is missing or empty, callers should fall back to [tip].
   final Map<int, Map<String, String>> tipsByDifficulty;
+  /// Optional per-difficulty pre-rendered image URLs, keyed by difficulty (3/4/5/6).
+  /// When present, the image IS the crop — callers should skip [getCropForDifficulty]
+  /// math and render the whole image directly. Empty for legacy locations.
+  final Map<int, String> imagesByDifficulty;
   final List<int> difficultyLevels;
   final int requiredPoints;
   // Crop region for hardest difficulty (normalized 0-1). Easy shows full image.
@@ -30,6 +34,7 @@ class LocationModel {
     required this.thumbnail,
     required this.tip,
     this.tipsByDifficulty = const {},
+    this.imagesByDifficulty = const {},
     required this.difficultyLevels,
     this.requiredPoints = 0,
     this.cropX = 0.15,
@@ -37,6 +42,18 @@ class LocationModel {
     this.cropW = 0.7,
     this.cropH = 0.7,
   });
+
+  /// Returns the best image URL for [difficulty]:
+  /// the pre-rendered per-difficulty crop when the backend provided one,
+  /// otherwise the single [image] (legacy path).
+  String getImageForDifficulty(int difficulty) {
+    return imagesByDifficulty[difficulty] ?? image;
+  }
+
+  /// True when [getImageForDifficulty] returns a pre-cropped image, so callers
+  /// should render it as-is without applying [getCropForDifficulty] math.
+  bool hasPreRenderedCrop(int difficulty) =>
+      imagesByDifficulty.containsKey(difficulty);
 
   /// Returns the crop rect for a given difficulty, interpolated between
   /// full image (easiest) and the admin-defined focus crop (hardest).
@@ -68,6 +85,16 @@ class LocationModel {
         }
       });
     }
+    final rawImages = json['imagesByDifficulty'] as Map?;
+    final parsedImages = <int, String>{};
+    if (rawImages != null) {
+      rawImages.forEach((k, v) {
+        final diff = int.tryParse(k.toString());
+        if (diff != null && v is String && v.isNotEmpty) {
+          parsedImages[diff] = _fixUrl(v);
+        }
+      });
+    }
     return LocationModel(
       id: json['id'] as String,
       name: Map<String, String>.from(json['name'] as Map),
@@ -78,6 +105,7 @@ class LocationModel {
       thumbnail: _fixUrl(json['thumbnail'] as String),
       tip: Map<String, String>.from(json['tip'] as Map),
       tipsByDifficulty: parsedTips,
+      imagesByDifficulty: parsedImages,
       difficultyLevels: List<int>.from(json['difficulty'] as List),
       requiredPoints: (json['requiredPoints'] as int?) ?? 0,
       cropX: (crop?['x'] as num?)?.toDouble() ?? 0.15,

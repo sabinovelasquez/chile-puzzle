@@ -243,7 +243,8 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                                 child: Container(
                                   color: Colors.black,
                                   child: CachedNetworkImage(
-                                    imageUrl: widget.location.image,
+                                    imageUrl: widget.location
+                                        .getImageForDifficulty(widget.difficulty),
                                     fit: BoxFit.contain,
                                     errorWidget: (_, __, ___) => const SizedBox.shrink(),
                                   ),

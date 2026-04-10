@@ -758,7 +758,7 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'v1.6.0',
+              'v1.7.0',
               style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade400),
             ),
           ),
