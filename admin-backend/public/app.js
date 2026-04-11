@@ -1026,17 +1026,19 @@ function renderTesterTable() {
       <td>${esc(t.name)}</td>
       <td>${esc(t.email)}</td>
       <td>${t.platform === 'ios' ? 'iOS' : 'Android'}</td>
-      <td>${t.lang.toUpperCase()}</td>
+      <td>
+        <select class="tester-lang" data-id="${t.id}" style="width:auto;padding:0.3rem;font-size:0.75rem;">
+          <option value="es" ${t.lang === 'es' ? 'selected' : ''}>ES</option>
+          <option value="en" ${t.lang === 'en' ? 'selected' : ''}>EN</option>
+        </select>
+      </td>
       <td><input type="checkbox" ${t.enrolled ? 'checked' : ''} data-id="${t.id}" data-field="enrolled"></td>
+      <td title="${t.unsubscribed ? 'Uncheck to re-enable emails' : 'Check to mark as unsubscribed'}"><input type="checkbox" ${t.unsubscribed ? 'checked' : ''} data-id="${t.id}" data-field="unsubscribed"></td>
       <td><span class="tester-badge ${t.notified ? 'yes' : 'no'}">${t.notified ? 'Yes' : 'No'}</span></td>
       <td style="white-space:nowrap;">
         <select class="notify-kind" data-id="${t.id}" style="width:auto;padding:0.3rem;font-size:0.75rem;display:inline-block;vertical-align:middle;">
           <option value="download">Download</option>
           <option value="release">Update</option>
-        </select>
-        <select class="notify-lang" data-id="${t.id}" style="width:auto;padding:0.3rem;font-size:0.75rem;display:inline-block;vertical-align:middle;">
-          <option value="es" ${t.lang === 'es' ? 'selected' : ''}>ES</option>
-          <option value="en" ${t.lang === 'en' ? 'selected' : ''}>EN</option>
         </select>
         <button class="btn-notify-one" data-id="${t.id}" ${t.unsubscribed ? 'disabled title="Unsubscribed"' : 'title="Send notification"'} style="background:var(--accent);color:white;border:none;padding:0.3rem 0.6rem;border-radius:4px;font-size:0.75rem;cursor:${t.unsubscribed ? 'not-allowed' : 'pointer'};vertical-align:middle;${t.unsubscribed ? 'opacity:0.4;' : ''}">Send</button>
       </td>
@@ -1045,16 +1047,30 @@ function renderTesterTable() {
     tbody.appendChild(tr);
   });
 
-  // Bind checkbox toggles
+  // Bind checkbox toggles (enrolled + unsubscribed)
   tbody.querySelectorAll('input[type="checkbox"]').forEach(cb => {
     cb.onchange = async () => {
       const id = cb.dataset.id;
+      const field = cb.dataset.field;
       try {
-        await putJSON(API_BASE + '/api/testers/' + id, { enrolled: cb.checked ? 1 : 0 });
+        await putJSON(API_BASE + '/api/testers/' + id, { [field]: cb.checked ? 1 : 0 });
         const t = testers.find(x => x.id == id);
-        if (t) t.enrolled = cb.checked;
+        if (t) t[field] = cb.checked;
         renderTesterTable();
       } catch { showTesterMsg('Error updating tester', true); }
+    };
+  });
+
+  // Bind lang dropdown (persists to tester record)
+  tbody.querySelectorAll('.tester-lang').forEach(sel => {
+    sel.onchange = async () => {
+      const id = sel.dataset.id;
+      try {
+        await putJSON(API_BASE + '/api/testers/' + id, { lang: sel.value });
+        const t = testers.find(x => x.id == id);
+        if (t) t.lang = sel.value;
+        showTesterMsg('Language updated', false);
+      } catch { showTesterMsg('Error updating language', true); }
     };
   });
 
@@ -1062,14 +1078,12 @@ function renderTesterTable() {
   tbody.querySelectorAll('.btn-notify-one').forEach(btn => {
     btn.onclick = async () => {
       const id = btn.dataset.id;
-      const lang = tbody.querySelector(`.notify-lang[data-id="${id}"]`).value;
       const kind = tbody.querySelector(`.notify-kind[data-id="${id}"]`).value;
       const endpoint = kind === 'release'
         ? `/api/testers/${id}/notify-release`
         : `/api/testers/${id}/notify-download`;
       // Release sends to a specific tester can be forced to re-send.
-      const alreadySent = kind === 'release';
-      const body = kind === 'release' ? { lang, force: true } : { lang };
+      const body = kind === 'release' ? { force: true } : {};
       btn.disabled = true; btn.textContent = '...';
       try {
         const res = await fetch(API_BASE + endpoint, {

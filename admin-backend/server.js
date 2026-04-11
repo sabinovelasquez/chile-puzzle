@@ -803,8 +803,25 @@ app.get('/api/testers', (req, res) => {
 });
 
 app.put('/api/testers/:id', (req, res) => {
-  const { enrolled } = req.body;
-  db.prepare('UPDATE testers SET enrolled = ? WHERE id = ?').run(enrolled ? 1 : 0, req.params.id);
+  const fields = [];
+  const values = [];
+  if (req.body.enrolled !== undefined) {
+    fields.push('enrolled = ?');
+    values.push(req.body.enrolled ? 1 : 0);
+  }
+  if (req.body.lang !== undefined) {
+    const lang = String(req.body.lang).toLowerCase();
+    if (lang !== 'es' && lang !== 'en') return res.status(400).json({ error: 'lang must be es or en' });
+    fields.push('lang = ?');
+    values.push(lang);
+  }
+  if (req.body.unsubscribed !== undefined) {
+    fields.push('unsubscribed = ?');
+    values.push(req.body.unsubscribed ? 1 : 0);
+  }
+  if (!fields.length) return res.json({ ok: true });
+  values.push(req.params.id);
+  db.prepare(`UPDATE testers SET ${fields.join(', ')} WHERE id = ?`).run(...values);
   res.json({ ok: true });
 });
 
