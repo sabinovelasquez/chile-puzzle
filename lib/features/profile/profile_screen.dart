@@ -777,7 +777,7 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'v1.7.1',
+              'v1.8.0',
               style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade400),
             ),
           ),
@@ -1020,6 +1020,7 @@ class _BackupSheetState extends State<_BackupSheet> with SingleTickerProviderSta
   String? _expiresAt;
   bool _creating = false;
   bool _sendingEmail = false;
+  bool _emailSent = false;
   final TextEditingController _emailCtrl = TextEditingController();
 
   // Restore tab state
@@ -1082,7 +1083,7 @@ class _BackupSheetState extends State<_BackupSheet> with SingleTickerProviderSta
   }
 
   Future<void> _emailCode() async {
-    if (_code == null) return;
+    if (_code == null || _sendingEmail || _emailSent) return;
     final email = _emailCtrl.text.trim();
     if (email.isEmpty || !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) return;
     setState(() => _sendingEmail = true);
@@ -1093,13 +1094,22 @@ class _BackupSheetState extends State<_BackupSheet> with SingleTickerProviderSta
       lang: langCode == 'es' ? 'es' : 'en',
     );
     if (!mounted) return;
-    setState(() => _sendingEmail = false);
+    setState(() {
+      _sendingEmail = false;
+      _emailSent = ok;
+    });
     final l10n = AppLocalizations.of(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ok
-          ? (l10n?.emailSent ?? 'Email sent')
-          : (l10n?.emailFailed ?? 'Could not send email'))),
-    );
+    final messenger = ScaffoldMessenger.of(context);
+    if (ok) {
+      Navigator.pop(context); // close the backup sheet
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n?.emailSent ?? 'Email sent')),
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n?.emailFailed ?? 'Could not send email')),
+      );
+    }
   }
 
   Future<void> _restore() async {
@@ -1305,7 +1315,7 @@ class _BackupSheetState extends State<_BackupSheet> with SingleTickerProviderSta
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: _sendingEmail ? null : _emailCode,
+              onPressed: (_sendingEmail || _emailSent) ? null : _emailCode,
               icon: _sendingEmail
                   ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(PhosphorIconsBold.paperPlaneTilt, size: 16),
