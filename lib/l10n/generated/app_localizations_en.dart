@@ -117,4 +117,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get photoCredits => 'Photography: Sabino & Ximena';
+
+  @override
+  String get tipsTitle => 'Tips';
+
+  @override
+  String tipForDifficulty(String level) {
+    return 'Tip for $level';
+  }
 }

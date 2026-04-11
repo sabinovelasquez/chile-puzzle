@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -112,22 +113,44 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                           ? loc.getLocalizedTipForDifficulty(langCode, result.difficulty)
                           : loc.getLocalizedTip(langCode);
                       if (tipText.isEmpty) return const SizedBox.shrink();
+                      final isExpert = result != null && result.difficulty == 6;
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: AppTheme.trophyGold.withValues(alpha: 0.06),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              tipText,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13, color: Colors.grey.shade800, height: 1.4,
+                          Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.bottomRight,
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.fromLTRB(14, 14, 14, isExpert ? 85 : 14),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.trophyGold.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  tipText,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 13, color: Colors.grey.shade800, height: 1.4,
+                                  ),
+                                ),
                               ),
-                            ),
+                              if (isExpert)
+                                Positioned(
+                                  right: 8,
+                                  bottom: -16,
+                                  child: IgnorePointer(
+                                    child: SizedBox(
+                                      width: 110,
+                                      height: 89,
+                                      child: SvgPicture.asset(
+                                        'assets/girl_cat.svg',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                           const SizedBox(height: 16),
                         ],

@@ -706,9 +706,12 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
       minChildSize: 0.5,
       maxChildSize: 0.9,
       expand: false,
-      builder: (_, controller) => ListView(
+      builder: (_, controller) => Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          ListView(
         controller: controller,
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 140),
         children: [
           Center(
             child: Container(
@@ -760,6 +763,19 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
             child: Text(
               'v1.7.1',
               style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade400),
+            ),
+          ),
+        ],
+      ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Image.asset(
+                'assets/bottom-right-about.png',
+                width: 180,
+                fit: BoxFit.contain,
+              ),
             ),
           ),
         ],

@@ -313,6 +313,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Photography: Sabino & Ximena'**
   String get photoCredits;
+
+  /// No description provided for @tipsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tips'**
+  String get tipsTitle;
+
+  /// No description provided for @tipForDifficulty.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip for {level}'**
+  String tipForDifficulty(String level);
 }
 
 class _AppLocalizationsDelegate

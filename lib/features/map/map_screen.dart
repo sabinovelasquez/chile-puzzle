@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/models/game_config.dart';
 import 'package:chile_puzzle/core/services/mock_backend.dart';
@@ -254,6 +256,199 @@ class _MapScreenState extends State<MapScreen> {
     return GameProgressService.isLocationUnlocked(loc);
   }
 
+  Future<void> _openInGoogleMaps(LocationModel loc) async {
+    final url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=${loc.latitude},${loc.longitude}',
+    );
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  void _showLocationInfoDialog(LocationModel loc) {
+    final langCode = Localizations.localeOf(context).languageCode;
+    final progress = GameProgressService.progress;
+    final difficulties = loc.difficultyLevels.isNotEmpty ? loc.difficultyLevels : [3];
+    final completedDiffs = difficulties.where(
+      (d) => progress.completedPuzzles.containsKey('${loc.id}_$d'),
+    ).toList();
+    if (completedDiffs.isEmpty) return;
+    final allCompleted = completedDiffs.length == difficulties.length;
+    final labels = langCode == 'es' ? _diffLabelsEs : _diffLabelsEn;
+
+    // Build deduplicated tip slides, preserving order by difficulty.
+    final seen = <String>{};
+    final slides = <_TipSlide>[];
+    for (final d in completedDiffs) {
+      final text = loc.getLocalizedTipForDifficulty(langCode, d);
+      if (text.isEmpty) continue;
+      if (seen.add(text)) {
+        slides.add(_TipSlide(difficulty: d, label: labels[d] ?? '', text: text));
+      }
+    }
+    if (slides.isEmpty) return;
+
+    final controller = PageController();
+    final pageNotifier = ValueNotifier<int>(0);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => MediaQuery(
+        data: MediaQuery.of(ctx).copyWith(textScaler: TextScaler.noScaling),
+        child: Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          clipBehavior: Clip.antiAlias,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 12, 8),
+                child: Row(
+                  children: [
+                    const Icon(PhosphorIconsBold.lightbulb, size: 20, color: AppTheme.trophyGold),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        loc.getLocalizedName(langCode),
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 16, fontWeight: FontWeight.w700, color: Colors.grey.shade900,
+                        ),
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Container(
+                        width: 32, height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(PhosphorIconsBold.x, size: 14, color: Colors.grey.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Tip body — single tip or carousel
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    SizedBox(
+                      height: 220,
+                      child: slides.length == 1
+                          ? _buildTipCard(slides.first, allCompleted: allCompleted)
+                          : PageView.builder(
+                              controller: controller,
+                              itemCount: slides.length,
+                              onPageChanged: (i) => pageNotifier.value = i,
+                              itemBuilder: (_, i) => Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 2),
+                                child: _buildTipCard(slides[i], allCompleted: allCompleted),
+                              ),
+                            ),
+                    ),
+                    if (allCompleted)
+                      Positioned(
+                        right: 6,
+                        bottom: -10,
+                        child: IgnorePointer(
+                          child: SizedBox(
+                            width: 110,
+                            height: 89,
+                            child: SvgPicture.asset(
+                              'assets/girl_cat.svg',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              // Dot indicators (only for carousel)
+              if (slides.length > 1)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: pageNotifier,
+                    builder: (_, current, __) => Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(slides.length, (i) {
+                        final active = i == current;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: active ? 18 : 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: active ? AppTheme.trophyGold : Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(height: 14),
+            ],
+          ),
+        ),
+      ),
+    ).then((_) {
+      controller.dispose();
+      pageNotifier.dispose();
+    });
+  }
+
+  Widget _buildTipCard(_TipSlide slide, {required bool allCompleted}) {
+    final color = _diffColors[slide.difficulty] ?? AppTheme.accentBlue;
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(14, 14, 14, allCompleted ? 85 : 14),
+      decoration: BoxDecoration(
+        color: AppTheme.trophyGold.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              slide.label.toUpperCase(),
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 10, fontWeight: FontWeight.w700, color: color, letterSpacing: 0.8,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Text(
+                slide.text,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13, color: Colors.grey.shade800, height: 1.4,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showDifficultyDialog(LocationModel loc) {
     final langCode = Localizations.localeOf(context).languageCode;
     final progress = GameProgressService.progress;
@@ -450,6 +645,31 @@ class _MapScreenState extends State<MapScreen> {
                   },
                   icon: const Icon(PhosphorIconsBold.image, size: 18),
                   label: Text(langCode == 'es' ? 'Ver foto completa' : 'View full photo'),
+                ),
+              ),
+
+            // View information button (only when all completed)
+            if (allDone)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _showLocationInfoDialog(loc);
+                  },
+                  icon: const Icon(PhosphorIconsBold.lightbulb, size: 18),
+                  label: Text(langCode == 'es' ? 'Ver información' : 'View information'),
+                ),
+              ),
+
+            // View in Google Maps button (only when all completed)
+            if (allDone)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: OutlinedButton.icon(
+                  onPressed: () => _openInGoogleMaps(loc),
+                  icon: const Icon(PhosphorIconsBold.mapPin, size: 18),
+                  label: Text(langCode == 'es' ? 'Ver en Google Maps' : 'See on Google Maps'),
                 ),
               ),
 
@@ -934,6 +1154,23 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
               ),
+            // 100% completion badge (static, not tappable — card onTap opens difficulty dialog)
+            if (isUnlocked && allCompleted)
+              Positioned(
+                top: 6, left: 6,
+                child: Container(
+                  width: 28, height: 28,
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentGreen,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    PhosphorIconsBold.check,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             // Name
             Positioned(
               left: 10, bottom: 36, right: 10,
@@ -1141,4 +1378,11 @@ class _AppBarPill extends StatelessWidget {
       ),
     );
   }
+}
+
+class _TipSlide {
+  final int difficulty;
+  final String label;
+  final String text;
+  const _TipSlide({required this.difficulty, required this.label, required this.text});
 }

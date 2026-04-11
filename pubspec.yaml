@@ -50,6 +50,7 @@ dependencies:
   flutter_confetti: ^0.5.1
   flutter_soloud: ^4.0.0
   flutter_native_splash: ^2.4.7
+  flutter_svg: ^2.0.10+1
 
 dev_dependencies:
   flutter_test:
@@ -80,6 +81,8 @@ flutter:
     - assets/splash.png
     - assets/Zoom-In-Chile.png
     - assets/zoom-in-chile-title.png
+    - assets/girl_cat.svg
+    - assets/bottom-right-about.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
