@@ -535,6 +535,34 @@ class _PuzzleEngineState extends State<PuzzleEngine>
                                   );
                                 },
                               ),
+                            // Lock border flash — anchors the lock icon to its piece.
+                            if (_shakingPieceId == piece.id && _shakeController != null)
+                              AnimatedBuilder(
+                                animation: _shakeController!,
+                                builder: (_, __) {
+                                  final t = _shakeController!.value;
+                                  double borderOpacity;
+                                  if (t < 0.15) {
+                                    borderOpacity = t / 0.15;
+                                  } else if (t < 0.6) {
+                                    borderOpacity = 1.0;
+                                  } else {
+                                    borderOpacity = (1.0 - (t - 0.6) / 0.4).clamp(0.0, 1.0);
+                                  }
+                                  return IgnorePointer(
+                                    child: Container(
+                                      width: pieceWidth,
+                                      height: pieceHeight,
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: Colors.white.withValues(alpha: borderOpacity),
+                                          width: 2,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                           ],
                         ),
                       ),
