@@ -111,7 +111,7 @@ app.get('/api/locations', (req, res) => {
 
 const LOCATION_INSERT_COLS = `
   id, name_en, name_es, region, required_points, latitude, longitude,
-  image, thumbnail, original_image, original_width, original_height, active,
+  image, thumbnail, original_image, original_width, original_height, active, show_silhouette,
   tip_en, tip_es,
   tip_normal_en, tip_normal_es, tip_hard_en, tip_hard_es, tip_expert_en, tip_expert_es,
   crop_x, crop_y, crop_w, crop_h,
@@ -124,7 +124,7 @@ const LOCATION_INSERT_COLS = `
 `;
 const LOCATION_INSERT_VALS = `
   @id, @name_en, @name_es, @region, @required_points, @latitude, @longitude,
-  @image, @thumbnail, @original_image, @original_width, @original_height, @active,
+  @image, @thumbnail, @original_image, @original_width, @original_height, @active, @show_silhouette,
   @tip_en, @tip_es,
   @tip_normal_en, @tip_normal_es, @tip_hard_en, @tip_hard_es, @tip_expert_en, @tip_expert_es,
   @crop_x, @crop_y, @crop_w, @crop_h,
@@ -196,7 +196,7 @@ app.put('/api/locations/:id', async (req, res) => {
       required_points = @required_points, latitude = @latitude, longitude = @longitude,
       image = @image, thumbnail = @thumbnail,
       original_image = @original_image, original_width = @original_width, original_height = @original_height,
-      active = @active,
+      active = @active, show_silhouette = @show_silhouette,
       tip_en = @tip_en, tip_es = @tip_es,
       tip_normal_en = @tip_normal_en, tip_normal_es = @tip_normal_es,
       tip_hard_en = @tip_hard_en, tip_hard_es = @tip_hard_es,

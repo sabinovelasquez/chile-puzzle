@@ -122,6 +122,7 @@ const fOriginal = document.getElementById('locOriginal');
 const fOriginalW = document.getElementById('locOriginalW');
 const fOriginalH = document.getElementById('locOriginalH');
 const fActive = document.getElementById('locActive');
+const fShowSilhouette = document.getElementById('locShowSilhouette');
 const fTipEn = document.getElementById('locTipEn'), fTipEs = document.getElementById('locTipEs');
 const fTipNormalEn = document.getElementById('locTipNormalEn'), fTipNormalEs = document.getElementById('locTipNormalEs');
 const fTipHardEn = document.getElementById('locTipHardEn'), fTipHardEs = document.getElementById('locTipHardEs');
@@ -385,6 +386,7 @@ function openLocEditor(id) {
   fOriginalH.value = loc.originalHeight || 0;
   refreshDeleteOrigBtn();
   fActive.checked = loc.active !== false;
+  fShowSilhouette.checked = !!loc.showSilhouette;
   fTipEn.value = loc.tip?.en || ''; fTipEs.value = loc.tip?.es || '';
   const tbd = loc.tipsByDifficulty || {};
   fTipNormalEn.value = tbd['4']?.en || ''; fTipNormalEs.value = tbd['4']?.es || '';
@@ -439,6 +441,7 @@ locForm.onsubmit = async (e) => {
     originalWidth: parseInt(fOriginalW.value) || 0,
     originalHeight: parseInt(fOriginalH.value) || 0,
     active: fActive.checked,
+    showSilhouette: fShowSilhouette.checked,
     tip: { en: fTipEn.value.trim(), es: fTipEs.value.trim() },
     tipsByDifficulty: {
       '4': { en: fTipNormalEn.value.trim(), es: fTipNormalEs.value.trim() },

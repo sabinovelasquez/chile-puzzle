@@ -23,6 +23,9 @@ class LocationModel {
   final double cropY;
   final double cropW;
   final double cropH;
+  /// When true, the girl_cat silhouette is overlaid on the completed-puzzle
+  /// photo view and inside the completion drawer's tip card. Admin-controlled.
+  final bool showSilhouette;
 
   const LocationModel({
     required this.id,
@@ -41,6 +44,7 @@ class LocationModel {
     this.cropY = 0.15,
     this.cropW = 0.7,
     this.cropH = 0.7,
+    this.showSilhouette = false,
   });
 
   /// Returns the best image URL for [difficulty]:
@@ -112,6 +116,7 @@ class LocationModel {
       cropY: (crop?['y'] as num?)?.toDouble() ?? 0.15,
       cropW: (crop?['w'] as num?)?.toDouble() ?? 0.7,
       cropH: (crop?['h'] as num?)?.toDouble() ?? 0.7,
+      showSilhouette: (json['showSilhouette'] as bool?) ?? false,
     );
   }
 

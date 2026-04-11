@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
@@ -38,6 +39,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
   bool _showDrawer = true;
   bool _firstDrawerShow = true;
   bool _showReference = false;
+  bool _tipsVisible = false;
 
   final Stopwatch _stopwatch = Stopwatch();
   final ValueNotifier<int> _moveCount = ValueNotifier(0);
@@ -281,6 +283,87 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                         onTap: () => setState(() => _showDrawer = true),
                       ),
                     ),
+                  // Photo overlay: tip toggle + tip card + silhouette
+                  // Shown on top of the solved puzzle when the drawer is dismissed.
+                  // The tip card / toggle have their own opaque GestureDetectors so
+                  // taps on them don't bubble to the tap-to-bring-drawer layer below;
+                  // the silhouette is IgnorePointer, so taps on it fall through.
+                  if (_completed && !_showDrawer) ...[
+                    // Lightbulb toggle — top-right
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => setState(() => _tipsVisible = !_tipsVisible),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _tipsVisible
+                                ? PhosphorIconsFill.lightbulb
+                                : PhosphorIconsBold.lightbulb,
+                            size: 20,
+                            color: _tipsVisible ? AppTheme.trophyGold : Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Tip card — bottom
+                    if (_tipsVisible)
+                      Positioned(
+                        left: 12,
+                        right: 12,
+                        bottom: 12,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {},
+                          child: Container(
+                            padding: EdgeInsets.fromLTRB(
+                              14,
+                              14,
+                              widget.location.showSilhouette ? 120 : 14,
+                              14,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.72),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              widget.location.getLocalizedTipForDifficulty(
+                                langCode,
+                                widget.difficulty,
+                              ),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                color: Colors.white,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    // Silhouette — bottom-right, independent of the tip toggle
+                    if (widget.location.showSilhouette)
+                      Positioned(
+                        right: 8,
+                        bottom: _tipsVisible ? 48 : 12,
+                        child: IgnorePointer(
+                          child: SizedBox(
+                            width: 110,
+                            height: 89,
+                            child: SvgPicture.asset(
+                              'assets/girl_cat.svg',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                   // Completion drawer
                   if (_completed && _showDrawer)
                     CompletionDrawer(

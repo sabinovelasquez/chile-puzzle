@@ -243,6 +243,14 @@ try {
   db.exec("ALTER TABLE locations ADD COLUMN image_d6 TEXT NOT NULL DEFAULT ''");
 }
 
+// Migrate: per-location flag to show the girl_cat silhouette on the photo overlay.
+// Replaces the old hardcoded "expert difficulty only" gating in the Flutter app.
+try {
+  db.prepare('SELECT show_silhouette FROM locations LIMIT 0').get();
+} catch (_) {
+  db.exec("ALTER TABLE locations ADD COLUMN show_silhouette INTEGER NOT NULL DEFAULT 0");
+}
+
 // Ensure scoring has a default row
 const scoringRow = db.prepare('SELECT id FROM scoring WHERE id = 1').get();
 if (!scoringRow) {
@@ -265,6 +273,7 @@ function rowToLocation(row) {
     originalWidth: row.original_width || 0,
     originalHeight: row.original_height || 0,
     active: row.active !== 0,
+    showSilhouette: row.show_silhouette === 1,
     tip: { en: row.tip_en, es: row.tip_es },
     tipsByDifficulty: {
       '4': { en: row.tip_normal_en || '', es: row.tip_normal_es || '' },
@@ -314,6 +323,7 @@ function locationToParams(obj) {
     original_width: obj.originalWidth || 0,
     original_height: obj.originalHeight || 0,
     active: obj.active === false ? 0 : 1,
+    show_silhouette: obj.showSilhouette === true ? 1 : 0,
     tip_en: obj.tip?.en || '',
     tip_es: obj.tip?.es || '',
     tip_normal_en: t['4']?.en || '',

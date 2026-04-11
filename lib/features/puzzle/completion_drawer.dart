@@ -113,7 +113,7 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                           ? loc.getLocalizedTipForDifficulty(langCode, result.difficulty)
                           : loc.getLocalizedTip(langCode);
                       if (tipText.isEmpty) return const SizedBox.shrink();
-                      final isExpert = result != null && result.difficulty == 6;
+                      final showSil = loc.showSilhouette;
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -123,7 +123,7 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                             children: [
                               Container(
                                 width: double.infinity,
-                                padding: EdgeInsets.fromLTRB(14, 14, 14, isExpert ? 85 : 14),
+                                padding: EdgeInsets.fromLTRB(14, 14, 14, showSil ? 85 : 14),
                                 decoration: BoxDecoration(
                                   color: AppTheme.trophyGold.withValues(alpha: 0.06),
                                   borderRadius: BorderRadius.circular(12),
@@ -135,7 +135,7 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                                   ),
                                 ),
                               ),
-                              if (isExpert)
+                              if (showSil)
                                 Positioned(
                                   right: 8,
                                   bottom: -16,
@@ -158,30 +158,14 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                     }),
 
                     // Action buttons
-                    Builder(builder: (_) {
-                      final isExpert = result != null && result.difficulty == 6;
-                      return SizedBox(
-                        width: double.infinity,
-                        child: isExpert
-                            ? ElevatedButton.icon(
-                                onPressed: _navigating ? null : widget.onHide,
-                                icon: const Icon(PhosphorIconsBold.image, size: 18, color: Colors.white),
-                                label: Text(
-                                  langCode == 'es' ? 'Ver foto' : 'View photo',
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.grey.shade900,
-                                  foregroundColor: Colors.white,
-                                ),
-                              )
-                            : OutlinedButton.icon(
-                                onPressed: _navigating ? null : widget.onHide,
-                                icon: const Icon(PhosphorIconsBold.image, size: 18),
-                                label: Text(langCode == 'es' ? 'Ver foto' : 'View photo'),
-                              ),
-                      );
-                    }),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _navigating ? null : widget.onHide,
+                        icon: const Icon(PhosphorIconsBold.image, size: 18),
+                        label: Text(langCode == 'es' ? 'Ver foto' : 'View photo'),
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,

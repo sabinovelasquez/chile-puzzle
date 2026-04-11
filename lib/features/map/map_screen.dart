@@ -467,6 +467,9 @@ class _MapScreenState extends State<MapScreen> {
     final allDone = difficulties.every(
       (d) => progress.completedPuzzles.containsKey('${loc.id}_$d'),
     );
+    // Highest completed difficulty — used when opening the photo overlay from
+    // the "Ver foto" button so the tip shown matches the hardest run.
+    final topDiff = difficulties.reduce((a, b) => a > b ? a : b);
 
     showDialog(
       context: context,
@@ -644,31 +647,17 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
 
-            // View photo button (only when all completed)
+            // View photo button (only when all completed) — unified with tip overlay
             if (allDone)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: OutlinedButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    _showFullPhoto(loc, langCode);
+                    _showFullPhoto(loc, langCode, topDiff);
                   },
                   icon: const Icon(PhosphorIconsBold.image, size: 18),
-                  label: Text(langCode == 'es' ? 'Ver foto completa' : 'View full photo'),
-                ),
-              ),
-
-            // View information button (only when all completed)
-            if (allDone)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _showLocationInfoDialog(loc);
-                  },
-                  icon: const Icon(PhosphorIconsBold.lightbulb, size: 18),
-                  label: Text(langCode == 'es' ? 'Ver información' : 'View information'),
+                  label: Text(langCode == 'es' ? 'Ver foto' : 'View photo'),
                 ),
               ),
 
@@ -744,7 +733,7 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  void _showFullPhoto(LocationModel loc, String langCode) {
+  void _showFullPhoto(LocationModel loc, String langCode, int difficulty) {
     Navigator.push(
       context,
       PageRouteBuilder(
@@ -753,39 +742,10 @@ class _MapScreenState extends State<MapScreen> {
         reverseTransitionDuration: const Duration(milliseconds: 100),
         transitionsBuilder: (ctx, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
-        pageBuilder: (ctx, _, __) => Scaffold(
-          backgroundColor: Colors.black,
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              InteractiveViewer(
-                child: Center(
-                  child: Image.network(
-                    loc.image,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      PhosphorIconsBold.imageSquare, size: 48, color: Colors.white38,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 12,
-                right: 12,
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(ctx),
-                  child: Container(
-                    width: 44, height: 44,
-                    decoration: const BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(PhosphorIconsBold.x, size: 22, color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ),
+        pageBuilder: (ctx, _, __) => _FullPhotoView(
+          location: loc,
+          difficulty: difficulty,
+          langCode: langCode,
         ),
       ),
     );
@@ -1395,4 +1355,147 @@ class _TipSlide {
   final String label;
   final String text;
   const _TipSlide({required this.difficulty, required this.label, required this.text});
+}
+
+/// Full-screen photo viewer with a toggleable tip card and optional silhouette
+/// overlay. Used by `_showFullPhoto` from the map screen's completed-location
+/// dialog. Mirrors the post-completion overlay on `puzzle_screen.dart`.
+class _FullPhotoView extends StatefulWidget {
+  final LocationModel location;
+  final int difficulty;
+  final String langCode;
+
+  const _FullPhotoView({
+    required this.location,
+    required this.difficulty,
+    required this.langCode,
+  });
+
+  @override
+  State<_FullPhotoView> createState() => _FullPhotoViewState();
+}
+
+class _FullPhotoViewState extends State<_FullPhotoView> {
+  bool _tipsVisible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = widget.location;
+    final tipText =
+        loc.getLocalizedTipForDifficulty(widget.langCode, widget.difficulty);
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          InteractiveViewer(
+            child: Center(
+              child: Image.network(
+                loc.image,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(
+                  PhosphorIconsBold.imageSquare,
+                  size: 48,
+                  color: Colors.white38,
+                ),
+              ),
+            ),
+          ),
+          // Close button — top-right
+          Positioned(
+            top: 12,
+            right: 12,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  PhosphorIconsBold.x,
+                  size: 22,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          // Lightbulb toggle — just below the close button
+          Positioned(
+            top: 64,
+            right: 12,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _tipsVisible = !_tipsVisible),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _tipsVisible
+                      ? PhosphorIconsFill.lightbulb
+                      : PhosphorIconsBold.lightbulb,
+                  size: 22,
+                  color: _tipsVisible ? AppTheme.trophyGold : Colors.white,
+                ),
+              ),
+            ),
+          ),
+          // Tip card — bottom
+          if (_tipsVisible && tipText.isNotEmpty)
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12 + MediaQuery.of(context).padding.bottom,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {},
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(
+                    14,
+                    14,
+                    loc.showSilhouette ? 120 : 14,
+                    14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    tipText,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: Colors.white,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          // Silhouette — bottom-right, independent of the tip toggle
+          if (loc.showSilhouette)
+            Positioned(
+              right: 8,
+              bottom: (_tipsVisible ? 48 : 12) +
+                  MediaQuery.of(context).padding.bottom,
+              child: IgnorePointer(
+                child: SizedBox(
+                  width: 110,
+                  height: 89,
+                  child: SvgPicture.asset(
+                    'assets/girl_cat.svg',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
