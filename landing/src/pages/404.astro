@@ -1,0 +1,211 @@
+---
+const baseUrl = import.meta.env.BASE_URL;
+const siteUrl = 'https://games.sabino.cl/zoominchile';
+---
+
+<html lang="es" style="color-scheme: light only;">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light only" />
+  <link rel="icon" type="image/x-icon" href={`${baseUrl}favicon.ico`} />
+  <link rel="icon" type="image/png" sizes="512x512" href={`${baseUrl}icon.png`} />
+  <link rel="apple-touch-icon" href={`${baseUrl}apple-touch-icon.png`} />
+  <title>404 — Zoom-In Chile</title>
+  <meta name="description" content="Esta página no existe. Vuelve al inicio de Zoom-In Chile." />
+  <meta name="robots" content="noindex, follow" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #FFFFFF;
+      --bg-alt: #F5F7FA;
+      --accent: #1565C0;
+      --text: #1A1A1A;
+      --text-dim: #6B7280;
+      --border: #E5E7EB;
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.6;
+    }
+
+    nav {
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .nav-logo img { height: 32px; border-radius: 8px; }
+
+    .nav-logo span {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .lang-toggle {
+      display: flex;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 0.78rem;
+    }
+
+    .lang-toggle button {
+      padding: 0.3rem 0.6rem;
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .lang-toggle button.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .card {
+      max-width: 520px;
+      text-align: center;
+    }
+
+    .code {
+      font-family: var(--font-display);
+      font-size: clamp(5rem, 18vw, 8.5rem);
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.8rem;
+    }
+
+    p {
+      color: var(--text-dim);
+      font-size: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.85rem 1.6rem;
+      background: var(--accent);
+      color: white;
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 4px 12px rgba(21, 101, 192, 0.25);
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(21, 101, 192, 0.3);
+    }
+
+    footer {
+      padding: 1.5rem 2rem;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href={baseUrl} class="nav-logo">
+      <img src={`${baseUrl}icon.png`} alt="Zoom-In Chile" />
+      <span>Zoom-In Chile</span>
+    </a>
+    <div class="lang-toggle">
+      <button data-lang="es" class="active">ES</button>
+      <button data-lang="en">EN</button>
+    </div>
+  </nav>
+
+  <main>
+    <div class="card">
+      <div class="code">404</div>
+      <h1 data-es="P&aacute;gina no encontrada" data-en="Page not found">P&aacute;gina no encontrada</h1>
+      <p data-es="Parece que esta pieza del puzzle no encaja aqu&iacute;. Volvamos al inicio." data-en="Looks like this puzzle piece doesn&rsquo;t fit here. Let&rsquo;s head back home.">
+        Parece que esta pieza del puzzle no encaja aqu&iacute;. Volvamos al inicio.
+      </p>
+      <a href={baseUrl} class="btn">
+        <span data-es="Volver al inicio" data-en="Back home">Volver al inicio</span>
+      </a>
+    </div>
+  </main>
+
+  <footer>
+    &copy; 2026 Sabino &middot; <a href={baseUrl} style="color:var(--text-dim);">Zoom-In Chile</a>
+  </footer>
+
+  <script is:inline>
+    function setLang(lang) {
+      document.querySelectorAll('.lang-toggle button').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.querySelector(`.lang-toggle button[data-lang="${lang}"]`);
+      if (activeBtn) activeBtn.classList.add('active');
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-es][data-en]').forEach(el => {
+        const text = el.getAttribute(`data-${lang}`);
+        if (text) el.textContent = text;
+      });
+    }
+
+    const browserLang = (navigator.language || '').slice(0, 2);
+    if (browserLang === 'en') setLang('en');
+
+    document.querySelectorAll('.lang-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => setLang(btn.dataset.lang));
+    });
+  </script>
+</body>
+</html>
