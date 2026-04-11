@@ -26,6 +26,56 @@ const _diffColors = {
   6: AppTheme.accentPurple,
 };
 
+const _diffLabelPillEs = {
+  3: 'Fácil completado',
+  4: 'Normal completado',
+  5: 'Difícil completado',
+  6: 'Experto completado',
+};
+const _diffLabelPillEn = {
+  3: 'Easy completed',
+  4: 'Normal completed',
+  5: 'Hard completed',
+  6: 'Expert completed',
+};
+
+/// Small rounded "{Level} completed" pill used above the tip text on the
+/// full-photo carousel and the puzzle_screen post-completion overlay.
+/// Color-coded by difficulty to match the rest of the app.
+Widget _buildLevelPill({required int difficulty, required String langCode}) {
+  final color = _diffColors[difficulty] ?? AppTheme.accentBlue;
+  final label =
+      (langCode == 'es' ? _diffLabelPillEs : _diffLabelPillEn)[difficulty] ??
+          '';
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.15),
+      borderRadius: BorderRadius.circular(999),
+      border: Border.all(
+        color: color.withValues(alpha: 0.40),
+        width: 1,
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(PhosphorIconsFill.checkCircle, size: 12, color: color),
+        const SizedBox(width: 5),
+        Text(
+          label.toUpperCase(),
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: color,
+            letterSpacing: 0.6,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
@@ -1360,6 +1410,11 @@ class _TipSlide {
 /// Full-screen photo viewer with a toggleable tip card and optional silhouette
 /// overlay. Used by `_showFullPhoto` from the map screen's completed-location
 /// dialog. Mirrors the post-completion overlay on `puzzle_screen.dart`.
+///
+/// When the location has multiple completed difficulties with distinct tips,
+/// the tip card becomes a horizontal PageView carousel. The silhouette is
+/// per-slide: it appears only for difficulties where `showsSilhouetteAt` is
+/// true, and soft-fades in/out as the user swipes between slides.
 class _FullPhotoView extends StatefulWidget {
   final LocationModel location;
   final int difficulty;
@@ -1376,13 +1431,59 @@ class _FullPhotoView extends StatefulWidget {
 }
 
 class _FullPhotoViewState extends State<_FullPhotoView> {
-  bool _tipsVisible = false;
+  bool _tipsVisible = true;
+  late final PageController _pageController;
+  late final List<_TipSlide> _slides;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _slides = _buildSlides();
+    // Start on the slide matching the difficulty we were opened with, if any.
+    final initial = _slides.indexWhere((s) => s.difficulty == widget.difficulty);
+    _currentPage = initial >= 0 ? initial : 0;
+    _pageController = PageController(initialPage: _currentPage);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  /// Build a deduplicated list of tip slides from the completed difficulties
+  /// for this location. Difficulties without a tip are skipped; duplicate
+  /// tip texts collapse into a single slide.
+  List<_TipSlide> _buildSlides() {
+    final loc = widget.location;
+    final progress = GameProgressService.progress;
+    final difficulties =
+        loc.difficultyLevels.isNotEmpty ? loc.difficultyLevels : [3];
+    final completed = difficulties
+        .where((d) => progress.completedPuzzles.containsKey('${loc.id}_$d'))
+        .toList();
+    final labels = widget.langCode == 'es'
+        ? const {3: 'Fácil', 4: 'Normal', 5: 'Difícil', 6: 'Experto'}
+        : const {3: 'Easy', 4: 'Normal', 5: 'Hard', 6: 'Expert'};
+    final seen = <String>{};
+    final slides = <_TipSlide>[];
+    for (final d in completed) {
+      final text = loc.getLocalizedTipForDifficulty(widget.langCode, d);
+      if (text.isEmpty) continue;
+      if (seen.add(text)) {
+        slides.add(_TipSlide(difficulty: d, label: labels[d] ?? '', text: text));
+      }
+    }
+    return slides;
+  }
 
   @override
   Widget build(BuildContext context) {
     final loc = widget.location;
-    final tipText =
-        loc.getLocalizedTipForDifficulty(widget.langCode, widget.difficulty);
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final showSilForCurrent = _currentPage < _slides.length &&
+        loc.showsSilhouetteAt(_slides[_currentPage].difficulty);
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -1423,78 +1524,206 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
             ),
           ),
           // Lightbulb toggle — just below the close button
+          if (_slides.isNotEmpty)
+            Positioned(
+              top: 64,
+              right: 12,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => setState(() => _tipsVisible = !_tipsVisible),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _tipsVisible
+                        ? PhosphorIconsFill.lightbulb
+                        : PhosphorIconsBold.lightbulb,
+                    size: 22,
+                    color: _tipsVisible ? AppTheme.trophyGold : Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          // Tip card carousel — positioned so its bottom edge lands between
+          // the cat's head and the girl on the silhouette behind it (same
+          // offset as puzzle_screen, plus safe-area inset for the nav bar).
           Positioned(
-            top: 64,
+            left: 12,
             right: 12,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => setState(() => _tipsVisible = !_tipsVisible),
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: const BoxDecoration(
-                  color: Colors.black54,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  _tipsVisible
-                      ? PhosphorIconsFill.lightbulb
-                      : PhosphorIconsBold.lightbulb,
-                  size: 22,
-                  color: _tipsVisible ? AppTheme.trophyGold : Colors.white,
-                ),
+            bottom: 45 + bottomInset,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              transitionBuilder: (child, anim) =>
+                  FadeTransition(opacity: anim, child: child),
+              child: (_tipsVisible && _slides.isNotEmpty)
+                  ? _TipCarousel(
+                      key: const ValueKey('tip-carousel-on'),
+                      slides: _slides,
+                      langCode: widget.langCode,
+                      controller: _pageController,
+                      onPageChanged: (i) => setState(() => _currentPage = i),
+                    )
+                  : const SizedBox.shrink(key: ValueKey('tip-carousel-off')),
+            ),
+          ),
+          // Silhouette — bottom-right, tracks current slide + tip visibility.
+          // Sits on the safe-area bottom so the cat+girl stand on the nav bar
+          // edge and the card's lower edge crosses between their heads.
+          // 1px overlap into the inset so the feet don't float above it.
+          Positioned(
+            right: 8,
+            bottom: bottomInset - 1,
+            child: IgnorePointer(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                transitionBuilder: (child, anim) =>
+                    FadeTransition(opacity: anim, child: child),
+                child: (_tipsVisible && showSilForCurrent)
+                    ? SizedBox(
+                        key: ValueKey('sil-${_slides[_currentPage].difficulty}'),
+                        width: 110,
+                        height: 89,
+                        child: SvgPicture.asset(
+                          'assets/girl_cat.svg',
+                          fit: BoxFit.contain,
+                        ),
+                      )
+                    : const SizedBox.shrink(key: ValueKey('sil-off')),
               ),
             ),
           ),
-          // Tip card — bottom
-          if (_tipsVisible && tipText.isNotEmpty)
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 12 + MediaQuery.of(context).padding.bottom,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {},
-                child: Container(
-                  padding: EdgeInsets.fromLTRB(
-                    14,
-                    14,
-                    loc.showsSilhouetteAt(widget.difficulty) ? 120 : 14,
-                    14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.72),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    tipText,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: Colors.white,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          // Silhouette — bottom-right, independent of the tip toggle
-          if (loc.showsSilhouetteAt(widget.difficulty))
-            Positioned(
-              right: 8,
-              bottom: (_tipsVisible ? 48 : 12) +
-                  MediaQuery.of(context).padding.bottom,
-              child: IgnorePointer(
-                child: SizedBox(
-                  width: 110,
-                  height: 89,
-                  child: SvgPicture.asset(
-                    'assets/girl_cat.svg',
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-            ),
         ],
+      ),
+    );
+  }
+}
+
+/// Swipeable tip carousel used inside `_FullPhotoView`. Each page shows one
+/// difficulty's tip on a light translucent card; the silhouette is a fixed
+/// overlay drawn on top of the card by `_FullPhotoView`, not something the
+/// carousel's text reserves space for. Dot indicators show carousel progress.
+class _TipCarousel extends StatelessWidget {
+  final List<_TipSlide> slides;
+  final String langCode;
+  final PageController controller;
+  final ValueChanged<int> onPageChanged;
+
+  const _TipCarousel({
+    super.key,
+    required this.slides,
+    required this.langCode,
+    required this.controller,
+    required this.onPageChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {},
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.82),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: LayoutBuilder(
+          builder: (ctx, constraints) {
+            // Worst-case height: measure every slide's tip at its own
+            // right-padding (silhouette on/off) and keep the tallest. This
+            // makes the carousel auto-fit the longest tip — no scrolling,
+            // no clipping — while every shorter tip gets the same card size.
+            final tipStyle = GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              color: Colors.grey.shade900,
+              height: 1.4,
+            );
+            // Tip uses the full card width (minus horizontal padding).
+            // The silhouette is a fixed overlay drawn on top of the card,
+            // not something the text needs to reserve space for.
+            final availW = constraints.maxWidth - 14 - 14;
+            double tallestTip = 0;
+            for (var i = 0; i < slides.length; i++) {
+              final tp = TextPainter(
+                text: TextSpan(text: slides[i].text, style: tipStyle),
+                textDirection: TextDirection.ltr,
+              )..layout(maxWidth: availW > 0 ? availW : 1);
+              if (tp.height > tallestTip) tallestTip = tp.height;
+            }
+            // Pill + gap + vertical padding (top 12, bottom 12) around body.
+            const verticalPad = 12.0 + 12.0;
+            const labelBlock = 22.0 + 8.0; // pill height + gap to text
+            final pageH = tallestTip + labelBlock + verticalPad;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: pageH,
+                  child: PageView.builder(
+                    controller: controller,
+                    itemCount: slides.length,
+                    onPageChanged: onPageChanged,
+                    itemBuilder: (_, i) {
+                      final slide = slides[i];
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildLevelPill(
+                              difficulty: slide.difficulty,
+                              langCode: langCode,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              slide.text,
+                              style: tipStyle,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+            if (slides.length > 1)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10, top: 2),
+                child: AnimatedBuilder(
+                  animation: controller,
+                  builder: (_, __) {
+                    final current = (controller.hasClients &&
+                            controller.page != null)
+                        ? controller.page!.round()
+                        : 0;
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(slides.length, (i) {
+                        final active = i == current;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: active ? 18 : 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: active
+                                ? AppTheme.trophyGold
+                                : Colors.grey.shade400,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        );
+                      }),
+                    );
+                  },
+                ),
+              ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

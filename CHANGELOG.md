@@ -8,6 +8,20 @@ emails to testers.
 New releases go on top. Each entry has an `**ES**` and `**EN**`
 sub-block with one bullet per line.
 
+## 1.9.0+12 — 2026-04-11
+
+**ES**
+- Al terminar un puzzle y al ver la foto desde el mapa, ahora aparece un tip contextual con el nivel completado como pill de color.
+- Nueva silueta de la fotógrafa y el gato como referencia visual cuando el nivel lo permite.
+- Carrusel deslizable de tips por dificultad en la vista de foto completa.
+- Transiciones más suaves al mostrar y ocultar los tips.
+
+**EN**
+- Finishing a puzzle and viewing the photo from the map now show a contextual tip with a colored "level completed" pill.
+- New photographer-and-cat silhouette as a visual cue on supported levels.
+- Swipeable per-difficulty tip carousel on the full photo view.
+- Smoother fade when tips appear and disappear.
+
 ## 1.8.0+11 — 2026-04-11
 
 **ES**

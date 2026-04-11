@@ -15,6 +15,65 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chile_puzzle/features/puzzle/puzzle_engine.dart';
 import 'package:chile_puzzle/features/puzzle/completion_drawer.dart';
 
+// Difficulty accent colors — mirrors the palette used on map_screen.dart so
+// the "level completed" pill reads the same across screens.
+const _diffColors = {
+  3: AppTheme.accentGreen,
+  4: AppTheme.accentOrange,
+  5: AppTheme.accentBlue,
+  6: AppTheme.accentPurple,
+};
+
+const _diffLabelPillEs = {
+  3: 'Fácil completado',
+  4: 'Normal completado',
+  5: 'Difícil completado',
+  6: 'Experto completado',
+};
+const _diffLabelPillEn = {
+  3: 'Easy completed',
+  4: 'Normal completed',
+  5: 'Hard completed',
+  6: 'Expert completed',
+};
+
+/// Small rounded "{Level} completed" pill used above the tip text on the
+/// post-completion photo overlay and inside the map-screen full-photo
+/// carousel. Color-coded by difficulty so it matches the rest of the app.
+Widget _buildLevelPill({required int difficulty, required String langCode}) {
+  final color = _diffColors[difficulty] ?? AppTheme.accentBlue;
+  final label =
+      (langCode == 'es' ? _diffLabelPillEs : _diffLabelPillEn)[difficulty] ??
+          '';
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.15),
+      borderRadius: BorderRadius.circular(999),
+      border: Border.all(
+        color: color.withValues(alpha: 0.40),
+        width: 1,
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(PhosphorIconsFill.checkCircle, size: 12, color: color),
+        const SizedBox(width: 5),
+        Text(
+          label.toUpperCase(),
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: color,
+            letterSpacing: 0.6,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class PuzzleScreen extends StatefulWidget {
   final LocationModel location;
   final int difficulty;
@@ -39,7 +98,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
   bool _showDrawer = true;
   bool _firstDrawerShow = true;
   bool _showReference = false;
-  bool _tipsVisible = false;
+  bool _tipsVisible = true;
 
   final Stopwatch _stopwatch = Stopwatch();
   final ValueNotifier<int> _moveCount = ValueNotifier(0);
@@ -288,6 +347,10 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                   // The tip card / toggle have their own opaque GestureDetectors so
                   // taps on them don't bubble to the tap-to-bring-drawer layer below;
                   // the silhouette is IgnorePointer, so taps on it fall through.
+                  //
+                  // Silhouette + tip card are bundled: tip OFF hides both; tip ON
+                  // shows a light translucent card at the bottom with the silhouette
+                  // drawn over the card's bottom-right corner (touching the footer).
                   if (_completed && !_showDrawer) ...[
                     // Lightbulb toggle — top-right
                     Positioned(
@@ -313,56 +376,95 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                         ),
                       ),
                     ),
-                    // Tip card — bottom
-                    if (_tipsVisible)
-                      Positioned(
-                        left: 12,
-                        right: 12,
-                        bottom: 12,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () {},
-                          child: Container(
-                            padding: EdgeInsets.fromLTRB(
-                              14,
-                              14,
-                              widget.location.showsSilhouetteAt(widget.difficulty) ? 120 : 14,
-                              14,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.72),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              widget.location.getLocalizedTipForDifficulty(
-                                langCode,
-                                widget.difficulty,
-                              ),
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13,
-                                color: Colors.white,
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
+                    // Tip card — positioned so its bottom edge lands between
+                    // the cat's head and the girl on the silhouette behind it.
+                    Positioned(
+                      left: 12,
+                      right: 12,
+                      bottom: 45,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        transitionBuilder: (child, anim) =>
+                            FadeTransition(opacity: anim, child: child),
+                        child: _tipsVisible
+                            ? GestureDetector(
+                                key: const ValueKey('tip-card-on'),
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () {},
+                                child: Container(
+                                  // Fill the full photo width (same as the
+                                  // map-screen swipe carousel). Tip text uses
+                                  // 100% of the card width; the silhouette is
+                                  // a fixed overlay drawn on top of the card
+                                  // (see the Positioned below), not something
+                                  // the text reserves space for.
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.fromLTRB(
+                                    14, 12, 14, 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.82),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _buildLevelPill(
+                                        difficulty: widget.difficulty,
+                                        langCode: langCode,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        widget.location
+                                            .getLocalizedTipForDifficulty(
+                                          langCode,
+                                          widget.difficulty,
+                                        ),
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 13,
+                                          color: Colors.grey.shade900,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(key: ValueKey('tip-card-off')),
+                      ),
+                    ),
+                    // Silhouette — bottom-right, drawn on top of the tip card.
+                    // Only visible when tip is on AND the location flag is on.
+                    // Touches (overlaps 1px into) the footer so the cat/girl
+                    // look like they're standing on the bottom edge.
+                    Positioned(
+                      right: 8,
+                      bottom: -1,
+                      child: IgnorePointer(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 260),
+                          transitionBuilder: (child, anim) =>
+                              FadeTransition(opacity: anim, child: child),
+                          child: (_tipsVisible &&
+                                  widget.location
+                                      .showsSilhouetteAt(widget.difficulty))
+                              ? SizedBox(
+                                  key: const ValueKey('silhouette-on'),
+                                  width: 110,
+                                  height: 89,
+                                  child: SvgPicture.asset(
+                                    'assets/girl_cat.svg',
+                                    fit: BoxFit.contain,
+                                  ),
+                                )
+                              : const SizedBox.shrink(
+                                  key: ValueKey('silhouette-off'),
+                                ),
                         ),
                       ),
-                    // Silhouette — bottom-right, independent of the tip toggle
-                    if (widget.location.showsSilhouetteAt(widget.difficulty))
-                      Positioned(
-                        right: 8,
-                        bottom: _tipsVisible ? 48 : 12,
-                        child: IgnorePointer(
-                          child: SizedBox(
-                            width: 110,
-                            height: 89,
-                            child: SvgPicture.asset(
-                              'assets/girl_cat.svg',
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
-                      ),
+                    ),
                   ],
                   // Completion drawer
                   if (_completed && _showDrawer)
