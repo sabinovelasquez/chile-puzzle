@@ -541,13 +541,15 @@ class _PuzzleEngineState extends State<PuzzleEngine>
                                 animation: _shakeController!,
                                 builder: (_, __) {
                                   final t = _shakeController!.value;
+                                  // Quick pulse: fade-in 0-0.1, fade-out 0.1-0.3, then gone.
+                                  // Max opacity 0.3 — subtle anchor, not a selection rect.
                                   double borderOpacity;
-                                  if (t < 0.15) {
-                                    borderOpacity = t / 0.15;
-                                  } else if (t < 0.6) {
-                                    borderOpacity = 1.0;
+                                  if (t < 0.1) {
+                                    borderOpacity = (t / 0.1) * 0.3;
+                                  } else if (t < 0.3) {
+                                    borderOpacity = (1.0 - (t - 0.1) / 0.2) * 0.3;
                                   } else {
-                                    borderOpacity = (1.0 - (t - 0.6) / 0.4).clamp(0.0, 1.0);
+                                    borderOpacity = 0.0;
                                   }
                                   return IgnorePointer(
                                     child: Container(
