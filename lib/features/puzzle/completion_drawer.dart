@@ -162,17 +162,24 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                       final isExpert = result != null && result.difficulty == 6;
                       return SizedBox(
                         width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _navigating ? null : widget.onHide,
-                          icon: const Icon(PhosphorIconsBold.image, size: 18),
-                          label: Text(langCode == 'es' ? 'Ver foto' : 'View photo'),
-                          style: isExpert
-                              ? OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.grey.shade800,
-                                  side: BorderSide(color: Colors.grey.shade400),
-                                )
-                              : null,
-                        ),
+                        child: isExpert
+                            ? ElevatedButton.icon(
+                                onPressed: _navigating ? null : widget.onHide,
+                                icon: const Icon(PhosphorIconsBold.image, size: 18, color: Colors.white),
+                                label: Text(
+                                  langCode == 'es' ? 'Ver foto' : 'View photo',
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.grey.shade900,
+                                  foregroundColor: Colors.white,
+                                ),
+                              )
+                            : OutlinedButton.icon(
+                                onPressed: _navigating ? null : widget.onHide,
+                                icon: const Icon(PhosphorIconsBold.image, size: 18),
+                                label: Text(langCode == 'es' ? 'Ver foto' : 'View photo'),
+                              ),
                       );
                     }),
                     const SizedBox(height: 10),
