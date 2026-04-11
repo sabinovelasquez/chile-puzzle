@@ -113,7 +113,8 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                           ? loc.getLocalizedTipForDifficulty(langCode, result.difficulty)
                           : loc.getLocalizedTip(langCode);
                       if (tipText.isEmpty) return const SizedBox.shrink();
-                      final showSil = loc.showSilhouette;
+                      final showSil =
+                          result != null && loc.showsSilhouetteAt(result.difficulty);
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [

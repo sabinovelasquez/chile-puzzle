@@ -326,7 +326,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                             padding: EdgeInsets.fromLTRB(
                               14,
                               14,
-                              widget.location.showSilhouette ? 120 : 14,
+                              widget.location.showsSilhouetteAt(widget.difficulty) ? 120 : 14,
                               14,
                             ),
                             decoration: BoxDecoration(
@@ -348,7 +348,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                         ),
                       ),
                     // Silhouette — bottom-right, independent of the tip toggle
-                    if (widget.location.showSilhouette)
+                    if (widget.location.showsSilhouetteAt(widget.difficulty))
                       Positioned(
                         right: 8,
                         bottom: _tipsVisible ? 48 : 12,

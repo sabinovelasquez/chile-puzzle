@@ -243,12 +243,19 @@ try {
   db.exec("ALTER TABLE locations ADD COLUMN image_d6 TEXT NOT NULL DEFAULT ''");
 }
 
-// Migrate: per-location flag to show the girl_cat silhouette on the photo overlay.
-// Replaces the old hardcoded "expert difficulty only" gating in the Flutter app.
+// Migrate: per-difficulty flags to show the girl_cat silhouette on the photo overlay.
+// Replaces the hardcoded "expert difficulty only" gating in the Flutter app and
+// supersedes the earlier single show_silhouette flag (dropped below if present).
 try {
-  db.prepare('SELECT show_silhouette FROM locations LIMIT 0').get();
+  db.prepare('SELECT show_silhouette_d6 FROM locations LIMIT 0').get();
 } catch (_) {
-  db.exec("ALTER TABLE locations ADD COLUMN show_silhouette INTEGER NOT NULL DEFAULT 0");
+  db.exec("ALTER TABLE locations ADD COLUMN show_silhouette_d3 INTEGER NOT NULL DEFAULT 0");
+  db.exec("ALTER TABLE locations ADD COLUMN show_silhouette_d4 INTEGER NOT NULL DEFAULT 0");
+  db.exec("ALTER TABLE locations ADD COLUMN show_silhouette_d5 INTEGER NOT NULL DEFAULT 0");
+  db.exec("ALTER TABLE locations ADD COLUMN show_silhouette_d6 INTEGER NOT NULL DEFAULT 0");
+  // Clean up the legacy single flag (short-lived previous deploy, never populated).
+  try { db.exec("ALTER TABLE locations DROP COLUMN show_silhouette"); }
+  catch (_) { /* column absent — fresh install or already dropped */ }
 }
 
 // Ensure scoring has a default row
@@ -273,7 +280,12 @@ function rowToLocation(row) {
     originalWidth: row.original_width || 0,
     originalHeight: row.original_height || 0,
     active: row.active !== 0,
-    showSilhouette: row.show_silhouette === 1,
+    silhouetteByDifficulty: {
+      '3': row.show_silhouette_d3 === 1,
+      '4': row.show_silhouette_d4 === 1,
+      '5': row.show_silhouette_d5 === 1,
+      '6': row.show_silhouette_d6 === 1,
+    },
     tip: { en: row.tip_en, es: row.tip_es },
     tipsByDifficulty: {
       '4': { en: row.tip_normal_en || '', es: row.tip_normal_es || '' },
@@ -302,6 +314,7 @@ function locationToParams(obj) {
   const t = obj.tipsByDifficulty || {};
   const c = obj.cropsByDifficulty || {};
   const i = obj.imagesByDifficulty || {};
+  const s = obj.silhouetteByDifficulty || {};
   const defCrop = { x: 0.15, y: 0.15, w: 0.7, h: 0.7 };
   const easy   = c['3'] || { x: 0, y: 0, w: 1, h: 1 };
   const normal = c['4'] || defCrop;
@@ -323,7 +336,10 @@ function locationToParams(obj) {
     original_width: obj.originalWidth || 0,
     original_height: obj.originalHeight || 0,
     active: obj.active === false ? 0 : 1,
-    show_silhouette: obj.showSilhouette === true ? 1 : 0,
+    show_silhouette_d3: s['3'] === true ? 1 : 0,
+    show_silhouette_d4: s['4'] === true ? 1 : 0,
+    show_silhouette_d5: s['5'] === true ? 1 : 0,
+    show_silhouette_d6: s['6'] === true ? 1 : 0,
     tip_en: obj.tip?.en || '',
     tip_es: obj.tip?.es || '',
     tip_normal_en: t['4']?.en || '',

@@ -23,9 +23,10 @@ class LocationModel {
   final double cropY;
   final double cropW;
   final double cropH;
-  /// When true, the girl_cat silhouette is overlaid on the completed-puzzle
-  /// photo view and inside the completion drawer's tip card. Admin-controlled.
-  final bool showSilhouette;
+  /// Per-difficulty flags for whether the girl_cat silhouette is overlaid on
+  /// the completed-puzzle photo view and inside the completion drawer's tip
+  /// card. Keyed by difficulty (3/4/5/6). Admin-controlled.
+  final Map<int, bool> silhouetteByDifficulty;
 
   const LocationModel({
     required this.id,
@@ -44,8 +45,12 @@ class LocationModel {
     this.cropY = 0.15,
     this.cropW = 0.7,
     this.cropH = 0.7,
-    this.showSilhouette = false,
+    this.silhouetteByDifficulty = const {},
   });
+
+  /// Whether the girl_cat silhouette should appear for [difficulty].
+  bool showsSilhouetteAt(int difficulty) =>
+      silhouetteByDifficulty[difficulty] == true;
 
   /// Returns the best image URL for [difficulty]:
   /// the pre-rendered per-difficulty crop when the backend provided one,
@@ -99,6 +104,14 @@ class LocationModel {
         }
       });
     }
+    final rawSil = json['silhouetteByDifficulty'] as Map?;
+    final parsedSil = <int, bool>{};
+    if (rawSil != null) {
+      rawSil.forEach((k, v) {
+        final diff = int.tryParse(k.toString());
+        if (diff != null && v is bool) parsedSil[diff] = v;
+      });
+    }
     return LocationModel(
       id: json['id'] as String,
       name: Map<String, String>.from(json['name'] as Map),
@@ -116,7 +129,7 @@ class LocationModel {
       cropY: (crop?['y'] as num?)?.toDouble() ?? 0.15,
       cropW: (crop?['w'] as num?)?.toDouble() ?? 0.7,
       cropH: (crop?['h'] as num?)?.toDouble() ?? 0.7,
-      showSilhouette: (json['showSilhouette'] as bool?) ?? false,
+      silhouetteByDifficulty: parsedSil,
     );
   }
 

@@ -1459,7 +1459,7 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
                   padding: EdgeInsets.fromLTRB(
                     14,
                     14,
-                    loc.showSilhouette ? 120 : 14,
+                    loc.showsSilhouetteAt(widget.difficulty) ? 120 : 14,
                     14,
                   ),
                   decoration: BoxDecoration(
@@ -1478,7 +1478,7 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
               ),
             ),
           // Silhouette — bottom-right, independent of the tip toggle
-          if (loc.showSilhouette)
+          if (loc.showsSilhouetteAt(widget.difficulty))
             Positioned(
               right: 8,
               bottom: (_tipsVisible ? 48 : 12) +

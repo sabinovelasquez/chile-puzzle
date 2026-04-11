@@ -44,10 +44,13 @@
                             <input type="checkbox" id="locActive">
                             <span>Published</span>
                         </label>
-                        <label class="active-toggle">
-                            <input type="checkbox" id="locShowSilhouette">
-                            <span>Show silhouette</span>
-                        </label>
+                        <fieldset class="silhouette-row" style="display:flex;gap:10px;align-items:center;border:0;padding:0;margin:0;">
+                            <span style="font-size:0.85rem;opacity:0.8;">Silhouette:</span>
+                            <label class="mini-check"><input type="checkbox" id="locSilD3"> Easy</label>
+                            <label class="mini-check"><input type="checkbox" id="locSilD4"> Normal</label>
+                            <label class="mini-check"><input type="checkbox" id="locSilD5"> Hard</label>
+                            <label class="mini-check"><input type="checkbox" id="locSilD6"> Expert</label>
+                        </fieldset>
                     </div>
                     <div class="lang-toggle" id="langToggle">
                         <button type="button" data-lang="es" class="active">ES</button>
