@@ -49,13 +49,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 8),
-                Container(
-                  width: 80, height: 80,
-                  decoration: BoxDecoration(
-                    color: AppTheme.accentBlue.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(PhosphorIconsFill.mapTrifold, size: 40, color: AppTheme.accentBlue),
+                Image.asset(
+                  'assets/girl_cat_standing.png',
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -777,7 +775,7 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'v1.9.0',
+              'v1.9.1',
               style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade400),
             ),
           ),

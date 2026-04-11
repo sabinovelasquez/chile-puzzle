@@ -8,6 +8,14 @@ emails to testers.
 New releases go on top. Each entry has an `**ES**` and `**EN**`
 sub-block with one bullet per line.
 
+## 1.9.1+13 — 2026-04-11
+
+**ES**
+- Nueva ilustración de la fotógrafa y el gato en el encabezado del perfil.
+
+**EN**
+- New photographer-and-cat illustration in the profile header.
+
 ## 1.9.0+12 — 2026-04-11
 
 **ES**
