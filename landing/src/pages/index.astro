@@ -1,4 +1,5 @@
 ---
+import changelogMd from '../../../CHANGELOG.md?raw';
 import PuzzleGame from '../components/PuzzleGame.astro';
 import TesterModal from '../components/TesterModal.astro';
 
@@ -6,6 +7,58 @@ const baseUrl = import.meta.env.BASE_URL;
 const siteUrl = 'https://games.sabino.cl/zoominchile';
 const puzzleHeroDir = `${baseUrl}puzzle-hero/`;
 const puzzleHeroCount = 3; // Number of images in puzzle-hero/
+
+// ── Changelog ──
+// Read the repo-root CHANGELOG.md at build time so the landing card always
+// reflects the same source of truth the admin backend uses. Any parse
+// failure falls through to an empty list — the section hides itself.
+function parseChangelogMd(md) {
+  const out = [];
+  if (typeof md !== 'string') return out;
+  const chunks = md.split(/\n## /);
+  for (let i = 1; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    const nl = chunk.indexOf('\n');
+    if (nl === -1) continue;
+    const header = chunk.slice(0, nl).trim();
+    const body = chunk.slice(nl + 1);
+    const [verRaw, dateRaw] = header.split(/\s+—\s+|\s+-\s+/);
+    const version = (verRaw || '').trim();
+    if (!version) continue;
+    const releasedAt = (dateRaw || '').trim();
+
+    const extract = (label) => {
+      const re = new RegExp(`\\*\\*${label}\\*\\*\\s*\\n([\\s\\S]*?)(?:\\n\\*\\*|$)`);
+      const m = body.match(re);
+      if (!m) return [];
+      return m[1]
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.startsWith('- '))
+        .map((l) => l.slice(2).trim());
+    };
+
+    const esItems = extract('ES');
+    const enItems = extract('EN');
+    if (!esItems.length && !enItems.length) continue;
+
+    const maxLen = Math.max(esItems.length, enItems.length);
+    const rows = Array.from({ length: maxLen }, (_, idx) => ({
+      es: esItems[idx] || enItems[idx] || '',
+      en: enItems[idx] || esItems[idx] || '',
+    }));
+
+    out.push({ version, releasedAt, rows });
+  }
+  return out;
+}
+
+let changelogEntries = [];
+try {
+  changelogEntries = parseChangelogMd(changelogMd);
+} catch (_) {
+  changelogEntries = [];
+}
 ---
 
 <html lang="es" style="color-scheme: light only;">
@@ -629,6 +682,127 @@ const puzzleHeroCount = 3; // Number of images in puzzle-hero/
       font-size: 0.75rem;
     }
 
+    /* ═══════════════════ CHANGELOG ═══════════════════ */
+    .changelog-section {
+      padding: 5rem 2rem;
+      background: var(--bg-alt);
+    }
+
+    .changelog-inner {
+      max-width: 720px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .changelog-inner .section-title {
+      margin-left: auto;
+      margin-right: auto;
+      margin-bottom: 2rem;
+    }
+
+    .changelog-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      text-align: left;
+    }
+
+    .changelog-scroll {
+      max-height: 420px;
+      overflow-y: auto;
+    }
+
+    .changelog-scroll::-webkit-scrollbar {
+      width: 8px;
+    }
+    .changelog-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .changelog-scroll::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    .changelog-entry {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .changelog-entry:last-child {
+      border-bottom: none;
+    }
+
+    .changelog-entry summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    .changelog-entry summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .changelog-entry summary:hover {
+      background: var(--bg-alt);
+    }
+
+    .changelog-ver {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+
+    .changelog-date {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-left: auto;
+      margin-right: 0.25rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .changelog-chev {
+      font-size: 1rem;
+      color: var(--text-dim);
+      transition: transform 0.2s;
+    }
+
+    .changelog-entry[open] > summary .changelog-chev {
+      transform: rotate(180deg);
+    }
+
+    .changelog-items {
+      list-style: none;
+      padding: 0 1.25rem 1.1rem 2.25rem;
+      margin: 0;
+    }
+
+    .changelog-items li {
+      position: relative;
+      padding: 0.35rem 0;
+      font-size: 0.88rem;
+      color: var(--text-dim);
+      line-height: 1.55;
+    }
+
+    .changelog-items li::before {
+      content: '';
+      position: absolute;
+      left: -1rem;
+      top: 0.85rem;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
     /* ═══════════════════ CTA ═══════════════════ */
     .cta {
       padding: 5rem 2rem;
@@ -981,6 +1155,34 @@ const puzzleHeroCount = 3; // Number of images in puzzle-hero/
     </div>
     </div>
   </section>
+
+  <!-- CHANGELOG -->
+  {changelogEntries.length > 0 && (
+    <section class="changelog-section" id="changelog">
+      <div class="changelog-inner">
+        <div class="section-label reveal" data-es="Historial" data-en="Changelog">Historial</div>
+        <h2 class="section-title reveal stagger-1" data-es="Qu&eacute; hay de nuevo" data-en="What's new">Qu&eacute; hay de nuevo</h2>
+        <div class="changelog-card reveal stagger-2">
+          <div class="changelog-scroll">
+            {changelogEntries.map((entry, i) => (
+              <details class="changelog-entry" open={i === 0}>
+                <summary>
+                  <span class="changelog-ver">v{entry.version}</span>
+                  {entry.releasedAt && <span class="changelog-date">{entry.releasedAt}</span>}
+                  <i class="ph ph-caret-down changelog-chev"></i>
+                </summary>
+                <ul class="changelog-items">
+                  {entry.rows.map((row) => (
+                    <li data-es={row.es} data-en={row.en}>{row.es}</li>
+                  ))}
+                </ul>
+              </details>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  )}
 
   <!-- CTA -->
   <section class="cta" id="download">
