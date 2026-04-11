@@ -1340,12 +1340,38 @@ document.getElementById('deleteReleaseBtn').onclick = async () => {
 
 document.getElementById('suggestVersionBtn').onclick = async () => {
   try {
-    const { suggestedVersion } = await fetchJSON(API_BASE + '/api/releases/suggest-version');
-    if (suggestedVersion) {
-      document.getElementById('releaseVersion').value = suggestedVersion;
-      showReleaseMsg(`Version suggested: ${suggestedVersion}`, 'info');
-    } else {
+    const { suggestedVersion, releasedAt, notesEs, notesEn } =
+      await fetchJSON(API_BASE + '/api/releases/suggest-version');
+    if (!suggestedVersion) {
       showReleaseMsg('Could not read pubspec.yaml', 'err');
+      return;
+    }
+
+    document.getElementById('releaseVersion').value = suggestedVersion;
+
+    // Fill optional fields only when empty — never overwrite in-progress edits.
+    const dateEl = document.getElementById('releaseReleasedAt');
+    if (releasedAt && dateEl && !dateEl.value) dateEl.value = releasedAt;
+
+    const esEl = document.getElementById('releaseNotesEs');
+    const enEl = document.getElementById('releaseNotesEn');
+    let filled = 0;
+    let skipped = 0;
+    if (notesEs) {
+      if (esEl && !esEl.value.trim()) { esEl.value = notesEs; filled++; }
+      else skipped++;
+    }
+    if (notesEn) {
+      if (enEl && !enEl.value.trim()) { enEl.value = notesEn; filled++; }
+      else skipped++;
+    }
+
+    if (filled > 0) {
+      showReleaseMsg(`v${suggestedVersion} + notes loaded from CHANGELOG.md`, 'info');
+    } else if (skipped > 0) {
+      showReleaseMsg(`v${suggestedVersion} — notes already in editor, not overwritten`, 'info');
+    } else {
+      showReleaseMsg(`v${suggestedVersion} — no CHANGELOG entry yet`, 'info');
     }
   } catch {
     showReleaseMsg('Error suggesting version', 'err');

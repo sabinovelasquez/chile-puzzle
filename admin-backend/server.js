@@ -7,6 +7,7 @@ const multer = require('multer');
 const sharp = require('sharp');
 const { db, rowToLocation, locationToParams, rowToZone, rowToTrophy, rowToScoring, rowToTester, rowToRelease } = require('./db');
 const { renderDownloadEmail, renderReleaseEmail, renderProgressBackupEmail } = require('./email-templates');
+const { readChangelogEntry } = require('./changelog');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1100,15 +1101,25 @@ app.get('/api/releases/current', (req, res) => {
   res.json(rowToRelease(row));
 });
 
-// Suggest a version by reading pubspec.yaml in the parent Flutter project.
-// Falls back to null if the file is not reachable (e.g. admin deployed standalone).
+// Suggest a version by reading pubspec.yaml in the parent Flutter project,
+// and if a matching entry exists in CHANGELOG.md, also suggest the release
+// date + bilingual notes. The latter three fields are optional — older
+// clients only expecting `suggestedVersion` keep working.
 app.get('/api/releases/suggest-version', (req, res) => {
   try {
     const content = fs.readFileSync(path.join(__dirname, '..', 'pubspec.yaml'), 'utf8');
     const match = content.match(/^version:\s*([^\s#]+)/m);
-    res.json({ suggestedVersion: match ? match[1] : null });
+    const suggestedVersion = match ? match[1] : null;
+
+    const entry = suggestedVersion ? readChangelogEntry(suggestedVersion) : null;
+    res.json({
+      suggestedVersion,
+      releasedAt: entry?.releasedAt || null,
+      notesEs: entry?.notesEs || null,
+      notesEn: entry?.notesEn || null,
+    });
   } catch (_) {
-    res.json({ suggestedVersion: null });
+    res.json({ suggestedVersion: null, releasedAt: null, notesEs: null, notesEn: null });
   }
 });
 
