@@ -98,6 +98,29 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_testers_email ON testers(email);
+
+  CREATE TABLE IF NOT EXISTS releases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    version TEXT UNIQUE NOT NULL,
+    released_at TEXT NOT NULL DEFAULT (date('now')),
+    notes_es TEXT NOT NULL DEFAULT '',
+    notes_en TEXT NOT NULL DEFAULT '',
+    is_current INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_releases_current ON releases(is_current);
+
+  CREATE TABLE IF NOT EXISTS release_notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    release_id INTEGER NOT NULL,
+    tester_id INTEGER NOT NULL,
+    sent_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(release_id, tester_id),
+    FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE,
+    FOREIGN KEY (tester_id) REFERENCES testers(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_rel_notif_release ON release_notifications(release_id);
 `);
 
 // Migrate: add platform to testers if missing
@@ -105,6 +128,13 @@ try {
   db.prepare('SELECT platform FROM testers LIMIT 0').get();
 } catch (_) {
   db.exec("ALTER TABLE testers ADD COLUMN platform TEXT NOT NULL DEFAULT 'android'");
+}
+
+// Migrate: add unsubscribed flag to testers (opt-out from emails)
+try {
+  db.prepare('SELECT unsubscribed FROM testers LIMIT 0').get();
+} catch (_) {
+  db.exec('ALTER TABLE testers ADD COLUMN unsubscribed INTEGER NOT NULL DEFAULT 0');
 }
 
 // Migrate: add time_seconds and moves to leaderboard if missing
@@ -340,7 +370,21 @@ function rowToTester(row) {
     platform: row.platform || 'android',
     enrolled: !!row.enrolled,
     notified: !!row.notified,
+    unsubscribed: !!row.unsubscribed,
     createdAt: row.created_at,
+  };
+}
+
+function rowToRelease(row) {
+  return {
+    id: row.id,
+    version: row.version,
+    releasedAt: row.released_at,
+    notesEs: row.notes_es,
+    notesEn: row.notes_en,
+    isCurrent: !!row.is_current,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -352,4 +396,5 @@ module.exports = {
   rowToTrophy,
   rowToScoring,
   rowToTester,
+  rowToRelease,
 };

@@ -22,6 +22,7 @@
                 <button class="tab" data-tab="trophies">Trophies</button>
                 <button class="tab" data-tab="scoring">Scoring</button>
                 <button class="tab" data-tab="testers">Testers</button>
+                <button class="tab" data-tab="releases">Releases</button>
             </nav>
         </header>
 
@@ -283,11 +284,12 @@
         <!-- TESTERS TAB -->
         <div class="dashboard tab-content" data-tab="testers">
             <main class="editor-area" style="max-width:900px;margin:0 auto;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.5rem;">
                     <h2 style="margin:0;">Testers</h2>
-                    <div style="display:flex;gap:0.5rem;">
+                    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                         <button id="refreshTestersBtn" class="btn" style="background:rgba(255,255,255,0.1);color:var(--text-secondary);">Refresh</button>
-                        <button id="notifyTestersBtn" class="btn primary">Notify Enrolled</button>
+                        <button id="sendDownloadBtn" class="btn primary">Send Download Email</button>
+                        <button id="sendUpdateBtn" class="btn primary">Send Update Email</button>
                     </div>
                 </div>
                 <div id="testerMsg" style="display:none;padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.9rem;"></div>
@@ -347,7 +349,85 @@
                 </form>
             </main>
         </div>
+
+        <!-- RELEASES TAB -->
+        <div class="dashboard tab-content" data-tab="releases">
+            <aside class="sidebar">
+                <button id="addReleaseBtn" class="btn primary">+ New Release</button>
+                <div id="releaseList" class="item-list"></div>
+            </aside>
+            <main class="editor-area">
+                <form id="releaseForm" class="hidden" data-lang="es">
+                    <h2>Edit Release</h2>
+                    <div id="releaseMsg" style="display:none;padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.9rem;"></div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Version <small style="opacity:0.7">(e.g. 1.7.1+10)</small></label>
+                            <div style="display:flex;gap:0.4rem;">
+                                <input type="text" id="releaseVersion" required style="flex:1;">
+                                <button type="button" id="suggestVersionBtn" class="btn" style="background:rgba(255,255,255,0.08);color:var(--text-secondary);white-space:nowrap;padding:0 0.75rem;" title="Suggest from pubspec.yaml">↻ pubspec</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Released at</label>
+                            <input type="date" id="releaseDate" required>
+                        </div>
+                    </div>
+                    <div class="form-group" style="display:flex;align-items:center;gap:0.5rem;">
+                        <input type="checkbox" id="releaseIsCurrent" style="width:auto;">
+                        <label for="releaseIsCurrent" style="margin:0;cursor:pointer;">Mark as current release</label>
+                    </div>
+
+                    <div class="lang-toggle" id="releaseLangToggle" style="margin-top:0.5rem;">
+                        <button type="button" data-lang="es" class="active">ES</button>
+                        <button type="button" data-lang="en">EN</button>
+                    </div>
+
+                    <div class="form-group lang-es">
+                        <label>Release notes (ES) <small>one item per line</small></label>
+                        <textarea id="releaseNotesEs" rows="8" placeholder="- Nuevo sistema de pistas por dificultad&#10;- Arreglo crash al rotar el dispositivo&#10;- Mejoras de rendimiento"></textarea>
+                    </div>
+                    <div class="form-group lang-en">
+                        <label>Release notes (EN) <small>one item per line</small></label>
+                        <textarea id="releaseNotesEn" rows="8" placeholder="- New per-difficulty hints system&#10;- Fix crash on device rotation&#10;- Performance improvements"></textarea>
+                    </div>
+
+                    <div class="actions" style="flex-wrap:wrap;gap:0.5rem;">
+                        <button type="submit" class="btn success">Save</button>
+                        <button type="button" id="previewReleaseBtn" class="btn">Preview Email</button>
+                        <button type="button" id="deleteReleaseBtn" class="btn danger">Delete</button>
+                    </div>
+
+                    <div id="releaseSendPanel" style="margin-top:2rem;padding:1.25rem;background:rgba(255,255,255,0.04);border:1px solid var(--border, rgba(255,255,255,0.1));border-radius:10px;">
+                        <h3 style="margin:0 0 0.75rem;font-size:0.95rem;">Send to testers</h3>
+                        <div id="releaseStats" style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:0.75rem;">—</div>
+                        <button type="button" id="sendReleaseBulkBtn" class="btn primary">Send Update Email</button>
+                    </div>
+                </form>
+                <div id="releaseEmpty" class="empty-state"><p>Select a release from the sidebar or create a new one.</p></div>
+            </main>
+        </div>
     </div>
+
+    <!-- Email preview modal (used by Releases tab) -->
+    <div id="previewModal" class="preview-modal" hidden>
+        <div class="preview-modal-backdrop"></div>
+        <div class="preview-modal-content">
+            <div class="preview-modal-header">
+                <div class="lang-toggle" id="previewLangToggle">
+                    <button type="button" data-lang="es" class="active">ES</button>
+                    <button type="button" data-lang="en">EN</button>
+                </div>
+                <div class="lang-toggle" id="previewKindToggle" style="margin-left:0.5rem;">
+                    <button type="button" data-kind="release" class="active">Update</button>
+                    <button type="button" data-kind="download" class="">Download</button>
+                </div>
+                <button type="button" id="closePreviewBtn" class="btn" style="margin-left:auto;">Close</button>
+            </div>
+            <iframe id="previewFrame" srcdoc="" title="Email preview"></iframe>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>

@@ -694,3 +694,80 @@ form[data-diff="6"] .tip-pair[data-diff="6"] { display: block; }
     /* Desktop keeps drawer hidden */
     .sidebar .mobile-tab-list { display: none; }
 }
+
+/* ============================================================
+   Release tab — preview modal
+   ============================================================ */
+.preview-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+.preview-modal[hidden] { display: none; }
+.preview-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 14, 24, 0.72);
+    backdrop-filter: blur(6px);
+}
+.preview-modal-content {
+    position: relative;
+    width: 100%;
+    max-width: 720px;
+    max-height: 90vh;
+    background: #0f1724;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.preview-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-wrap: wrap;
+}
+.preview-modal-content iframe {
+    flex: 1;
+    width: 100%;
+    min-height: 520px;
+    border: 0;
+    background: #F5F7FA;
+}
+
+.release-item-meta {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text-secondary, #8b93a7);
+    margin-top: 2px;
+}
+.release-item-current-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #1565C0;
+    background: #E3F2FD;
+    border-radius: 999px;
+    padding: 2px 8px;
+    margin-left: 6px;
+    vertical-align: middle;
+    letter-spacing: 0.02em;
+}
+
+#releaseForm .lang-es,
+#releaseForm .lang-en { display: none; }
+#releaseForm[data-lang="es"] .lang-es { display: block; }
+#releaseForm[data-lang="en"] .lang-en { display: block; }
+
+#releaseMsg.ok { background: rgba(76, 175, 80, 0.15); color: #7cd68a; }
+#releaseMsg.err { background: rgba(248, 81, 73, 0.15); color: #f8a89f; }
+#releaseMsg.info { background: rgba(21, 101, 192, 0.15); color: #79b9f5; }
+

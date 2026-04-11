@@ -1030,11 +1030,15 @@ function renderTesterTable() {
       <td><input type="checkbox" ${t.enrolled ? 'checked' : ''} data-id="${t.id}" data-field="enrolled"></td>
       <td><span class="tester-badge ${t.notified ? 'yes' : 'no'}">${t.notified ? 'Yes' : 'No'}</span></td>
       <td style="white-space:nowrap;">
+        <select class="notify-kind" data-id="${t.id}" style="width:auto;padding:0.3rem;font-size:0.75rem;display:inline-block;vertical-align:middle;">
+          <option value="download">Download</option>
+          <option value="release">Update</option>
+        </select>
         <select class="notify-lang" data-id="${t.id}" style="width:auto;padding:0.3rem;font-size:0.75rem;display:inline-block;vertical-align:middle;">
           <option value="es" ${t.lang === 'es' ? 'selected' : ''}>ES</option>
           <option value="en" ${t.lang === 'en' ? 'selected' : ''}>EN</option>
         </select>
-        <button class="btn-notify-one" data-id="${t.id}" title="Send notification" style="background:var(--accent);color:white;border:none;padding:0.3rem 0.6rem;border-radius:4px;font-size:0.75rem;cursor:pointer;vertical-align:middle;">Send</button>
+        <button class="btn-notify-one" data-id="${t.id}" ${t.unsubscribed ? 'disabled title="Unsubscribed"' : 'title="Send notification"'} style="background:var(--accent);color:white;border:none;padding:0.3rem 0.6rem;border-radius:4px;font-size:0.75rem;cursor:${t.unsubscribed ? 'not-allowed' : 'pointer'};vertical-align:middle;${t.unsubscribed ? 'opacity:0.4;' : ''}">Send</button>
       </td>
       <td><button class="btn-delete" data-delete-id="${t.id}" title="Delete">✕</button></td>
     `;
@@ -1059,15 +1063,22 @@ function renderTesterTable() {
     btn.onclick = async () => {
       const id = btn.dataset.id;
       const lang = tbody.querySelector(`.notify-lang[data-id="${id}"]`).value;
+      const kind = tbody.querySelector(`.notify-kind[data-id="${id}"]`).value;
+      const endpoint = kind === 'release'
+        ? `/api/testers/${id}/notify-release`
+        : `/api/testers/${id}/notify-download`;
+      // Release sends to a specific tester can be forced to re-send.
+      const alreadySent = kind === 'release';
+      const body = kind === 'release' ? { lang, force: true } : { lang };
       btn.disabled = true; btn.textContent = '...';
       try {
-        const res = await fetch(API_BASE + '/api/testers/' + id + '/notify', {
+        const res = await fetch(API_BASE + endpoint, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lang }),
+          body: JSON.stringify(body),
         });
         const data = await res.json();
         if (res.ok) {
-          showTesterMsg('Notification sent', false);
+          showTesterMsg(kind === 'release' ? 'Update email sent' : 'Download email sent', false);
           testers = await fetchJSON(API_BASE + '/api/testers');
           renderTesterTable();
         } else {
@@ -1120,25 +1131,294 @@ document.getElementById('refreshTestersBtn').onclick = async () => {
   btn.disabled = false; btn.textContent = 'Refresh';
 };
 
-document.getElementById('notifyTestersBtn').onclick = async () => {
-  const btn = document.getElementById('notifyTestersBtn');
-  const enrolled = testers.filter(t => t.enrolled && !t.notified);
-  if (!enrolled.length) { showTesterMsg('No enrolled testers pending notification', true); return; }
-  if (!confirm(`Send notification email to ${enrolled.length} tester(s)?`)) return;
+document.getElementById('sendDownloadBtn').onclick = async () => {
+  const btn = document.getElementById('sendDownloadBtn');
+  const pending = testers.filter(t => t.enrolled && !t.notified && !t.unsubscribed && t.platform === 'android');
+  if (!pending.length) { showTesterMsg('No Android testers pending download email', true); return; }
+  if (!confirm(`Send download email to ${pending.length} tester(s)?`)) return;
+  const orig = btn.textContent;
   btn.disabled = true; btn.textContent = 'Sending...';
   try {
-    const res = await fetch(API_BASE + '/api/testers/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const res = await fetch(API_BASE + '/api/testers/notify-download', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
     const data = await res.json();
     if (res.ok) {
-      showTesterMsg(`Notified ${data.sent} tester(s)`, false);
+      showTesterMsg(`Download email sent to ${data.sent} tester(s)`, false);
       testers = await fetchJSON(API_BASE + '/api/testers');
       renderTesterTable();
     } else {
-      showTesterMsg(data.error || 'Error sending notifications', true);
+      showTesterMsg(data.error || 'Error sending', true);
     }
   } catch { showTesterMsg('Error sending notifications', true); }
-  btn.disabled = false; btn.textContent = 'Notify Enrolled';
+  btn.disabled = false; btn.textContent = orig;
 };
+
+document.getElementById('sendUpdateBtn').onclick = async () => {
+  const btn = document.getElementById('sendUpdateBtn');
+  // Uses the current release; resolve for the confirm message.
+  let current = null;
+  try { current = await fetchJSON(API_BASE + '/api/releases/current'); }
+  catch { showTesterMsg('Create a release first', true); return; }
+  if (!current || current.error) { showTesterMsg('Create a release first', true); return; }
+  if (!confirm(`Send update email for v${current.version} to all eligible testers?`)) return;
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Sending...';
+  try {
+    const res = await fetch(API_BASE + '/api/testers/notify-release', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ releaseId: current.id }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showTesterMsg(`Update email sent to ${data.sent} tester(s)`, false);
+      if (currentReleaseId === current.id) refreshReleaseStats();
+    } else {
+      showTesterMsg(data.error || 'Error sending', true);
+    }
+  } catch { showTesterMsg('Error sending update', true); }
+  btn.disabled = false; btn.textContent = orig;
+};
+
+// ============================================================
+// RELEASES
+// ============================================================
+let releases = [];
+let currentReleaseId = null;
+
+function renderReleaseList() {
+  const list = document.getElementById('releaseList');
+  list.innerHTML = '';
+  if (!releases.length) {
+    list.innerHTML = '<div style="padding:1rem;color:var(--text-secondary);font-size:0.85rem;">No releases yet</div>';
+    return;
+  }
+  releases.forEach(r => {
+    const item = document.createElement('div');
+    item.className = 'item' + (r.id === currentReleaseId ? ' active' : '');
+    item.dataset.id = r.id;
+    item.innerHTML = `
+      <div>
+        <strong>v${esc(r.version)}</strong>${r.isCurrent ? '<span class="release-item-current-badge">current</span>' : ''}
+        <span class="release-item-meta">${esc(r.releasedAt || '')}</span>
+      </div>
+    `;
+    item.onclick = () => selectRelease(r.id);
+    list.appendChild(item);
+  });
+}
+
+function selectRelease(id) {
+  currentReleaseId = id;
+  const r = releases.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('releaseForm').classList.remove('hidden');
+  document.getElementById('releaseEmpty').style.display = 'none';
+  document.getElementById('releaseVersion').value = r.version || '';
+  document.getElementById('releaseDate').value = (r.releasedAt || '').slice(0, 10);
+  document.getElementById('releaseIsCurrent').checked = !!r.isCurrent;
+  document.getElementById('releaseNotesEs').value = r.notesEs || '';
+  document.getElementById('releaseNotesEn').value = r.notesEn || '';
+  renderReleaseList();
+  refreshReleaseStats();
+}
+
+function clearReleaseForm() {
+  currentReleaseId = null;
+  document.getElementById('releaseForm').classList.remove('hidden');
+  document.getElementById('releaseEmpty').style.display = 'none';
+  document.getElementById('releaseVersion').value = '';
+  document.getElementById('releaseDate').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('releaseIsCurrent').checked = false;
+  document.getElementById('releaseNotesEs').value = '';
+  document.getElementById('releaseNotesEn').value = '';
+  document.getElementById('releaseStats').textContent = 'Save the release to see stats.';
+  renderReleaseList();
+}
+
+async function loadReleases() {
+  try {
+    releases = await fetchJSON(API_BASE + '/api/releases');
+    renderReleaseList();
+  } catch (e) {
+    showReleaseMsg('Error loading releases', 'err');
+  }
+}
+
+async function refreshReleaseStats() {
+  const statsEl = document.getElementById('releaseStats');
+  if (!currentReleaseId) { statsEl.textContent = '—'; return; }
+  try {
+    const stats = await fetchJSON(API_BASE + `/api/releases/${currentReleaseId}/stats`);
+    statsEl.innerHTML = `<strong>${stats.enrolled}</strong> enrolled Android testers · <strong>${stats.notified}</strong> already notified · <strong>${stats.pending}</strong> pending`;
+  } catch {
+    statsEl.textContent = 'Error loading stats';
+  }
+}
+
+function showReleaseMsg(text, cls) {
+  const el = document.getElementById('releaseMsg');
+  if (!el) return;
+  el.textContent = text;
+  el.className = cls || 'info';
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+// Form bindings
+document.getElementById('addReleaseBtn').onclick = clearReleaseForm;
+
+document.getElementById('releaseForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const body = {
+    version: document.getElementById('releaseVersion').value.trim(),
+    releasedAt: document.getElementById('releaseDate').value,
+    notesEs: document.getElementById('releaseNotesEs').value,
+    notesEn: document.getElementById('releaseNotesEn').value,
+    isCurrent: document.getElementById('releaseIsCurrent').checked,
+  };
+  if (!body.version) { showReleaseMsg('Version is required', 'err'); return; }
+  if (!body.notesEs.trim() && !body.notesEn.trim()) {
+    showReleaseMsg('At least one language of release notes is required', 'err');
+    return;
+  }
+  const btn = e.submitter || document.querySelector('#releaseForm button[type="submit"]');
+  startBtnSpinner(btn, 'Saving…');
+  try {
+    if (currentReleaseId) {
+      const res = await fetch(API_BASE + '/api/releases/' + currentReleaseId, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Save failed'); }
+      showReleaseMsg('Release updated', 'ok');
+    } else {
+      const res = await fetch(API_BASE + '/api/releases', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Save failed');
+      currentReleaseId = data.id;
+      showReleaseMsg('Release created', 'ok');
+    }
+    await loadReleases();
+    if (currentReleaseId) selectRelease(currentReleaseId);
+  } catch (e) {
+    showReleaseMsg(e.message || 'Error saving release', 'err');
+  } finally {
+    stopBtnSpinner(btn);
+  }
+};
+
+document.getElementById('deleteReleaseBtn').onclick = async () => {
+  if (!currentReleaseId) return;
+  if (!confirm('Delete this release? The notification history for it will also be removed.')) return;
+  try {
+    await deleteJSON(API_BASE + '/api/releases/' + currentReleaseId);
+    currentReleaseId = null;
+    await loadReleases();
+    document.getElementById('releaseForm').classList.add('hidden');
+    document.getElementById('releaseEmpty').style.display = 'block';
+    showToast('Release deleted');
+  } catch {
+    showReleaseMsg('Error deleting release', 'err');
+  }
+};
+
+document.getElementById('suggestVersionBtn').onclick = async () => {
+  try {
+    const { suggestedVersion } = await fetchJSON(API_BASE + '/api/releases/suggest-version');
+    if (suggestedVersion) {
+      document.getElementById('releaseVersion').value = suggestedVersion;
+      showReleaseMsg(`Version suggested: ${suggestedVersion}`, 'info');
+    } else {
+      showReleaseMsg('Could not read pubspec.yaml', 'err');
+    }
+  } catch {
+    showReleaseMsg('Error suggesting version', 'err');
+  }
+};
+
+// Language toggle for release notes
+document.querySelectorAll('#releaseLangToggle button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#releaseLangToggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('releaseForm').dataset.lang = btn.dataset.lang;
+  };
+});
+
+// Bulk send from the Releases tab
+document.getElementById('sendReleaseBulkBtn').onclick = async () => {
+  if (!currentReleaseId) { showReleaseMsg('Save the release first', 'err'); return; }
+  const r = releases.find(x => x.id === currentReleaseId);
+  if (!confirm(`Send update email for v${r.version} to eligible Android testers?`)) return;
+  const btn = document.getElementById('sendReleaseBulkBtn');
+  startBtnSpinner(btn, 'Sending…');
+  try {
+    const res = await fetch(API_BASE + '/api/testers/notify-release', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ releaseId: currentReleaseId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Send failed');
+    showReleaseMsg(`Sent to ${data.sent} tester(s)` + (data.errors ? ` · ${data.errors.length} failed` : ''), data.errors ? 'err' : 'ok');
+    refreshReleaseStats();
+  } catch (e) {
+    showReleaseMsg(e.message || 'Error sending', 'err');
+  } finally {
+    stopBtnSpinner(btn);
+  }
+};
+
+// Preview modal
+const previewModal = document.getElementById('previewModal');
+let previewLang = 'es';
+let previewKind = 'release';
+
+async function openPreview() {
+  if (!currentReleaseId) { showReleaseMsg('Save the release first', 'err'); return; }
+  previewModal.hidden = false;
+  await refreshPreview();
+}
+
+async function refreshPreview() {
+  const frame = document.getElementById('previewFrame');
+  frame.srcdoc = '<p style="font-family:sans-serif;padding:2rem;color:#888;">Loading…</p>';
+  const url = API_BASE + `/api/releases/${currentReleaseId}/preview?lang=${previewLang}&kind=${previewKind}`;
+  try {
+    const res = await fetch(url);
+    const html = await res.text();
+    frame.srcdoc = html;
+  } catch (e) {
+    frame.srcdoc = `<p style="font-family:sans-serif;padding:2rem;color:#b00;">Error: ${esc(e.message)}</p>`;
+  }
+}
+
+document.getElementById('previewReleaseBtn').onclick = openPreview;
+document.getElementById('closePreviewBtn').onclick = () => { previewModal.hidden = true; };
+previewModal.querySelector('.preview-modal-backdrop').onclick = () => { previewModal.hidden = true; };
+
+document.querySelectorAll('#previewLangToggle button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#previewLangToggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    previewLang = btn.dataset.lang;
+    refreshPreview();
+  };
+});
+document.querySelectorAll('#previewKindToggle button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#previewKindToggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    previewKind = btn.dataset.kind;
+    refreshPreview();
+  };
+});
+
+// Load releases when the tab is first opened
+document.querySelector('.tab[data-tab="releases"]').addEventListener('click', () => {
+  if (releases.length === 0) loadReleases();
+});
 
 // ============================================================
 // INIT

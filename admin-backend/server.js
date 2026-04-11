@@ -5,7 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const sharp = require('sharp');
-const { db, rowToLocation, locationToParams, rowToZone, rowToTrophy, rowToScoring, rowToTester } = require('./db');
+const { db, rowToLocation, locationToParams, rowToZone, rowToTrophy, rowToScoring, rowToTester, rowToRelease } = require('./db');
+const { renderDownloadEmail, renderReleaseEmail } = require('./email-templates');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,6 +18,33 @@ const upload = multer({ dest: uploadsDir });
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ============================================================
+// EMAIL HELPER (Brevo)
+// ============================================================
+async function sendBrevoEmail({ to, subject, htmlContent }) {
+  const BREVO_KEY = process.env.BREVO_API_KEY;
+  if (!BREVO_KEY) throw new Error('Brevo API key not configured');
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'api-key': BREVO_KEY,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: 'Zoom-In Chile', email: 'no-reply@sabino.cl' },
+      to,
+      subject,
+      htmlContent,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err);
+  }
+  return res;
+}
 
 // ============================================================
 // LOCATIONS — Paginated GET with filters
@@ -752,27 +780,19 @@ app.post('/api/testers', async (req, res) => {
   ).run(name.trim(), cleanEmail, cleanLang, cleanPlatform);
 
   // Notify admin about new tester
-  const BREVO_KEY = process.env.BREVO_API_KEY;
-  if (BREVO_KEY) {
-    try {
-      await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: { 'accept': 'application/json', 'api-key': BREVO_KEY, 'content-type': 'application/json' },
-        body: JSON.stringify({
-          sender: { name: 'Zoom-In Chile', email: 'no-reply@sabino.cl' },
-          to: [{ email: 'sabinovelasquez@gmail.com', name: 'Sabino' }],
-          subject: `Nuevo tester: ${name.trim()} (${cleanPlatform})`,
-          htmlContent: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:2rem;">
-            <h2 style="color:#1565C0;">Nuevo Tester</h2>
-            <p><strong>Nombre:</strong> ${name.trim()}</p>
-            <p><strong>Email:</strong> ${cleanEmail}</p>
-            <p><strong>Plataforma:</strong> ${cleanPlatform}</p>
-            <p><strong>Idioma:</strong> ${cleanLang.toUpperCase()}</p>
-          </div>`,
-        }),
-      });
-    } catch (_) { /* don't block signup if notification fails */ }
-  }
+  try {
+    await sendBrevoEmail({
+      to: [{ email: 'sabinovelasquez@gmail.com', name: 'Sabino' }],
+      subject: `Nuevo tester: ${name.trim()} (${cleanPlatform})`,
+      htmlContent: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:2rem;">
+        <h2 style="color:#1565C0;">Nuevo Tester</h2>
+        <p><strong>Nombre:</strong> ${name.trim()}</p>
+        <p><strong>Email:</strong> ${cleanEmail}</p>
+        <p><strong>Plataforma:</strong> ${cleanPlatform}</p>
+        <p><strong>Idioma:</strong> ${cleanLang.toUpperCase()}</p>
+      </div>`,
+    });
+  } catch (_) { /* don't block signup if notification fails */ }
 
   res.json({ ok: true, id: result.lastInsertRowid });
 });
@@ -793,117 +813,398 @@ app.delete('/api/testers/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/testers/notify', async (req, res) => {
-  const BREVO_KEY = process.env.BREVO_API_KEY;
-  if (!BREVO_KEY) return res.status(500).json({ error: 'Brevo API key not configured' });
+// --- Opt-out helpers (HMAC-signed tokens; stateless) -------------------------
+const crypto = require('crypto');
+const OPT_OUT_SECRET = process.env.OPT_OUT_SECRET || process.env.BREVO_API_KEY || 'dev-secret-change-me';
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://games.sabino.cl/zoominchile';
 
-  const downloadUrl = 'https://play.google.com/apps/internaltest/4700433915880246135';
-  const defaultSubject = 'Zoom-In Chile - Early Access';
-  const defaultHtmlEs = `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:2rem;">
-    <h2 style="color:#1565C0;">Zoom-In Chile</h2>
-    <p>Hola {{name}},</p>
-    <p>La app ya está disponible para testing. Descárgala aquí:</p>
-    <p><a href="${downloadUrl}" style="display:inline-block;padding:12px 24px;background:#1565C0;color:white;text-decoration:none;border-radius:8px;font-weight:600;">Descargar App</a></p>
-    <p style="color:#888;font-size:0.85rem;">Gracias por ser parte de los primeros testers.</p>
-  </div>`;
-  const defaultHtmlEn = `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:2rem;">
-    <h2 style="color:#1565C0;">Zoom-In Chile</h2>
-    <p>Hi {{name}},</p>
-    <p>The app is now available for testing. Download it here:</p>
-    <p><a href="${downloadUrl}" style="display:inline-block;padding:12px 24px;background:#1565C0;color:white;text-decoration:none;border-radius:8px;font-weight:600;">Download App</a></p>
-    <p style="color:#888;font-size:0.85rem;">Thanks for being one of our early testers.</p>
-  </div>`;
+function optOutToken(email) {
+  return crypto
+    .createHmac('sha256', OPT_OUT_SECRET)
+    .update(String(email).toLowerCase())
+    .digest('hex')
+    .slice(0, 20);
+}
 
-  const subject = (req.body && req.body.subject) || defaultSubject;
-  const htmlEs = (req.body && req.body.htmlEs) || defaultHtmlEs;
-  const htmlEn = (req.body && req.body.htmlEn) || defaultHtmlEn;
+function buildOptOutUrl(email) {
+  const token = optOutToken(email);
+  const encoded = encodeURIComponent(email);
+  return `${PUBLIC_BASE_URL}/api/testers/unsubscribe?email=${encoded}&token=${token}`;
+}
 
-  const testers = db.prepare('SELECT * FROM testers WHERE enrolled = 1 AND notified = 0').all();
+// Public GET endpoint triggered from the email footer link. No auth — the
+// HMAC token proves the recipient owns the email address. Returns a small
+// confirmation HTML page (not JSON) because it's rendered in a browser.
+app.get('/api/testers/unsubscribe', (req, res) => {
+  const email = String(req.query.email || '').trim().toLowerCase();
+  const token = String(req.query.token || '');
+  const lang = req.query.lang === 'en' ? 'en' : 'es';
+
+  if (!email || !token) {
+    return res.status(400).send(renderUnsubscribePage({ lang, ok: false, reason: 'missing' }));
+  }
+  const expected = optOutToken(email);
+  // Constant-time comparison to avoid timing attacks.
+  const ok = expected.length === token.length
+    && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(token));
+  if (!ok) {
+    return res.status(400).send(renderUnsubscribePage({ lang, ok: false, reason: 'invalid' }));
+  }
+
+  const tester = db.prepare('SELECT id FROM testers WHERE email = ?').get(email);
+  if (tester) {
+    db.prepare('UPDATE testers SET unsubscribed = 1 WHERE id = ?').run(tester.id);
+  }
+  res.send(renderUnsubscribePage({ lang, ok: true, email }));
+});
+
+function renderUnsubscribePage({ lang, ok, email, reason }) {
+  const isEn = lang === 'en';
+  const title = ok
+    ? (isEn ? 'Unsubscribed' : 'Suscripción cancelada')
+    : (isEn ? 'Invalid link' : 'Enlace inválido');
+  const body = ok
+    ? (isEn
+        ? `You won't receive any more emails at <strong>${email}</strong>.`
+        : `No recibirás más correos en <strong>${email}</strong>.`)
+    : (isEn
+        ? 'This unsubscribe link is invalid or expired.'
+        : 'Este enlace para cancelar la suscripción no es válido o ha expirado.');
+  return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title} · Zoom-In Chile</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Plus+Jakarta+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:#F5F7FA;color:#1A1A1A;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+.card{max-width:480px;width:100%;background:#fff;border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.08);overflow:hidden;text-align:center;}
+.header{background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;padding:28px 24px;}
+.header img{width:64px;height:64px;border-radius:14px;margin-bottom:10px;}
+.header h1{margin:0;font-family:'Space Grotesk',sans-serif;font-size:20px;}
+.body{padding:32px 28px;font-size:15px;color:#374151;line-height:1.6;}
+.body strong{color:#1A1A1A;}
+.footer{padding:18px;border-top:1px solid #E5E7EB;background:#FAFBFC;font-size:12px;color:#6B7280;}
+.footer a{color:#1565C0;text-decoration:none;}
+</style></head><body>
+<div class="card">
+<div class="header">
+<img src="https://games.sabino.cl/zoominchile/icon.png" alt="">
+<h1>${title}</h1>
+</div>
+<div class="body"><p>${body}</p></div>
+<div class="footer"><a href="https://games.sabino.cl/zoominchile">games.sabino.cl/zoominchile</a></div>
+</div>
+</body></html>`;
+}
+
+// --- Bulk notification: download email --------------------------------------
+async function notifyDownloadBulkHandler(req, res) {
+  const testers = db.prepare(`
+    SELECT * FROM testers
+    WHERE enrolled = 1 AND notified = 0 AND unsubscribed = 0 AND platform = 'android'
+  `).all();
   if (testers.length === 0) return res.json({ ok: true, sent: 0, message: 'No testers to notify' });
 
   let sent = 0;
   const errors = [];
-
   for (const tester of testers) {
-    const html = (tester.lang === 'en' ? htmlEn : htmlEs).replace(/\{\{name\}\}/g, tester.name);
     try {
-      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'api-key': BREVO_KEY,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          sender: { name: 'Zoom-In Chile', email: 'no-reply@sabino.cl' },
-          to: [{ email: tester.email, name: tester.name }],
-          subject,
-          htmlContent: html,
-        }),
+      const { subject, html } = renderDownloadEmail({
+        name: tester.name,
+        lang: tester.lang,
+        optOutUrl: buildOptOutUrl(tester.email),
       });
-      if (response.ok) {
-        db.prepare('UPDATE testers SET notified = 1 WHERE id = ?').run(tester.id);
-        sent++;
-      } else {
-        const err = await response.text();
-        errors.push({ email: tester.email, error: err });
-      }
+      await sendBrevoEmail({
+        to: [{ email: tester.email, name: tester.name }],
+        subject,
+        htmlContent: html,
+      });
+      db.prepare('UPDATE testers SET notified = 1 WHERE id = ?').run(tester.id);
+      sent++;
     } catch (e) {
       errors.push({ email: tester.email, error: e.message });
     }
   }
+  res.json({ ok: true, sent, total: testers.length, errors: errors.length > 0 ? errors : undefined });
+}
+app.post('/api/testers/notify-download', notifyDownloadBulkHandler);
 
+// --- Bulk notification: release / update email ------------------------------
+app.post('/api/testers/notify-release', async (req, res) => {
+  const releaseId = await resolveReleaseId(req.body && req.body.releaseId);
+  if (!releaseId) return res.status(400).json({ error: 'No release selected and no current release set' });
+  const release = db.prepare('SELECT * FROM releases WHERE id = ?').get(releaseId);
+  if (!release) return res.status(404).json({ error: 'Release not found' });
+  const releaseDto = rowToRelease(release);
+
+  const testers = db.prepare(`
+    SELECT t.* FROM testers t
+    WHERE t.enrolled = 1
+      AND t.unsubscribed = 0
+      AND t.platform = 'android'
+      AND NOT EXISTS (
+        SELECT 1 FROM release_notifications rn
+        WHERE rn.tester_id = t.id AND rn.release_id = @releaseId
+      )
+  `).all({ releaseId });
+  if (testers.length === 0) return res.json({ ok: true, sent: 0, message: 'No testers pending for this release' });
+
+  let sent = 0;
+  const errors = [];
+  const markSent = db.prepare(
+    'INSERT OR IGNORE INTO release_notifications (release_id, tester_id) VALUES (?, ?)'
+  );
+
+  for (const tester of testers) {
+    try {
+      const { subject, html } = renderReleaseEmail({
+        name: tester.name,
+        lang: tester.lang,
+        release: releaseDto,
+        optOutUrl: buildOptOutUrl(tester.email),
+      });
+      await sendBrevoEmail({
+        to: [{ email: tester.email, name: tester.name }],
+        subject,
+        htmlContent: html,
+      });
+      markSent.run(releaseId, tester.id);
+      sent++;
+    } catch (e) {
+      errors.push({ email: tester.email, error: e.message });
+    }
+  }
   res.json({ ok: true, sent, total: testers.length, errors: errors.length > 0 ? errors : undefined });
 });
 
-app.post('/api/testers/:id/notify', async (req, res) => {
-  const BREVO_KEY = process.env.BREVO_API_KEY;
-  if (!BREVO_KEY) return res.status(500).json({ error: 'Brevo API key not configured' });
-
+// --- Individual notifications (one tester) ----------------------------------
+async function notifyDownloadIndividualHandler(req, res) {
   const tester = db.prepare('SELECT * FROM testers WHERE id = ?').get(req.params.id);
   if (!tester) return res.status(404).json({ error: 'Tester not found' });
-
+  if (tester.unsubscribed) return res.status(400).json({ error: 'Tester has unsubscribed from emails' });
   const lang = (req.body && req.body.lang) || tester.lang || 'es';
-  const downloadUrl = 'https://play.google.com/apps/internaltest/4700433915880246135';
-  const templates = {
-    es: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:2rem;">
-      <h2 style="color:#1565C0;">Zoom-In Chile</h2>
-      <p>Hola {{name}},</p>
-      <p>La app ya está disponible para testing. Descárgala aquí:</p>
-      <p><a href="${downloadUrl}" style="display:inline-block;padding:12px 24px;background:#1565C0;color:white;text-decoration:none;border-radius:8px;font-weight:600;">Descargar App</a></p>
-      <p style="color:#888;font-size:0.85rem;">Gracias por ser parte de los primeros testers.</p>
-    </div>`,
-    en: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:2rem;">
-      <h2 style="color:#1565C0;">Zoom-In Chile</h2>
-      <p>Hi {{name}},</p>
-      <p>The app is now available for testing. Download it here:</p>
-      <p><a href="${downloadUrl}" style="display:inline-block;padding:12px 24px;background:#1565C0;color:white;text-decoration:none;border-radius:8px;font-weight:600;">Download App</a></p>
-      <p style="color:#888;font-size:0.85rem;">Thanks for being one of our early testers.</p>
-    </div>`,
-  };
-
-  const html = (templates[lang] || templates.es).replace(/\{\{name\}\}/g, tester.name);
   try {
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: { 'accept': 'application/json', 'api-key': BREVO_KEY, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        sender: { name: 'Zoom-In Chile', email: 'no-reply@sabino.cl' },
-        to: [{ email: tester.email, name: tester.name }],
-        subject: 'Zoom-In Chile - Early Access',
-        htmlContent: html,
-      }),
+    const { subject, html } = renderDownloadEmail({
+      name: tester.name,
+      lang,
+      optOutUrl: buildOptOutUrl(tester.email),
     });
-    if (response.ok) {
-      db.prepare('UPDATE testers SET notified = 1 WHERE id = ?').run(tester.id);
-      res.json({ ok: true });
-    } else {
-      const err = await response.text();
-      res.status(500).json({ error: err });
-    }
+    await sendBrevoEmail({
+      to: [{ email: tester.email, name: tester.name }],
+      subject,
+      htmlContent: html,
+    });
+    db.prepare('UPDATE testers SET notified = 1 WHERE id = ?').run(tester.id);
+    res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+}
+app.post('/api/testers/:id/notify-download', notifyDownloadIndividualHandler);
+
+app.post('/api/testers/:id/notify-release', async (req, res) => {
+  const tester = db.prepare('SELECT * FROM testers WHERE id = ?').get(req.params.id);
+  if (!tester) return res.status(404).json({ error: 'Tester not found' });
+  if (tester.unsubscribed) return res.status(400).json({ error: 'Tester has unsubscribed from emails' });
+  const releaseId = await resolveReleaseId(req.body && req.body.releaseId);
+  if (!releaseId) return res.status(400).json({ error: 'No release selected and no current release set' });
+  const release = db.prepare('SELECT * FROM releases WHERE id = ?').get(releaseId);
+  if (!release) return res.status(404).json({ error: 'Release not found' });
+  const releaseDto = rowToRelease(release);
+  const force = !!(req.body && req.body.force);
+  const lang = (req.body && req.body.lang) || tester.lang || 'es';
+
+  const already = db.prepare(
+    'SELECT 1 FROM release_notifications WHERE release_id = ? AND tester_id = ?'
+  ).get(releaseId, tester.id);
+  if (already && !force) {
+    return res.status(409).json({ error: 'Tester already notified for this release', alreadySent: true });
+  }
+
+  try {
+    const { subject, html } = renderReleaseEmail({
+      name: tester.name,
+      lang,
+      release: releaseDto,
+      optOutUrl: buildOptOutUrl(tester.email),
+    });
+    await sendBrevoEmail({
+      to: [{ email: tester.email, name: tester.name }],
+      subject,
+      htmlContent: html,
+    });
+    if (force && already) {
+      db.prepare(
+        'UPDATE release_notifications SET sent_at = datetime(\'now\') WHERE release_id = ? AND tester_id = ?'
+      ).run(releaseId, tester.id);
+    } else {
+      db.prepare(
+        'INSERT OR IGNORE INTO release_notifications (release_id, tester_id) VALUES (?, ?)'
+      ).run(releaseId, tester.id);
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Helper: resolve a releaseId from the request body, falling back to the
+// release marked as is_current, or the most recent one if none is marked.
+async function resolveReleaseId(requestedId) {
+  if (requestedId) return Number(requestedId);
+  const row = db.prepare(`
+    SELECT id FROM releases
+    ORDER BY is_current DESC, released_at DESC, id DESC
+    LIMIT 1
+  `).get();
+  return row ? row.id : null;
+}
+
+// --- Deprecated aliases: keep old callers working (e.g. old frontend JS) ----
+app.post('/api/testers/notify', notifyDownloadBulkHandler);
+app.post('/api/testers/:id/notify', notifyDownloadIndividualHandler);
+
+// ============================================================
+// RELEASES
+// ============================================================
+app.get('/api/releases', (req, res) => {
+  const rows = db.prepare(
+    'SELECT * FROM releases ORDER BY is_current DESC, released_at DESC, id DESC'
+  ).all();
+  res.json(rows.map(rowToRelease));
+});
+
+app.get('/api/releases/current', (req, res) => {
+  const row = db.prepare(`
+    SELECT * FROM releases
+    ORDER BY is_current DESC, released_at DESC, id DESC
+    LIMIT 1
+  `).get();
+  if (!row) return res.status(404).json({ error: 'No releases yet' });
+  res.json(rowToRelease(row));
+});
+
+// Suggest a version by reading pubspec.yaml in the parent Flutter project.
+// Falls back to null if the file is not reachable (e.g. admin deployed standalone).
+app.get('/api/releases/suggest-version', (req, res) => {
+  try {
+    const content = fs.readFileSync(path.join(__dirname, '..', 'pubspec.yaml'), 'utf8');
+    const match = content.match(/^version:\s*([^\s#]+)/m);
+    res.json({ suggestedVersion: match ? match[1] : null });
+  } catch (_) {
+    res.json({ suggestedVersion: null });
+  }
+});
+
+// Stats for the admin UI: how many testers are eligible and how many already
+// received the email for a given release. Used in the "Send to testers" panel.
+app.get('/api/releases/:id/stats', (req, res) => {
+  const release = db.prepare('SELECT id FROM releases WHERE id = ?').get(req.params.id);
+  if (!release) return res.status(404).json({ error: 'Release not found' });
+  const enrolled = db.prepare(`
+    SELECT COUNT(*) AS c FROM testers
+    WHERE enrolled = 1 AND unsubscribed = 0 AND platform = 'android'
+  `).get().c;
+  const notified = db.prepare(`
+    SELECT COUNT(*) AS c FROM release_notifications rn
+    JOIN testers t ON t.id = rn.tester_id
+    WHERE rn.release_id = ? AND t.enrolled = 1 AND t.unsubscribed = 0 AND t.platform = 'android'
+  `).get(req.params.id).c;
+  res.json({ enrolled, notified, pending: Math.max(0, enrolled - notified) });
+});
+
+// Preview the email HTML (ES or EN) for a given release, using placeholder
+// tester data. Returns raw HTML so the admin UI can stuff it into an iframe.
+app.get('/api/releases/:id/preview', (req, res) => {
+  const release = db.prepare('SELECT * FROM releases WHERE id = ?').get(req.params.id);
+  if (!release) return res.status(404).send('Release not found');
+  const lang = req.query.lang === 'en' ? 'en' : 'es';
+  const kind = req.query.kind === 'download' ? 'download' : 'release';
+  const placeholderName = lang === 'en' ? '[Name]' : '[Nombre]';
+  const placeholderOptOut = `${PUBLIC_BASE_URL}/api/testers/unsubscribe?email=preview@example.com&token=preview`;
+  const rendered = kind === 'download'
+    ? renderDownloadEmail({ name: placeholderName, lang, optOutUrl: placeholderOptOut })
+    : renderReleaseEmail({ name: placeholderName, lang, release: rowToRelease(release), optOutUrl: placeholderOptOut });
+  res.set('content-type', 'text/html; charset=utf-8');
+  res.send(rendered.html);
+});
+
+// Preview a standalone download email without requiring a release row.
+app.get('/api/releases/preview-download', (req, res) => {
+  const lang = req.query.lang === 'en' ? 'en' : 'es';
+  const placeholderName = lang === 'en' ? '[Name]' : '[Nombre]';
+  const placeholderOptOut = `${PUBLIC_BASE_URL}/api/testers/unsubscribe?email=preview@example.com&token=preview`;
+  const rendered = renderDownloadEmail({ name: placeholderName, lang, optOutUrl: placeholderOptOut });
+  res.set('content-type', 'text/html; charset=utf-8');
+  res.send(rendered.html);
+});
+
+app.post('/api/releases', (req, res) => {
+  const { version, releasedAt, notesEs, notesEn, isCurrent } = req.body || {};
+  if (!version || !String(version).trim()) {
+    return res.status(400).json({ error: 'Version is required' });
+  }
+  const cleanVersion = String(version).trim();
+  const cleanDate = (releasedAt && String(releasedAt).trim()) || new Date().toISOString().slice(0, 10);
+
+  try {
+    const insert = db.transaction(() => {
+      if (isCurrent) {
+        db.prepare('UPDATE releases SET is_current = 0').run();
+      }
+      return db.prepare(`
+        INSERT INTO releases (version, released_at, notes_es, notes_en, is_current)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(cleanVersion, cleanDate, notesEs || '', notesEn || '', isCurrent ? 1 : 0);
+    });
+    const result = insert();
+    res.json({ ok: true, id: result.lastInsertRowid });
+  } catch (e) {
+    if (String(e.message).includes('UNIQUE')) {
+      return res.status(409).json({ error: `Version ${cleanVersion} already exists` });
+    }
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/releases/:id', (req, res) => {
+  const existing = db.prepare('SELECT id FROM releases WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Release not found' });
+  const { version, releasedAt, notesEs, notesEn, isCurrent } = req.body || {};
+  if (!version || !String(version).trim()) {
+    return res.status(400).json({ error: 'Version is required' });
+  }
+
+  try {
+    const update = db.transaction(() => {
+      if (isCurrent) {
+        db.prepare('UPDATE releases SET is_current = 0').run();
+      }
+      db.prepare(`
+        UPDATE releases
+        SET version = ?, released_at = ?, notes_es = ?, notes_en = ?, is_current = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `).run(
+        String(version).trim(),
+        releasedAt || new Date().toISOString().slice(0, 10),
+        notesEs || '',
+        notesEn || '',
+        isCurrent ? 1 : 0,
+        req.params.id
+      );
+    });
+    update();
+    res.json({ ok: true });
+  } catch (e) {
+    if (String(e.message).includes('UNIQUE')) {
+      return res.status(409).json({ error: 'Version already exists' });
+    }
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/releases/:id', (req, res) => {
+  db.prepare('DELETE FROM releases WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
 });
 
 // ============================================================
