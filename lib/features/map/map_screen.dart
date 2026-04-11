@@ -353,21 +353,29 @@ class _MapScreenState extends State<MapScreen> {
                               ),
                             ),
                     ),
-                    if (allCompleted)
-                      Positioned(
-                        right: 6,
-                        bottom: -10,
-                        child: IgnorePointer(
-                          child: SizedBox(
-                            width: 110,
-                            height: 89,
-                            child: SvgPicture.asset(
-                              'assets/girl_cat.svg',
-                              fit: BoxFit.contain,
+                    // Silhouette only on the Expert slide (difficulty 6)
+                    ValueListenableBuilder<int>(
+                      valueListenable: pageNotifier,
+                      builder: (_, current, __) {
+                        if (current >= slides.length) return const SizedBox.shrink();
+                        final showOn = slides[current].difficulty == 6;
+                        if (!showOn) return const SizedBox.shrink();
+                        return Positioned(
+                          right: 6,
+                          bottom: -10,
+                          child: IgnorePointer(
+                            child: SizedBox(
+                              width: 110,
+                              height: 89,
+                              child: SvgPicture.asset(
+                                'assets/girl_cat.svg',
+                                fit: BoxFit.contain,
+                              ),
                             ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -409,9 +417,11 @@ class _MapScreenState extends State<MapScreen> {
 
   Widget _buildTipCard(_TipSlide slide, {required bool allCompleted}) {
     final color = _diffColors[slide.difficulty] ?? AppTheme.accentBlue;
+    // Extra bottom padding only on the Expert slide to make room for the girl_cat silhouette
+    final bottomPad = (allCompleted && slide.difficulty == 6) ? 85.0 : 14.0;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(14, 14, 14, allCompleted ? 85 : 14),
+      padding: EdgeInsets.fromLTRB(14, 14, 14, bottomPad),
       decoration: BoxDecoration(
         color: AppTheme.trophyGold.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
