@@ -51,6 +51,16 @@ class GameProgressService {
     await _save();
   }
 
+  /// Replaces the current progress with the given JSON payload (from a
+  /// server-side backup). Throws FormatException on invalid JSON.
+  static Future<void> replaceProgressFromJson(Map<String, dynamic> json) async {
+    _progress = PlayerProgress.fromJson(json);
+    await _save();
+  }
+
+  /// Current progress as a JSON map, ready for `createBackup`.
+  static Map<String, dynamic> progressAsJson() => _progress.toJson();
+
   static Future<void> _save() async {
     await _prefs.setString(_key, _progress.toJsonString());
   }

@@ -53,18 +53,19 @@ class PlayerProgress {
         earnedTrophyIds = earnedTrophyIds ?? [],
         favoriteLocationIds = favoriteLocationIds ?? [];
 
-  String toJsonString() => jsonEncode({
+  Map<String, dynamic> toJson() => {
         'totalPoints': totalPoints,
         'completedPuzzles': completedPuzzles.map((k, v) => MapEntry(k, v.toJson())),
         'earnedTrophyIds': earnedTrophyIds,
         'favoriteLocationIds': favoriteLocationIds,
         'noHelpCompleted': noHelpCompleted,
-      });
+      };
 
-  factory PlayerProgress.fromJsonString(String jsonStr) {
-    final map = jsonDecode(jsonStr) as Map<String, dynamic>;
+  String toJsonString() => jsonEncode(toJson());
+
+  factory PlayerProgress.fromJson(Map<String, dynamic> map) {
     final puzzles = (map['completedPuzzles'] as Map<String, dynamic>?)?.map(
-          (k, v) => MapEntry(k, PuzzleResult.fromJson(v)),
+          (k, v) => MapEntry(k, PuzzleResult.fromJson(v as Map<String, dynamic>)),
         ) ??
         {};
     return PlayerProgress(
@@ -75,6 +76,9 @@ class PlayerProgress {
       noHelpCompleted: map['noHelpCompleted'] as int? ?? 0,
     );
   }
+
+  factory PlayerProgress.fromJsonString(String jsonStr) =>
+      PlayerProgress.fromJson(jsonDecode(jsonStr) as Map<String, dynamic>);
 
   int get completedCount => completedPuzzles.length;
 

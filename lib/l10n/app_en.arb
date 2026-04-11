@@ -41,5 +41,32 @@
     "placeholders": {
       "level": { "type": "String" }
     }
-  }
+  },
+  "backupAndRestore": "Backup & restore",
+  "backupProgress": "Backup progress",
+  "restoreProgress": "Restore progress",
+  "generateBackupCode": "Generate code",
+  "copyCode": "Copy code",
+  "codeCopied": "Code copied",
+  "emailCode": "Email it to me",
+  "emailPlaceholder": "you@email.com",
+  "emailSent": "Email sent",
+  "emailFailed": "Could not send email",
+  "enterBackupCode": "Enter your code",
+  "backupCodePlaceholder": "XXXX-XXXX",
+  "restoreConfirmTitle": "Restore progress?",
+  "restoreConfirmBody": "This will overwrite your current progress with the one from the code. You cannot undo this.",
+  "restoreAction": "Restore",
+  "backupSuccess": "Backup created",
+  "backupFailed": "Could not create backup",
+  "restoreSuccess": "Progress restored",
+  "backupCodeInvalid": "Invalid or expired code",
+  "backupExpiresOn": "Valid until {date}",
+  "@backupExpiresOn": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "backupIntro": "Save your progress with a short code. Use it on another device to restore it.",
+  "backupPrivacyWarning": "Anyone with this code can restore your progress."
 }

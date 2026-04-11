@@ -41,5 +41,32 @@
     "placeholders": {
       "level": { "type": "String" }
     }
-  }
+  },
+  "backupAndRestore": "Respaldo y restauración",
+  "backupProgress": "Respaldar progreso",
+  "restoreProgress": "Restaurar progreso",
+  "generateBackupCode": "Generar código",
+  "copyCode": "Copiar código",
+  "codeCopied": "Código copiado",
+  "emailCode": "Enviar por correo",
+  "emailPlaceholder": "tu@correo.cl",
+  "emailSent": "Correo enviado",
+  "emailFailed": "No se pudo enviar el correo",
+  "enterBackupCode": "Ingresa tu código",
+  "backupCodePlaceholder": "XXXX-XXXX",
+  "restoreConfirmTitle": "¿Restaurar progreso?",
+  "restoreConfirmBody": "Esto sobrescribirá tu progreso actual con el del código ingresado. No podrás deshacerlo.",
+  "restoreAction": "Restaurar",
+  "backupSuccess": "Respaldo creado",
+  "backupFailed": "No se pudo crear el respaldo",
+  "restoreSuccess": "Progreso restaurado",
+  "backupCodeInvalid": "Código inválido o expirado",
+  "backupExpiresOn": "Válido hasta {date}",
+  "@backupExpiresOn": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "backupIntro": "Guarda tu progreso con un código corto. Úsalo en otro dispositivo para recuperarlo.",
+  "backupPrivacyWarning": "Cualquiera con este código puede restaurar tu progreso."
 }

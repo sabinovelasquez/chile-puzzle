@@ -325,6 +325,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tip for {level}'**
   String tipForDifficulty(String level);
+
+  /// No description provided for @backupAndRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup & restore'**
+  String get backupAndRestore;
+
+  /// No description provided for @backupProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup progress'**
+  String get backupProgress;
+
+  /// No description provided for @restoreProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore progress'**
+  String get restoreProgress;
+
+  /// No description provided for @generateBackupCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate code'**
+  String get generateBackupCode;
+
+  /// No description provided for @copyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy code'**
+  String get copyCode;
+
+  /// No description provided for @codeCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Code copied'**
+  String get codeCopied;
+
+  /// No description provided for @emailCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Email it to me'**
+  String get emailCode;
+
+  /// No description provided for @emailPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'you@email.com'**
+  String get emailPlaceholder;
+
+  /// No description provided for @emailSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Email sent'**
+  String get emailSent;
+
+  /// No description provided for @emailFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send email'**
+  String get emailFailed;
+
+  /// No description provided for @enterBackupCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your code'**
+  String get enterBackupCode;
+
+  /// No description provided for @backupCodePlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'XXXX-XXXX'**
+  String get backupCodePlaceholder;
+
+  /// No description provided for @restoreConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore progress?'**
+  String get restoreConfirmTitle;
+
+  /// No description provided for @restoreConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This will overwrite your current progress with the one from the code. You cannot undo this.'**
+  String get restoreConfirmBody;
+
+  /// No description provided for @restoreAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get restoreAction;
+
+  /// No description provided for @backupSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup created'**
+  String get backupSuccess;
+
+  /// No description provided for @backupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not create backup'**
+  String get backupFailed;
+
+  /// No description provided for @restoreSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress restored'**
+  String get restoreSuccess;
+
+  /// No description provided for @backupCodeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid or expired code'**
+  String get backupCodeInvalid;
+
+  /// No description provided for @backupExpiresOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid until {date}'**
+  String backupExpiresOn(String date);
+
+  /// No description provided for @backupIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Save your progress with a short code. Use it on another device to restore it.'**
+  String get backupIntro;
+
+  /// No description provided for @backupPrivacyWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with this code can restore your progress.'**
+  String get backupPrivacyWarning;
 }
 
 class _AppLocalizationsDelegate

@@ -177,9 +177,58 @@ ${ctaButton({ href: DOWNLOAD_URL, label: ctaLabel })}
   };
 }
 
+function renderProgressBackupEmail({ code, expiresAt, lang }) {
+  const isEn = lang === 'en';
+  const subject = isEn
+    ? 'Zoom-In Chile - Your backup code'
+    : 'Zoom-In Chile - Tu código de respaldo';
+
+  const formattedCode = code.length === 8
+    ? `${code.slice(0, 4)}-${code.slice(4)}`
+    : code;
+
+  const expiresDate = expiresAt ? new Date(expiresAt) : null;
+  const expiresStr = expiresDate && !isNaN(expiresDate)
+    ? expiresDate.toLocaleDateString(isEn ? 'en-US' : 'es-CL', { year: 'numeric', month: 'long', day: 'numeric' })
+    : '';
+
+  const intro = isEn
+    ? 'Here is your backup code for your Zoom-In Chile progress.'
+    : 'Aquí está tu código de respaldo para tu progreso de Zoom-In Chile.';
+  const howTo = isEn
+    ? 'On any device, open the app, go to Profile and tap "Restore progress". Enter this code and your progress will be restored.'
+    : 'En cualquier dispositivo, abre la app, ve a Perfil y toca "Restaurar progreso". Ingresa este código y tu progreso se restaurará.';
+  const validCopy = isEn
+    ? `Valid until <strong>${escapeHtml(expiresStr)}</strong>.`
+    : `Válido hasta el <strong>${escapeHtml(expiresStr)}</strong>.`;
+  const warning = isEn
+    ? 'Anyone with this code can restore your progress — keep it private.'
+    : 'Cualquiera con este código puede restaurar tu progreso — guárdalo en privado.';
+
+  const bodyHtml = `
+<p style="margin:0 0 20px;font-size:15px;color:#374151;">${intro}</p>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:8px auto 24px;">
+<tr><td align="center" style="background:#F5F7FA;border:2px dashed #1565C0;border-radius:12px;padding:22px 32px;">
+<div style="font-family:'Space Grotesk','Plus Jakarta Sans',sans-serif;font-size:28px;font-weight:700;color:#1565C0;letter-spacing:0.12em;">${escapeHtml(formattedCode)}</div>
+</td></tr>
+</table>
+
+<p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.55;">${howTo}</p>
+${expiresStr ? `<p style="margin:0 0 16px;font-size:13px;color:#6B7280;">${validCopy}</p>` : ''}
+<p style="margin:20px 0 0;font-size:12px;color:#9CA3AF;line-height:1.55;">${warning}</p>
+`;
+
+  return {
+    subject,
+    html: renderLayout({ lang: isEn ? 'en' : 'es', title: subject, bodyHtml }),
+  };
+}
+
 module.exports = {
   renderDownloadEmail,
   renderReleaseEmail,
+  renderProgressBackupEmail,
   escapeHtml,
   parseNotes,
 };

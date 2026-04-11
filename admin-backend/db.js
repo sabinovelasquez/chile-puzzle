@@ -121,6 +121,15 @@ db.exec(`
     FOREIGN KEY (tester_id) REFERENCES testers(id) ON DELETE CASCADE
   );
   CREATE INDEX IF NOT EXISTS idx_rel_notif_release ON release_notifications(release_id);
+
+  CREATE TABLE IF NOT EXISTS progress_backups (
+    code TEXT PRIMARY KEY,
+    progress_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL,
+    ip TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_backup_expires ON progress_backups(expires_at);
 `);
 
 // Migrate: add platform to testers if missing

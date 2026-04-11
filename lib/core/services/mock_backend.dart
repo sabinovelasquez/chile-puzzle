@@ -168,6 +168,71 @@ class MockBackend {
     return (entries: const <Map<String, dynamic>>[], qualifyingScore: 0);
   }
 
+  // --- Progress backup / restore (Nintendo-style short code) ---
+
+  /// Uploads the given progress JSON and returns `(code, expiresAt)` on
+  /// success, or null on any failure.
+  static Future<({String code, String expiresAt})?> createProgressBackup(
+    Map<String, dynamic> progressJson,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/progress/backup'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'progress': progressJson}),
+      );
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body) as Map<String, dynamic>;
+        return (
+          code: decoded['code'] as String,
+          expiresAt: decoded['expiresAt'] as String,
+        );
+      }
+      debugPrint('createProgressBackup failed: ${response.statusCode} ${response.body}');
+    } catch (e) {
+      debugPrint('Error creating progress backup: $e');
+    }
+    return null;
+  }
+
+  /// Fetches a backup by code. Returns the raw progress JSON map, or null if
+  /// not found / expired / network error.
+  static Future<Map<String, dynamic>?> fetchProgressBackup(String code) async {
+    try {
+      final normalized = code.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/progress/restore/$normalized'),
+      );
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body) as Map<String, dynamic>;
+        return decoded['progress'] as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('Error fetching progress backup: $e');
+    }
+    return null;
+  }
+
+  /// Emails a previously-created backup code to the given address.
+  /// Returns true on success.
+  static Future<bool> emailProgressBackup({
+    required String code,
+    required String email,
+    required String lang,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/progress/backup/email'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'code': code, 'email': email, 'lang': lang}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error emailing backup code: $e');
+    }
+    return false;
+  }
+
   /// Submit a per-location result. Returns {rank} or {error} on failure.
   static Future<Map<String, dynamic>?> submitLocationScore({
     required String initials,

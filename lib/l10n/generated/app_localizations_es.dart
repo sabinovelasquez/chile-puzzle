@@ -126,4 +126,75 @@ class AppLocalizationsEs extends AppLocalizations {
   String tipForDifficulty(String level) {
     return 'Pista para $level';
   }
+
+  @override
+  String get backupAndRestore => 'Respaldo y restauración';
+
+  @override
+  String get backupProgress => 'Respaldar progreso';
+
+  @override
+  String get restoreProgress => 'Restaurar progreso';
+
+  @override
+  String get generateBackupCode => 'Generar código';
+
+  @override
+  String get copyCode => 'Copiar código';
+
+  @override
+  String get codeCopied => 'Código copiado';
+
+  @override
+  String get emailCode => 'Enviar por correo';
+
+  @override
+  String get emailPlaceholder => 'tu@correo.cl';
+
+  @override
+  String get emailSent => 'Correo enviado';
+
+  @override
+  String get emailFailed => 'No se pudo enviar el correo';
+
+  @override
+  String get enterBackupCode => 'Ingresa tu código';
+
+  @override
+  String get backupCodePlaceholder => 'XXXX-XXXX';
+
+  @override
+  String get restoreConfirmTitle => '¿Restaurar progreso?';
+
+  @override
+  String get restoreConfirmBody =>
+      'Esto sobrescribirá tu progreso actual con el del código ingresado. No podrás deshacerlo.';
+
+  @override
+  String get restoreAction => 'Restaurar';
+
+  @override
+  String get backupSuccess => 'Respaldo creado';
+
+  @override
+  String get backupFailed => 'No se pudo crear el respaldo';
+
+  @override
+  String get restoreSuccess => 'Progreso restaurado';
+
+  @override
+  String get backupCodeInvalid => 'Código inválido o expirado';
+
+  @override
+  String backupExpiresOn(String date) {
+    return 'Válido hasta $date';
+  }
+
+  @override
+  String get backupIntro =>
+      'Guarda tu progreso con un código corto. Úsalo en otro dispositivo para recuperarlo.';
+
+  @override
+  String get backupPrivacyWarning =>
+      'Cualquiera con este código puede restaurar tu progreso.';
 }

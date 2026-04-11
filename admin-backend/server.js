@@ -6,7 +6,7 @@ const path = require('path');
 const multer = require('multer');
 const sharp = require('sharp');
 const { db, rowToLocation, locationToParams, rowToZone, rowToTrophy, rowToScoring, rowToTester, rowToRelease } = require('./db');
-const { renderDownloadEmail, renderReleaseEmail } = require('./email-templates');
+const { renderDownloadEmail, renderReleaseEmail, renderProgressBackupEmail } = require('./email-templates');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1222,6 +1222,159 @@ app.put('/api/releases/:id', (req, res) => {
 app.delete('/api/releases/:id', (req, res) => {
   db.prepare('DELETE FROM releases WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
+});
+
+// ============================================================
+// PROGRESS BACKUP — short-code, server-backed "Nintendo password"
+// ============================================================
+const BACKUP_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // 31 chars, no 0/O, 1/I/L, S/5
+const BACKUP_CODE_LEN = 8;
+const BACKUP_TTL_DAYS = 30;
+const BACKUP_MAX_SIZE = 200 * 1024; // 200 KB safety cap
+
+// In-memory rate limiters (IP → timestamps[]). Sliding window.
+const backupCreateHits = new Map();
+const backupRestoreHits = new Map();
+
+function rateLimit(map, ip, windowMs, maxHits) {
+  const now = Date.now();
+  const arr = (map.get(ip) || []).filter(t => now - t < windowMs);
+  if (arr.length >= maxHits) {
+    map.set(ip, arr);
+    return false;
+  }
+  arr.push(now);
+  map.set(ip, arr);
+  return true;
+}
+
+function generateBackupCode() {
+  const crypto = require('crypto');
+  let code = '';
+  const bytes = crypto.randomBytes(BACKUP_CODE_LEN);
+  for (let i = 0; i < BACKUP_CODE_LEN; i++) {
+    code += BACKUP_CODE_ALPHABET[bytes[i] % BACKUP_CODE_ALPHABET.length];
+  }
+  return code;
+}
+
+function normalizeCode(raw) {
+  return String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function cleanupExpiredBackups() {
+  try {
+    db.prepare(`DELETE FROM progress_backups WHERE expires_at < datetime('now')`).run();
+  } catch (_) { /* ignore */ }
+}
+
+app.post('/api/progress/backup', (req, res) => {
+  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  if (!rateLimit(backupCreateHits, ip, 60 * 60 * 1000, 20)) {
+    return res.status(429).json({ error: 'Too many backup requests, try again later' });
+  }
+
+  const progress = req.body && req.body.progress;
+  if (!progress || typeof progress !== 'object') {
+    return res.status(400).json({ error: 'Missing progress payload' });
+  }
+
+  let json;
+  try {
+    json = JSON.stringify(progress);
+  } catch (e) {
+    return res.status(400).json({ error: 'Invalid progress payload' });
+  }
+  if (Buffer.byteLength(json, 'utf8') > BACKUP_MAX_SIZE) {
+    return res.status(413).json({ error: 'Progress payload too large' });
+  }
+
+  cleanupExpiredBackups();
+
+  // Generate a unique code (retry on collision — extremely unlikely)
+  let code;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = generateBackupCode();
+    const existing = db.prepare('SELECT 1 FROM progress_backups WHERE code = ?').get(candidate);
+    if (!existing) { code = candidate; break; }
+  }
+  if (!code) return res.status(500).json({ error: 'Could not generate code' });
+
+  const expiresAt = new Date(Date.now() + BACKUP_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+  db.prepare(`
+    INSERT INTO progress_backups (code, progress_json, expires_at, ip)
+    VALUES (@code, @json, @expiresAt, @ip)
+  `).run({ code, json, expiresAt, ip: String(ip).slice(0, 64) });
+
+  res.json({ code, expiresAt });
+});
+
+app.get('/api/progress/restore/:code', (req, res) => {
+  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  if (!rateLimit(backupRestoreHits, ip, 10 * 60 * 1000, 10)) {
+    return res.status(429).json({ error: 'Too many restore attempts, try again later' });
+  }
+
+  const code = normalizeCode(req.params.code);
+  if (!code || code.length !== BACKUP_CODE_LEN) {
+    return res.status(400).json({ error: 'Invalid code format' });
+  }
+
+  const row = db.prepare(`
+    SELECT progress_json, expires_at FROM progress_backups
+    WHERE code = ? AND expires_at >= datetime('now')
+  `).get(code);
+
+  if (!row) return res.status(404).json({ error: 'Code not found or expired' });
+
+  let progress;
+  try {
+    progress = JSON.parse(row.progress_json);
+  } catch (e) {
+    return res.status(500).json({ error: 'Stored progress is corrupt' });
+  }
+
+  res.json({ progress, expiresAt: row.expires_at });
+});
+
+app.post('/api/progress/backup/email', async (req, res) => {
+  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  if (!rateLimit(backupCreateHits, ip, 60 * 60 * 1000, 20)) {
+    return res.status(429).json({ error: 'Too many requests, try again later' });
+  }
+
+  const { code: rawCode, email, lang } = req.body || {};
+  const code = normalizeCode(rawCode);
+  if (!code || code.length !== BACKUP_CODE_LEN) {
+    return res.status(400).json({ error: 'Invalid code format' });
+  }
+  if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Invalid email' });
+  }
+
+  const row = db.prepare(`
+    SELECT expires_at FROM progress_backups
+    WHERE code = ? AND expires_at >= datetime('now')
+  `).get(code);
+  if (!row) return res.status(404).json({ error: 'Code not found or expired' });
+
+  try {
+    const { subject, html } = renderProgressBackupEmail({
+      code,
+      expiresAt: row.expires_at,
+      lang: lang === 'en' ? 'en' : 'es',
+    });
+    await sendBrevoEmail({
+      to: [{ email, name: email.split('@')[0] }],
+      subject,
+      htmlContent: html,
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('backup email failed:', e);
+    res.status(500).json({ error: 'Failed to send email' });
+  }
 });
 
 // ============================================================

@@ -6,7 +6,9 @@ import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/models/trophy_model.dart';
 import 'package:chile_puzzle/core/services/audio_service.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
+import 'package:chile_puzzle/core/services/mock_backend.dart';
 import 'package:chile_puzzle/core/services/settings_service.dart';
+import 'package:flutter/services.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -286,6 +288,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () => _showAboutDialog(context, l10n, langCode),
             icon: const Icon(PhosphorIconsBold.info, size: 18),
             label: Text(l10n?.about ?? 'About'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 44),
+              foregroundColor: Colors.grey.shade700,
+              side: BorderSide(color: Colors.grey.shade300),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Backup & Restore button
+          OutlinedButton.icon(
+            onPressed: () => showBackupSheet(context),
+            icon: const Icon(PhosphorIconsBold.cloudArrowUp, size: 18),
+            label: Text(l10n?.backupAndRestore ?? 'Backup & restore'),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(double.infinity, 44),
               foregroundColor: Colors.grey.shade700,
@@ -972,6 +988,382 @@ class _TrophyCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// BACKUP & RESTORE SHEET
+// ============================================================
+void showBackupSheet(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => const _BackupSheet(),
+  );
+}
+
+class _BackupSheet extends StatefulWidget {
+  const _BackupSheet();
+
+  @override
+  State<_BackupSheet> createState() => _BackupSheetState();
+}
+
+class _BackupSheetState extends State<_BackupSheet> with SingleTickerProviderStateMixin {
+  late final TabController _tab = TabController(length: 2, vsync: this);
+
+  // Backup tab state
+  String? _code;
+  String? _expiresAt;
+  bool _creating = false;
+  bool _sendingEmail = false;
+  final TextEditingController _emailCtrl = TextEditingController();
+
+  // Restore tab state
+  final TextEditingController _codeCtrl = TextEditingController();
+  bool _restoring = false;
+  String? _restoreError;
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    _emailCtrl.dispose();
+    _codeCtrl.dispose();
+    super.dispose();
+  }
+
+  String _formatCode(String code) =>
+      code.length == 8 ? '${code.substring(0, 4)}-${code.substring(4)}' : code;
+
+  String _formatDate(String iso, String langCode) {
+    try {
+      final d = DateTime.parse(iso).toLocal();
+      final months = langCode == 'es'
+          ? ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+          : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return '${d.day} ${months[d.month - 1]} ${d.year}';
+    } catch (_) {
+      return iso;
+    }
+  }
+
+  Future<void> _createBackup() async {
+    setState(() => _creating = true);
+    final result = await MockBackend.createProgressBackup(
+      GameProgressService.progressAsJson(),
+    );
+    if (!mounted) return;
+    setState(() {
+      _creating = false;
+      if (result != null) {
+        _code = result.code;
+        _expiresAt = result.expiresAt;
+      }
+    });
+    if (result == null) {
+      final l10n = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n?.backupFailed ?? 'Could not create backup')),
+      );
+    }
+  }
+
+  Future<void> _copyCode() async {
+    if (_code == null) return;
+    await Clipboard.setData(ClipboardData(text: _formatCode(_code!)));
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l10n?.codeCopied ?? 'Code copied'), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  Future<void> _emailCode() async {
+    if (_code == null) return;
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty || !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) return;
+    setState(() => _sendingEmail = true);
+    final langCode = Localizations.localeOf(context).languageCode;
+    final ok = await MockBackend.emailProgressBackup(
+      code: _code!,
+      email: email,
+      lang: langCode == 'es' ? 'es' : 'en',
+    );
+    if (!mounted) return;
+    setState(() => _sendingEmail = false);
+    final l10n = AppLocalizations.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok
+          ? (l10n?.emailSent ?? 'Email sent')
+          : (l10n?.emailFailed ?? 'Could not send email'))),
+    );
+  }
+
+  Future<void> _restore() async {
+    final raw = _codeCtrl.text.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    if (raw.length != 8) {
+      setState(() => _restoreError = AppLocalizations.of(context)?.backupCodeInvalid ?? 'Invalid code');
+      return;
+    }
+    final l10n = AppLocalizations.of(context);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n?.restoreConfirmTitle ?? 'Restore progress?'),
+        content: Text(l10n?.restoreConfirmBody ?? 'This will overwrite your current progress.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n?.cancel ?? 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n?.restoreAction ?? 'Restore'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    setState(() {
+      _restoring = true;
+      _restoreError = null;
+    });
+    final payload = await MockBackend.fetchProgressBackup(raw);
+    if (!mounted) return;
+    if (payload == null) {
+      setState(() {
+        _restoring = false;
+        _restoreError = l10n?.backupCodeInvalid ?? 'Invalid or expired code';
+      });
+      return;
+    }
+    try {
+      await GameProgressService.replaceProgressFromJson(payload);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _restoring = false;
+        _restoreError = l10n?.backupCodeInvalid ?? 'Invalid or expired code';
+      });
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _restoring = false);
+    Navigator.pop(context); // close the sheet
+    // Pop the profile screen as well so the map reloads with new progress.
+    Navigator.of(context).maybePop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l10n?.restoreSuccess ?? 'Progress restored')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final langCode = Localizations.localeOf(context).languageCode;
+    final inset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: inset),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag handle
+              Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Row(
+                children: [
+                  Icon(PhosphorIconsFill.cloudArrowUp, size: 22, color: AppTheme.seedColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    l10n?.backupAndRestore ?? 'Backup & restore',
+                    style: GoogleFonts.spaceGrotesk(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Icon(PhosphorIconsBold.x, size: 20, color: Colors.grey.shade400),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TabBar(
+                controller: _tab,
+                labelColor: AppTheme.seedColor,
+                unselectedLabelColor: Colors.grey.shade500,
+                indicatorColor: AppTheme.seedColor,
+                labelStyle: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700),
+                tabs: [
+                  Tab(text: l10n?.backupProgress ?? 'Backup'),
+                  Tab(text: l10n?.restoreProgress ?? 'Restore'),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 320,
+                child: TabBarView(
+                  controller: _tab,
+                  children: [
+                    _buildBackupTab(l10n, langCode),
+                    _buildRestoreTab(l10n),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackupTab(AppLocalizations? l10n, String langCode) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n?.backupIntro ?? 'Save your progress with a short code.',
+            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 16),
+          if (_code == null) ...[
+            FilledButton.icon(
+              onPressed: _creating ? null : _createBackup,
+              icon: _creating
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(PhosphorIconsBold.plusCircle, size: 18),
+              label: Text(l10n?.generateBackupCode ?? 'Generate code'),
+              style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
+            ),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              decoration: BoxDecoration(
+                color: AppTheme.seedColor.withValues(alpha: 0.06),
+                border: Border.all(color: AppTheme.seedColor.withValues(alpha: 0.3), width: 2, style: BorderStyle.solid),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    _formatCode(_code!),
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.seedColor,
+                      letterSpacing: 3,
+                    ),
+                  ),
+                  if (_expiresAt != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      (l10n?.backupExpiresOn(_formatDate(_expiresAt!, langCode))) ??
+                          'Valid until ${_formatDate(_expiresAt!, langCode)}',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _copyCode,
+              icon: const Icon(PhosphorIconsBold.copy, size: 16),
+              label: Text(l10n?.copyCode ?? 'Copy code'),
+              style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 40)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                hintText: l10n?.emailPlaceholder ?? 'you@email.com',
+                prefixIcon: const Icon(PhosphorIconsBold.envelope, size: 18),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                isDense: true,
+              ),
+              style: GoogleFonts.plusJakartaSans(fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _sendingEmail ? null : _emailCode,
+              icon: _sendingEmail
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(PhosphorIconsBold.paperPlaneTilt, size: 16),
+              label: Text(l10n?.emailCode ?? 'Email it to me'),
+              style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 40)),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              l10n?.backupPrivacyWarning ?? 'Anyone with this code can restore your progress.',
+              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade500),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRestoreTab(AppLocalizations? l10n) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n?.enterBackupCode ?? 'Enter your code',
+            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _codeCtrl,
+            textCapitalization: TextCapitalization.characters,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.spaceGrotesk(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 3),
+            maxLength: 9, // 8 chars + hyphen
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9\-]')),
+            ],
+            decoration: InputDecoration(
+              hintText: l10n?.backupCodePlaceholder ?? 'XXXX-XXXX',
+              hintStyle: GoogleFonts.spaceGrotesk(fontSize: 22, letterSpacing: 3, color: Colors.grey.shade300),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              counterText: '',
+              errorText: _restoreError,
+            ),
+            onChanged: (_) {
+              if (_restoreError != null) setState(() => _restoreError = null);
+            },
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _restoring ? null : _restore,
+            icon: _restoring
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(PhosphorIconsBold.downloadSimple, size: 18),
+            label: Text(l10n?.restoreAction ?? 'Restore'),
+            style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
+          ),
+        ],
       ),
     );
   }
