@@ -8,6 +8,24 @@ emails to testers.
 New releases go on top. Each entry has an `**ES**` and `**EN**`
 sub-block with one bullet per line.
 
+## 1.9.2+14 — 2026-04-12
+
+**ES**
+- Al completar un puzzle, la foto ahora se muestra en pantalla completa (sin footer ni espacios).
+- Nuevo loader animado personalizado en lugar del spinner genérico.
+- Tips y silueta se ocultan mientras carga la imagen y se muestran al terminar.
+- Tip centrado verticalmente cuando no hay silueta visible.
+- El carrusel de tips siempre parte desde el nivel más fácil.
+- Texto actualizado en la sección "Acerca de".
+
+**EN**
+- Completed puzzle photo now displays truly fullscreen (no footer or gaps).
+- Custom animated loader replaces the generic spinner.
+- Tips and silhouette hidden while the image loads, shown once ready.
+- Tip card centered vertically when no silhouette is present.
+- Tip carousel always starts from the easiest difficulty.
+- Updated "About" section text.
+
 ## 1.9.1+13 — 2026-04-11
 
 **ES**
