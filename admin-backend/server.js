@@ -254,8 +254,8 @@ app.post('/api/locations/batch-stub', async (req, res) => {
         name: { en: '—', es: '—' },
         region: '—',
         requiredPoints: 0,
-        latitude: 0,
-        longitude: 0,
+        latitude: u.gps?.lat || 0,
+        longitude: u.gps?.lng || 0,
         image: u.url || '',
         thumbnail: u.thumbnail || u.url || '',
         originalImage: u.original || '',
@@ -463,6 +463,17 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
         : { width: raw.width || 0, height: raw.height || 0 };
     } catch (_) {}
 
+    // Try to extract GPS coordinates from EXIF (works with JPEG, HEIC, TIFF).
+    // Google Photos exports may have NaN values — isFinite() guards against that.
+    let gps = null;
+    try {
+      const exifr = require('exifr');
+      const parsed = await exifr.parse(req.file.path, true);
+      if (parsed && isFinite(parsed.latitude) && isFinite(parsed.longitude)) {
+        gps = { lat: parsed.latitude, lng: parsed.longitude };
+      }
+    } catch (_) {}
+
     // Preserve the untouched original (same extension as upload) for future re-crops.
     const origExt = path.extname(req.file.originalname).toLowerCase() || '.jpg';
     const origName = baseName + '_orig' + origExt;
@@ -494,6 +505,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
       original: `${URL_PREFIX}/uploads/${origName}`,
       width: meta.width || 0,
       height: meta.height || 0,
+      gps,
     });
   } catch (e) {
     // Fallback: keep original

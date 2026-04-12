@@ -52,10 +52,6 @@
                             <label class="mini-check"><input type="checkbox" id="locSilD6"> Expert</label>
                         </fieldset>
                     </div>
-                    <div class="lang-toggle" id="langToggle">
-                        <button type="button" data-lang="es" class="active">ES</button>
-                        <button type="button" data-lang="en">EN</button>
-                    </div>
                     <div class="form-group id-row">
                         <label>ID <small style="opacity:0.7">(auto-generated)</small></label>
                         <div class="id-copy-row">
@@ -123,20 +119,20 @@
                     <!-- Tip pairs — one visible at a time based on [data-lang] + [data-diff] -->
                     <div class="tip-pairs">
                         <div class="tip-pair" data-diff="3">
-                            <div class="form-group lang-en"><label>Tip — Easy (EN) <small>required</small></label><textarea id="locTipEn" rows="2" maxlength="200"></textarea></div>
-                            <div class="form-group lang-es"><label>Tip — Easy (ES) <small>required</small></label><textarea id="locTipEs" rows="2" maxlength="200"></textarea></div>
+                            <div class="form-group lang-en"><label>Tip — Easy (EN) <small>required</small></label><textarea id="locTipEn" rows="2" maxlength="200"></textarea><small class="char-count">0/200</small></div>
+                            <div class="form-group lang-es"><label>Tip — Easy (ES) <small>required</small></label><textarea id="locTipEs" rows="2" maxlength="200"></textarea><small class="char-count">0/200</small></div>
                         </div>
                         <div class="tip-pair" data-diff="4">
-                            <div class="form-group lang-en"><label>Tip — Normal (EN) <small>fallback: Easy</small></label><textarea id="locTipNormalEn" rows="2" maxlength="200"></textarea></div>
-                            <div class="form-group lang-es"><label>Tip — Normal (ES) <small>fallback: Easy</small></label><textarea id="locTipNormalEs" rows="2" maxlength="200"></textarea></div>
+                            <div class="form-group lang-en"><label>Tip — Normal (EN) <small>fallback: Easy</small></label><textarea id="locTipNormalEn" rows="2" maxlength="200"></textarea><small class="char-count">0/200</small></div>
+                            <div class="form-group lang-es"><label>Tip — Normal (ES) <small>fallback: Easy</small></label><textarea id="locTipNormalEs" rows="2" maxlength="200"></textarea><small class="char-count">0/200</small></div>
                         </div>
                         <div class="tip-pair" data-diff="5">
-                            <div class="form-group lang-en"><label>Tip — Hard (EN) <small>fallback: Easy</small></label><textarea id="locTipHardEn" rows="2" maxlength="200"></textarea></div>
-                            <div class="form-group lang-es"><label>Tip — Hard (ES) <small>fallback: Easy</small></label><textarea id="locTipHardEs" rows="2" maxlength="200"></textarea></div>
+                            <div class="form-group lang-en"><label>Tip — Hard (EN) <small>fallback: Easy</small></label><textarea id="locTipHardEn" rows="2" maxlength="200"></textarea><small class="char-count">0/200</small></div>
+                            <div class="form-group lang-es"><label>Tip — Hard (ES) <small>fallback: Easy</small></label><textarea id="locTipHardEs" rows="2" maxlength="200"></textarea><small class="char-count">0/200</small></div>
                         </div>
                         <div class="tip-pair" data-diff="6">
-                            <div class="form-group lang-en"><label>Tip — Expert (EN) <small>fallback: Easy</small></label><textarea id="locTipExpertEn" rows="2" maxlength="200"></textarea></div>
-                            <div class="form-group lang-es"><label>Tip — Expert (ES) <small>fallback: Easy</small></label><textarea id="locTipExpertEs" rows="2" maxlength="200"></textarea></div>
+                            <div class="form-group lang-en"><label>Tip — Expert (EN) <small>fallback: Easy</small></label><textarea id="locTipExpertEn" rows="2" maxlength="200"></textarea><small class="char-count">0/200</small></div>
+                            <div class="form-group lang-es"><label>Tip — Expert (ES) <small>fallback: Easy</small></label><textarea id="locTipExpertEs" rows="2" maxlength="200"></textarea><small class="char-count">0/200</small></div>
                         </div>
                     </div>
 
@@ -146,6 +142,10 @@
                     </div>
                 </form>
                 <div id="emptyState" class="empty-state"><p>Upload image(s) to create new locations, or pick one from the list.</p></div>
+                <div class="lang-fab" id="langFab">
+                    <button type="button" data-lang="es" class="active">ES</button>
+                    <button type="button" data-lang="en">EN</button>
+                </div>
             </main>
         </div>
 

@@ -172,13 +172,31 @@ function setActiveDifficulty(diff) {
 
 function setActiveLang(lang) {
   locForm.dataset.lang = lang;
-  document.querySelectorAll('#langToggle button').forEach(b => {
+  document.querySelectorAll('#langFab button').forEach(b => {
     b.classList.toggle('active', b.dataset.lang === lang);
   });
 }
 
-document.querySelectorAll('#langToggle button').forEach(btn => {
+document.querySelectorAll('#langFab button').forEach(btn => {
   btn.onclick = () => setActiveLang(btn.dataset.lang);
+});
+
+// --- Tip character counters ---
+function refreshCharCounts() {
+  document.querySelectorAll('textarea[maxlength]').forEach(ta => {
+    const counter = ta.nextElementSibling;
+    if (counter && counter.classList.contains('char-count')) {
+      counter.textContent = `${ta.value.length}/${ta.getAttribute('maxlength')}`;
+    }
+  });
+}
+document.querySelectorAll('textarea[maxlength]').forEach(ta => {
+  ta.addEventListener('input', () => {
+    const counter = ta.nextElementSibling;
+    if (counter && counter.classList.contains('char-count')) {
+      counter.textContent = `${ta.value.length}/${ta.getAttribute('maxlength')}`;
+    }
+  });
 });
 
 document.querySelectorAll('.crop-preview-item').forEach(el => {
@@ -309,7 +327,14 @@ fReplaceUpload.addEventListener('change', async (e) => {
     fOriginalH.value = d.height || 0;
     cropToolLoad(fImage.value);
     refreshDeleteOrigBtn();
-    showToast('Image replaced — remember to Save');
+    if (d.gps) {
+      fLat.value = d.gps.lat.toFixed(7);
+      fLng.value = d.gps.lng.toFixed(7);
+      updateMapFromFields();
+      showToast('Image replaced + GPS auto-filled — remember to Save');
+    } else {
+      showToast('Image replaced — remember to Save');
+    }
   } catch {
     showToast('Upload error', true);
   } finally {
@@ -409,6 +434,7 @@ function openLocEditor(id) {
   };
   setActiveLang('es');
   setActiveDifficulty('3');
+  refreshCharCounts();
   if (fImage.value) cropToolLoad(fImage.value);
   else cropToolHide();
   fImageUpload.value = '';
