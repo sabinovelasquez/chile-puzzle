@@ -111,13 +111,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get aboutDescription =>
-      'Zoom-In Chile nació del amor por recorrer y descubrir. Lo hicimos juntos, Ximena y yo, movidos por la curiosidad de conocer cada rincón, su arquitectura, su historia y esos detalles que solo se ven cuando uno se detiene a mirar.\n\nTodas las fotografías fueron tomadas por nosotros durante nuestros viajes. Este juego es nuestra forma de compartir esos lugares y la alegría de explorarlos.\n\nEsperamos que disfrutes descubriendo Chile tanto como nosotros disfrutamos recorriéndolo.';
+      'Zoom-In Chile nació del amor por recorrer y descubrir. Lo hicimos juntos, Xime y yo, movidos por la curiosidad de conocer cada rincón, su arquitectura, su historia y esos detalles que solo se ven cuando uno se detiene a mirar.\n\nTodas las fotografías son tomadas por nosotros durante nuestros viajes. Este juego es nuestra forma de compartir esos lugares y la alegría de explorarlos.\n\nEsperamos que disfrutes descubriendo Chile tanto como nosotros disfrutamos recorriéndolo.';
 
   @override
   String get aboutSignature => '— Sabino';
 
   @override
-  String get photoCredits => 'Fotografía: Sabino & Ximena';
+  String get photoCredits => 'Fotografía: Sabino & Xime';
 
   @override
   String get tipsTitle => 'Pistas';

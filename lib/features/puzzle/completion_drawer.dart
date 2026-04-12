@@ -108,13 +108,17 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                     const SizedBox(height: 12),
 
                     // Tip card (above points) — per-difficulty when available, else base tip
-                    Builder(builder: (_) {
+                    Builder(builder: (ctx) {
                       final tipText = result != null
                           ? loc.getLocalizedTipForDifficulty(langCode, result.difficulty)
                           : loc.getLocalizedTip(langCode);
                       if (tipText.isEmpty) return const SizedBox.shrink();
                       final showSil =
                           result != null && loc.showsSilhouetteAt(result.difficulty);
+                      // Screen-fraction sizing so silhouette stays fixed
+                      // across display-size settings.
+                      final silW = MediaQuery.of(ctx).size.width * 0.22;
+                      final silH = silW * 440 / 496; // girl_cat.svg aspect
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -124,9 +128,10 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                             children: [
                               Container(
                                 width: double.infinity,
-                                padding: EdgeInsets.fromLTRB(14, 14, 14, showSil ? 85 : 14),
+                                padding: EdgeInsets.fromLTRB(
+                                    14, 14, 14, showSil ? silH * 0.75 : 14),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.trophyGold.withValues(alpha: 0.06),
+                                  color: AppTheme.trophyGold.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
@@ -142,8 +147,8 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                                   bottom: -16,
                                   child: IgnorePointer(
                                     child: SizedBox(
-                                      width: 110,
-                                      height: 89,
+                                      width: silW,
+                                      height: silH,
                                       child: SvgPicture.asset(
                                         'assets/girl_cat.svg',
                                         fit: BoxFit.contain,

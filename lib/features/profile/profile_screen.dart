@@ -49,12 +49,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 8),
-                Image.asset(
-                  'assets/girl_cat_standing.png',
-                  width: 120,
-                  height: 120,
-                  fit: BoxFit.contain,
-                ),
+                Builder(builder: (ctx) {
+                  final w = MediaQuery.of(ctx).size.width * 0.28;
+                  return Image.asset(
+                    'assets/girl_cat_standing.png',
+                    width: w,
+                    height: w,
+                    fit: BoxFit.contain,
+                  );
+                }),
                 const SizedBox(height: 16),
                 Text(
                   langCode == 'es' ? 'Mi Perfil de Explorador' : 'My Explorer Profile',
@@ -769,8 +772,7 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
           _CreditRow(
             icon: PhosphorIconsFill.camera,
             iconColor: AppTheme.accentBlue,
-            text: l10n?.photoCredits ?? 'Photography: Sabino & Ximena',
-            url: 'https://sabino.cl',
+            text: l10n?.photoCredits ?? 'Photography: Sabino & Xime',
           ),
           const SizedBox(height: 24),
           Center(
@@ -785,11 +787,14 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
             bottom: 0,
             right: 0,
             child: IgnorePointer(
-              child: Image.asset(
-                'assets/bottom-right-about.png',
-                width: 180,
-                fit: BoxFit.contain,
-              ),
+              child: Builder(builder: (ctx) {
+                final w = MediaQuery.of(ctx).size.width * 0.42;
+                return Image.asset(
+                  'assets/bottom-right-about.png',
+                  width: w,
+                  fit: BoxFit.contain,
+                );
+              }),
             ),
           ),
         ],

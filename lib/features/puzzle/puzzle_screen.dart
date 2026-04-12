@@ -99,6 +99,7 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
   bool _firstDrawerShow = true;
   bool _showReference = false;
   bool _tipsVisible = true;
+  bool _silFadingOut = false;
 
   final Stopwatch _stopwatch = Stopwatch();
   final ValueNotifier<int> _moveCount = ValueNotifier(0);
@@ -255,6 +256,11 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
     final m = secs ~/ 60;
     final s = secs % 60;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final screenW = MediaQuery.of(context).size.width;
+    final showSil = _completed && !_showDrawer && _tipsVisible &&
+        widget.location.showsSilhouetteAt(widget.difficulty);
+    final silW = screenW * 0.48;
+    final silH = silW * 623 / 749; // girl_cat_with_bottom.svg aspect
 
     return PopScope(
       canPop: false,
@@ -266,7 +272,9 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
       },
       child: Scaffold(
         backgroundColor: AppTheme.seedColor,
-        body: Column(
+        body: Stack(
+          children: [
+          Column(
           children: [
             // Puzzle area
             Expanded(
@@ -280,12 +288,20 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                     moveCount: _moveCount,
                     imageLoaded: _imageLoaded,
                   ),
-                  // Loading overlay
+                  // Loading overlay — visible until image is loaded
                   ValueListenableBuilder<bool>(
                     valueListenable: _imageLoaded,
                     builder: (_, loaded, __) {
                       if (loaded) return const SizedBox.shrink();
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(
+                        child: ClipOval(
+                          child: SizedBox(
+                            width: 95,
+                            height: 95,
+                            child: _LoaderGif(),
+                          ),
+                        ),
+                      );
                     },
                   ),
                   // Reference image overlay + button (only after image loads)
@@ -334,6 +350,21 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                       );
                     },
                   ),
+                  // Fullscreen photo overlay — replaces the grid view after
+                  // completion so the image fills the entire screen.
+                  if (_completed && !_showDrawer)
+                    Positioned.fill(
+                      child: Container(
+                        color: AppTheme.seedColor,
+                        child: CachedNetworkImage(
+                          imageUrl: widget.location
+                              .getImageForDifficulty(widget.difficulty),
+                          fit: BoxFit.cover,
+                          alignment: Alignment.center,
+                          errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                        ),
+                      ),
+                    ),
                   // Tap anywhere to bring back the drawer when viewing the photo
                   if (_completed && !_showDrawer)
                     Positioned.fill(
@@ -352,117 +383,165 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                   // shows a light translucent card at the bottom with the silhouette
                   // drawn over the card's bottom-right corner (touching the footer).
                   if (_completed && !_showDrawer) ...[
-                    // Lightbulb toggle — top-right
+                    // Tip toggle — top-right (girl+cat icon)
                     Positioned(
                       top: 12,
                       right: 12,
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: () => setState(() => _tipsVisible = !_tipsVisible),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: const BoxDecoration(
-                            color: Colors.black54,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            _tipsVisible
-                                ? PhosphorIconsFill.lightbulb
-                                : PhosphorIconsBold.lightbulb,
-                            size: 20,
-                            color: _tipsVisible ? AppTheme.trophyGold : Colors.white,
+                        onTap: () {
+                          final wasVisible = _tipsVisible;
+                          setState(() => _tipsVisible = !_tipsVisible);
+                          if (wasVisible && showSil) {
+                            _silFadingOut = true;
+                            Future.delayed(const Duration(milliseconds: 280), () {
+                              if (mounted) setState(() => _silFadingOut = false);
+                            });
+                          }
+                        },
+                        child: Opacity(
+                          opacity: _tipsVisible ? 1.0 : 0.5,
+                          child: SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: Image.asset(
+                              'assets/girl_cat_toggle.png',
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                    // Tip card — positioned so its bottom edge lands between
-                    // the cat's head and the girl on the silhouette behind it.
+                    // Tip card + silhouette — same layout as _FullPhotoView
+                    // in map_screen.dart: Column anchored at bottom with
+                    // tip above silhouette.
                     Positioned(
-                      left: 12,
-                      right: 12,
-                      bottom: 45,
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 220),
-                        transitionBuilder: (child, anim) =>
-                            FadeTransition(opacity: anim, child: child),
-                        child: _tipsVisible
-                            ? GestureDetector(
-                                key: const ValueKey('tip-card-on'),
-                                behavior: HitTestBehavior.opaque,
-                                onTap: () {},
-                                child: Container(
-                                  // Fill the full photo width (same as the
-                                  // map-screen swipe carousel). Tip text uses
-                                  // 100% of the card width; the silhouette is
-                                  // a fixed overlay drawn on top of the card
-                                  // (see the Positioned below), not something
-                                  // the text reserves space for.
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.fromLTRB(
-                                    14, 12, 14, 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.82),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      _buildLevelPill(
-                                        difficulty: widget.difficulty,
-                                        langCode: langCode,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        widget.location
-                                            .getLocalizedTipForDifficulty(
-                                          langCode,
-                                          widget.difficulty,
+                      left: 0,
+                      right: 0,
+                      bottom: bottomPadding,
+                      top: 56,
+                      child: Column(
+                        mainAxisAlignment: (showSil || _silFadingOut)
+                            ? MainAxisAlignment.end
+                            : MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Flexible(
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 220),
+                              transitionBuilder: (child, anim) =>
+                                  FadeTransition(opacity: anim, child: child),
+                              child: _tipsVisible
+                                  ? GestureDetector(
+                                      key: const ValueKey('tip-card-on'),
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () {},
+                                      child: MediaQuery.withClampedTextScaling(
+                                        maxScaleFactor: 1.3,
+                                        child: Padding(
+                                          padding: EdgeInsets.fromLTRB(
+                                            12, 0, 12,
+                                            showSil ? 8 : 0,
+                                          ),
+                                          child: Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.fromLTRB(
+                                              14, 10, 10, 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.92),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    _buildLevelPill(
+                                                      difficulty:
+                                                          widget.difficulty,
+                                                      langCode: langCode,
+                                                    ),
+                                                    const Spacer(),
+                                                    GestureDetector(
+                                                      onTap: () {
+                                                        setState(() => _tipsVisible = false);
+                                                        if (showSil) {
+                                                          _silFadingOut = true;
+                                                          Future.delayed(const Duration(milliseconds: 280), () {
+                                                            if (mounted) setState(() => _silFadingOut = false);
+                                                          });
+                                                        }
+                                                      },
+                                                      child: Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .all(4),
+                                                        child: Icon(
+                                                          PhosphorIconsBold.x,
+                                                          size: 16,
+                                                          color: Colors
+                                                              .grey.shade500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Flexible(
+                                                  child: SingleChildScrollView(
+                                                    child: Text(
+                                                      widget.location
+                                                          .getLocalizedTipForDifficulty(
+                                                        langCode,
+                                                        widget.difficulty,
+                                                      ),
+                                                      style: GoogleFonts
+                                                          .plusJakartaSans(
+                                                        fontSize: 13,
+                                                        color: Colors
+                                                            .grey.shade900,
+                                                        height: 1.4,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         ),
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 13,
-                                          color: Colors.grey.shade900,
-                                          height: 1.4,
-                                        ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            : const SizedBox.shrink(key: ValueKey('tip-card-off')),
-                      ),
-                    ),
-                    // Silhouette — bottom-right, drawn on top of the tip card.
-                    // Only visible when tip is on AND the location flag is on.
-                    // Touches (overlaps 1px into) the footer so the cat/girl
-                    // look like they're standing on the bottom edge.
-                    Positioned(
-                      right: 8,
-                      bottom: -1,
-                      child: IgnorePointer(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 260),
-                          transitionBuilder: (child, anim) =>
-                              FadeTransition(opacity: anim, child: child),
-                          child: (_tipsVisible &&
-                                  widget.location
-                                      .showsSilhouetteAt(widget.difficulty))
-                              ? SizedBox(
-                                  key: const ValueKey('silhouette-on'),
-                                  width: 110,
-                                  height: 89,
-                                  child: SvgPicture.asset(
-                                    'assets/girl_cat.svg',
-                                    fit: BoxFit.contain,
-                                  ),
-                                )
-                              : const SizedBox.shrink(
-                                  key: ValueKey('silhouette-off'),
-                                ),
-                        ),
+                                    )
+                                  : const SizedBox.shrink(
+                                      key: ValueKey('tip-card-off')),
+                            ),
+                          ),
+                          // Silhouette — inside the Column, below the tip
+                          IgnorePointer(
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 260),
+                              transitionBuilder: (child, anim) =>
+                                  FadeTransition(opacity: anim, child: child),
+                              child: showSil
+                                  ? SizedBox(
+                                      key: const ValueKey('silhouette-on'),
+                                      width: silW,
+                                      height: silH,
+                                      child: SvgPicture.asset(
+                                        'assets/girl_cat_with_bottom.svg',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    )
+                                  : const SizedBox.shrink(
+                                      key: ValueKey('silhouette-off'),
+                                    ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -482,11 +561,14 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                 ],
               ),
             ),
-            // Bottom footer — always visible
-            Container(
-              padding: EdgeInsets.fromLTRB(16, 12, 12, 12 + bottomPadding),
-              color: AppTheme.seedColor,
-              child: _completed
+            // Bottom footer — hidden when viewing the completed photo
+            if (!_completed || _showDrawer)
+            MediaQuery.withClampedTextScaling(
+              maxScaleFactor: 1.3,
+              child: Container(
+                padding: EdgeInsets.fromLTRB(16, 12, 12, 12 + bottomPadding),
+                color: AppTheme.seedColor,
+                child: _completed
                   ? Row(
                       children: [
                         Expanded(
@@ -581,6 +663,9 @@ class _PuzzleScreenState extends State<PuzzleScreen> {
                       ],
                     ),
             ),
+            ),
+          ],
+        ),
           ],
         ),
       ),
@@ -662,6 +747,20 @@ class _TopNotificationState extends State<_TopNotification> with SingleTickerPro
           ),
         ),
       ),
+    );
+  }
+}
+
+class _LoaderGif extends StatelessWidget {
+  const _LoaderGif();
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/loading_loop.gif',
+      width: 95,
+      height: 95,
+      fit: BoxFit.cover,
     );
   }
 }

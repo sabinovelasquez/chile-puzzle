@@ -15,6 +15,7 @@ import 'package:chile_puzzle/features/profile/profile_screen.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 import 'package:chile_puzzle/features/auth/auth_service.dart';
 import 'package:chile_puzzle/main.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 // Difficulty label helpers
 const _diffLabelsEs = {3: 'Facil', 4: 'Normal', 5: 'Dificil', 6: 'Experto'};
@@ -1023,7 +1024,7 @@ class _MapScreenState extends State<MapScreen> {
         // Grid
         Expanded(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: ClipOval(child: SizedBox(width: 95, height: 95, child: _LoaderGif())))
               : sorted.isEmpty
               ? Center(
                   child: Column(
@@ -1432,6 +1433,7 @@ class _FullPhotoView extends StatefulWidget {
 
 class _FullPhotoViewState extends State<_FullPhotoView> {
   bool _tipsVisible = true;
+  bool _imageReady = false;
   late final PageController _pageController;
   late final List<_TipSlide> _slides;
   int _currentPage = 0;
@@ -1440,10 +1442,7 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
   void initState() {
     super.initState();
     _slides = _buildSlides();
-    // Start on the slide matching the difficulty we were opened with, if any.
-    final initial = _slides.indexWhere((s) => s.difficulty == widget.difficulty);
-    _currentPage = initial >= 0 ? initial : 0;
-    _pageController = PageController(initialPage: _currentPage);
+    _pageController = PageController();
   }
 
   @override
@@ -1462,7 +1461,8 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
         loc.difficultyLevels.isNotEmpty ? loc.difficultyLevels : [3];
     final completed = difficulties
         .where((d) => progress.completedPuzzles.containsKey('${loc.id}_$d'))
-        .toList();
+        .toList()
+      ..sort();
     final labels = widget.langCode == 'es'
         ? const {3: 'Fácil', 4: 'Normal', 5: 'Difícil', 6: 'Experto'}
         : const {3: 'Easy', 4: 'Normal', 5: 'Hard', 6: 'Expert'};
@@ -1482,19 +1482,36 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
   Widget build(BuildContext context) {
     final loc = widget.location;
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final showSilForCurrent = _currentPage < _slides.length &&
-        loc.showsSilhouetteAt(_slides[_currentPage].difficulty);
+    // "Ver foto" (all levels done): always show silhouette
+    final showSilAny = _slides.any((s) => loc.showsSilhouetteAt(s.difficulty));
+    final screenW = MediaQuery.of(context).size.width;
+    final silW = screenW * 0.48;
+    final silH = silW * 623 / 749;
+    final showSil = _tipsVisible && showSilAny;
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppTheme.seedColor,
       body: Stack(
         fit: StackFit.expand,
         children: [
           InteractiveViewer(
             child: Center(
-              child: Image.network(
-                loc.image,
+              child: CachedNetworkImage(
+                imageUrl: loc.image,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Icon(
+                imageBuilder: (ctx, imageProvider) {
+                  if (!_imageReady) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) setState(() => _imageReady = true);
+                    });
+                  }
+                  return Image(image: imageProvider, fit: BoxFit.contain);
+                },
+                placeholder: (_, __) => const Center(
+                  child: ClipOval(
+                    child: SizedBox(width: 95, height: 95, child: _LoaderGif()),
+                  ),
+                ),
+                errorWidget: (_, __, ___) => const Icon(
                   PhosphorIconsBold.imageSquare,
                   size: 48,
                   color: Colors.white38,
@@ -1523,77 +1540,87 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
               ),
             ),
           ),
-          // Lightbulb toggle — just below the close button
-          if (_slides.isNotEmpty)
+          // Tip toggle — just below the close button (only after content loads)
+          if (_slides.isNotEmpty && _imageReady)
             Positioned(
               top: 64,
               right: 12,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => setState(() => _tipsVisible = !_tipsVisible),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: const BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _tipsVisible
-                        ? PhosphorIconsFill.lightbulb
-                        : PhosphorIconsBold.lightbulb,
-                    size: 22,
-                    color: _tipsVisible ? AppTheme.trophyGold : Colors.white,
+                child: Opacity(
+                  opacity: _tipsVisible ? 1.0 : 0.5,
+                  child: SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Image.asset(
+                      'assets/girl_cat_toggle.png',
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ),
             ),
-          // Tip card carousel — positioned so its bottom edge lands between
-          // the cat's head and the girl on the silhouette behind it (same
-          // offset as puzzle_screen, plus safe-area inset for the nav bar).
+          // Tip carousel + silhouette — both anchored at bottom.
+          // Toggle controls both tip AND silhouette. Hidden while loading.
+          if (_imageReady)
           Positioned(
-            left: 12,
-            right: 12,
-            bottom: 45 + bottomInset,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              transitionBuilder: (child, anim) =>
-                  FadeTransition(opacity: anim, child: child),
-              child: (_tipsVisible && _slides.isNotEmpty)
-                  ? _TipCarousel(
-                      key: const ValueKey('tip-carousel-on'),
-                      slides: _slides,
-                      langCode: widget.langCode,
-                      controller: _pageController,
-                      onPageChanged: (i) => setState(() => _currentPage = i),
-                    )
-                  : const SizedBox.shrink(key: ValueKey('tip-carousel-off')),
-            ),
-          ),
-          // Silhouette — bottom-right, tracks current slide + tip visibility.
-          // Sits on the safe-area bottom so the cat+girl stand on the nav bar
-          // edge and the card's lower edge crosses between their heads.
-          // 1px overlap into the inset so the feet don't float above it.
-          Positioned(
-            right: 8,
-            bottom: bottomInset - 1,
-            child: IgnorePointer(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 260),
-                transitionBuilder: (child, anim) =>
-                    FadeTransition(opacity: anim, child: child),
-                child: (_tipsVisible && showSilForCurrent)
-                    ? SizedBox(
-                        key: ValueKey('sil-${_slides[_currentPage].difficulty}'),
-                        width: 110,
-                        height: 89,
-                        child: SvgPicture.asset(
-                          'assets/girl_cat.svg',
-                          fit: BoxFit.contain,
-                        ),
-                      )
-                    : const SizedBox.shrink(key: ValueKey('sil-off')),
-              ),
+            left: 0,
+            right: 0,
+            bottom: bottomInset,
+            top: 120,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Flexible(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    transitionBuilder: (child, anim) =>
+                        FadeTransition(opacity: anim, child: child),
+                    child: (_tipsVisible && _slides.isNotEmpty)
+                        ? MediaQuery.withClampedTextScaling(
+                            key: const ValueKey('tip-carousel-on'),
+                            maxScaleFactor: 1.3,
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                12, 0, 12, showSil ? 8 : 0,
+                              ),
+                              child: _TipCarousel(
+                                slides: _slides,
+                                langCode: widget.langCode,
+                                controller: _pageController,
+                                onPageChanged: (i) =>
+                                    setState(() => _currentPage = i),
+                                onClose: () =>
+                                    setState(() => _tipsVisible = false),
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(
+                            key: ValueKey('tip-carousel-off')),
+                  ),
+                ),
+                // Silhouette — screen-fraction sized
+                IgnorePointer(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 260),
+                    transitionBuilder: (child, anim) =>
+                        FadeTransition(opacity: anim, child: child),
+                    child: showSil
+                        ? SizedBox(
+                            key: const ValueKey('sil-on'),
+                            width: silW,
+                            height: silH,
+                            child: SvgPicture.asset(
+                              'assets/girl_cat_with_bottom.svg',
+                              fit: BoxFit.contain,
+                            ),
+                          )
+                        : const SizedBox.shrink(key: ValueKey('sil-off')),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1611,6 +1638,7 @@ class _TipCarousel extends StatelessWidget {
   final String langCode;
   final PageController controller;
   final ValueChanged<int> onPageChanged;
+  final VoidCallback? onClose;
 
   const _TipCarousel({
     super.key,
@@ -1618,6 +1646,7 @@ class _TipCarousel extends StatelessWidget {
     required this.langCode,
     required this.controller,
     required this.onPageChanged,
+    this.onClose,
   });
 
   @override
@@ -1627,7 +1656,7 @@ class _TipCarousel extends StatelessWidget {
       onTap: () {},
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.82),
+          color: Colors.white.withValues(alpha: 0.92),
           borderRadius: BorderRadius.circular(12),
         ),
         child: LayoutBuilder(
@@ -1644,19 +1673,25 @@ class _TipCarousel extends StatelessWidget {
             // Tip uses the full card width (minus horizontal padding).
             // The silhouette is a fixed overlay drawn on top of the card,
             // not something the text needs to reserve space for.
-            final availW = constraints.maxWidth - 14 - 14;
+            final textScaler = MediaQuery.textScalerOf(ctx);
+            final availW = constraints.maxWidth - 14 - 10;
             double tallestTip = 0;
             for (var i = 0; i < slides.length; i++) {
               final tp = TextPainter(
                 text: TextSpan(text: slides[i].text, style: tipStyle),
                 textDirection: TextDirection.ltr,
+                textScaler: textScaler,
               )..layout(maxWidth: availW > 0 ? availW : 1);
               if (tp.height > tallestTip) tallestTip = tp.height;
             }
-            // Pill + gap + vertical padding (top 12, bottom 12) around body.
-            const verticalPad = 12.0 + 12.0;
-            const labelBlock = 22.0 + 8.0; // pill height + gap to text
-            final pageH = tallestTip + labelBlock + verticalPad;
+            // Pill + gap + vertical padding (top 10, bottom 12) around body.
+            const verticalPad = 10.0 + 12.0;
+            final scaleFactor = textScaler.scale(14) / 14;
+            // pill row: max(pill height, X icon with padding) + gap
+            final pillH = 22.0 * scaleFactor;
+            const xIconH = 16.0 + 4.0 + 4.0; // icon + padding top/bottom
+            final labelBlock = (pillH > xIconH ? pillH : xIconH) + 8.0;
+            final pageH = (tallestTip + labelBlock + verticalPad).ceilToDouble() + 2;
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1669,14 +1704,31 @@ class _TipCarousel extends StatelessWidget {
                     itemBuilder: (_, i) {
                       final slide = slides[i];
                       return Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                        padding: const EdgeInsets.fromLTRB(14, 10, 10, 12),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            _buildLevelPill(
-                              difficulty: slide.difficulty,
-                              langCode: langCode,
+                            Row(
+                              children: [
+                                _buildLevelPill(
+                                  difficulty: slide.difficulty,
+                                  langCode: langCode,
+                                ),
+                                const Spacer(),
+                                if (onClose != null)
+                                  GestureDetector(
+                                    onTap: onClose,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(4),
+                                      child: Icon(
+                                        PhosphorIconsBold.x,
+                                        size: 16,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                             const SizedBox(height: 8),
                             Text(
@@ -1725,6 +1777,21 @@ class _TipCarousel extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+/// Optimized looping gif loader, pre-rendered at 100x100.
+class _LoaderGif extends StatelessWidget {
+  const _LoaderGif();
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/loading_loop.gif',
+      width: 100,
+      height: 100,
+      fit: BoxFit.cover,
     );
   }
 }
