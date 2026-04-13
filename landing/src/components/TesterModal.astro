@@ -34,7 +34,34 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
       </div>
     </div>
 
-    <!-- Step 2: Form (Android) -->
+    <!-- Step 2: Choose method (Android) -->
+    <div class="tm-step" id="tmStepMethod" style="display:none;">
+      <div class="tm-icon"><i class="ph ph-google-play-logo"></i></div>
+      <h3 class="tm-title" data-es="Google Play" data-en="Google Play">Google Play</h3>
+      <p class="tm-desc" data-es="Elige c&oacute;mo quieres acceder a la app" data-en="Choose how to access the app">Elige c&oacute;mo quieres acceder a la app</p>
+      <div class="tm-platform-btns">
+        <button class="tm-platform-btn" id="tmMethodAuto">
+          <i class="ph ph-lightning"></i>
+          <div class="tm-store-label">
+            <span data-es="Unirme al grupo de testers" data-en="Join the testers group">Unirme al grupo de testers</span>
+            <small data-es="Casi autom&aacute;tico" data-en="Almost automatic">Casi autom&aacute;tico</small>
+          </div>
+        </button>
+        <button class="tm-platform-btn" id="tmMethodManual">
+          <i class="ph ph-envelope-simple"></i>
+          <div class="tm-store-label">
+            <span data-es="Enviar mis datos" data-en="Send my info">Enviar mis datos</span>
+            <small data-es="Proceso manual" data-en="Manual process">Proceso manual</small>
+          </div>
+        </button>
+      </div>
+      <button type="button" class="tm-back" id="tmBackMethod">
+        <i class="ph ph-arrow-left"></i>
+        <span data-es="Volver" data-en="Back">Volver</span>
+      </button>
+    </div>
+
+    <!-- Step 3a: Form (Android — manual) -->
     <div class="tm-step" id="tmStepForm" style="display:none;">
       <div class="tm-icon"><i class="ph ph-google-play-logo"></i></div>
       <h3 class="tm-title" data-es="Google Play" data-en="Google Play">Google Play</h3>
@@ -114,14 +141,71 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
       </form>
     </div>
 
-    <!-- Success: Android -->
-    <div class="tm-step" id="testerSuccess" style="display:none;">
+    <!-- Success: Android — manual (admin adds tester) -->
+    <div class="tm-step" id="testerSuccessManual" style="display:none;">
       <div class="tm-success-icon"><i class="ph ph-check-circle"></i></div>
-      <p class="tm-desc" data-es="&iexcl;Listo! Descarga la app para empezar a jugar." data-en="Done! Download the app to start playing.">&iexcl;Listo! Descarga la app para empezar a jugar.</p>
-      <a href="https://play.google.com/apps/internaltest/4700433915880246135" target="_blank" class="tm-submit" style="text-decoration:none;">
-        <i class="ph ph-google-play-logo"></i>
-        <span data-es="Descargar en Google Play" data-en="Download on Google Play">Descargar en Google Play</span>
-      </a>
+      <p class="tm-desc" data-es="&iexcl;Recibimos tus datos! Te agregaremos como tester y te avisaremos por correo cuando puedas descargar la app." data-en="Got it! We'll add you as a tester and notify you by email when you can download the app.">&iexcl;Recibimos tus datos! Te agregaremos como tester y te avisaremos por correo cuando puedas descargar la app.</p>
+    </div>
+
+    <!-- Success: Android — guided stepper (self-service) -->
+    <div class="tm-step" id="testerSuccess" style="display:none;">
+      <h3 class="tm-title" data-es="Ya casi est&aacute;s" data-en="Almost there">Ya casi est&aacute;s</h3>
+      <p class="tm-desc" data-es="Completa estos pasos para descargar la app" data-en="Complete these steps to download the app">Completa estos pasos para descargar la app</p>
+
+      <div class="tm-stepper">
+        <!-- Step 1: Join Google Group -->
+        <div class="tm-stepper-item tm-stepper-active" data-stepper="0">
+          <div class="tm-stepper-header">
+            <div class="tm-stepper-num">1</div>
+            <div class="tm-stepper-label" data-es="Unirse al grupo de Google" data-en="Join the Google Group">Unirse al grupo de Google</div>
+          </div>
+          <div class="tm-stepper-body">
+            <p data-es="Abre el grupo y haz clic en &laquo;Unirse al grupo&raquo;. Elige cualquier opci&oacute;n de suscripci&oacute;n." data-en="Open the group and click &laquo;Join group&raquo;. Choose any subscription option.">Abre el grupo y haz clic en &laquo;Unirse al grupo&raquo;. Elige cualquier opci&oacute;n de suscripci&oacute;n.</p>
+            <a href="https://groups.google.com/g/zoom-in-chile-testers/" target="_blank" rel="noopener" class="tm-stepper-link">
+              <i class="ph ph-arrow-square-out"></i>
+              <span data-es="Abrir Google Groups" data-en="Open Google Groups">Abrir Google Groups</span>
+            </a>
+            <button type="button" class="tm-stepper-confirm">
+              <i class="ph ph-check"></i>
+              <span data-es="Ya me un&iacute;" data-en="I joined">Ya me un&iacute;</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Become a tester -->
+        <div class="tm-stepper-item" data-stepper="1">
+          <div class="tm-stepper-header">
+            <div class="tm-stepper-num">2</div>
+            <div class="tm-stepper-label" data-es="Ser tester" data-en="Become a tester">Ser tester</div>
+          </div>
+          <div class="tm-stepper-body">
+            <p data-es="Abre la p&aacute;gina y haz clic en &laquo;Convertirse en tester&raquo;." data-en="Open the page and click &laquo;Become a tester&raquo;.">Abre la p&aacute;gina y haz clic en &laquo;Convertirse en tester&raquo;.</p>
+            <a href="https://play.google.com/apps/testing/cl.depointless.zoominchile" target="_blank" rel="noopener" class="tm-stepper-link">
+              <i class="ph ph-arrow-square-out"></i>
+              <span data-es="Abrir Google Play" data-en="Open Google Play">Abrir Google Play</span>
+            </a>
+            <button type="button" class="tm-stepper-confirm">
+              <i class="ph ph-check"></i>
+              <span data-es="Ya soy tester" data-en="I'm a tester">Ya soy tester</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3: Download -->
+        <div class="tm-stepper-item" data-stepper="2">
+          <div class="tm-stepper-header">
+            <div class="tm-stepper-num">3</div>
+            <div class="tm-stepper-label" data-es="Descargar la app" data-en="Download the app">Descargar la app</div>
+          </div>
+          <div class="tm-stepper-body">
+            <p data-es="&iexcl;Listo! Ahora s&iacute; puedes descargar el juego." data-en="All set! Now you can download the game.">&iexcl;Listo! Ahora s&iacute; puedes descargar el juego.</p>
+            <a href="https://play.google.com/store/apps/details?id=cl.depointless.zoominchile" target="_blank" rel="noopener" class="tm-submit" style="text-decoration:none;">
+              <i class="ph ph-google-play-logo"></i>
+              <span data-es="Descargar en Google Play" data-en="Download on Google Play">Descargar en Google Play</span>
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Success: iOS -->
@@ -356,6 +440,134 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
     transition: color 0.2s;
   }
   .tm-back:hover { color: #1A1A1A; }
+
+  /* ── Stepper ── */
+  .tm-stepper { display: flex; flex-direction: column; gap: 0; width: 100%; }
+
+  .tm-stepper-item {
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 1.25rem;
+  }
+  .tm-stepper-item:last-child { padding-bottom: 0; }
+
+  /* Vertical connector line */
+  .tm-stepper-item::before {
+    content: '';
+    position: absolute;
+    left: 13px;
+    top: 32px;
+    bottom: -4px;
+    width: 2px;
+    background: #E5E7EB;
+    transition: background 0.3s;
+  }
+  .tm-stepper-item:last-child::before { display: none; }
+  .tm-stepper-item.tm-stepper-done::before { background: #4CAF50; }
+
+  .tm-stepper-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+  }
+
+  .tm-stepper-num {
+    position: absolute;
+    left: -40px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid #E5E7EB;
+    background: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #9CA3AF;
+    transition: all 0.3s;
+    flex-shrink: 0;
+    z-index: 1;
+  }
+  .tm-stepper-num .ph { font-size: 0.85rem; }
+
+  .tm-stepper-active .tm-stepper-num {
+    border-color: #1565C0;
+    background: #1565C0;
+    color: #FFFFFF;
+  }
+  .tm-stepper-done .tm-stepper-num {
+    border-color: #4CAF50;
+    background: #4CAF50;
+    color: #FFFFFF;
+  }
+
+  .tm-stepper-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #9CA3AF;
+    transition: color 0.3s;
+  }
+  .tm-stepper-active .tm-stepper-label { color: #1A1A1A; }
+  .tm-stepper-done .tm-stepper-label { color: #4CAF50; }
+
+  .tm-stepper-body {
+    display: none;
+    padding-top: 0.6rem;
+    max-width: 100%;
+  }
+  .tm-stepper-active .tm-stepper-body { display: block; }
+
+  .tm-stepper-body p {
+    font-size: 0.8rem;
+    color: #6B7280;
+    line-height: 1.5;
+    margin-bottom: 0.65rem;
+  }
+
+  .tm-stepper-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.65rem 1rem;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    background: #FFFFFF;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1565C0;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tm-stepper-link:hover { border-color: #1565C0; background: #F0F7FF; }
+  .tm-stepper-link .ph { font-size: 1rem; }
+
+  .tm-stepper-confirm {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 0.5rem;
+    padding: 0.55rem 1rem;
+    border: none;
+    border-radius: 10px;
+    background: #4CAF50;
+    color: #FFFFFF;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .tm-stepper-confirm:hover { background: #43A047; }
 </style>
 
 <script is:inline>
@@ -365,9 +577,11 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
 
     const steps = {
       platform: document.getElementById('tmStepPlatform'),
+      method: document.getElementById('tmStepMethod'),
       form: document.getElementById('tmStepForm'),
       ios: document.getElementById('tmStepIos'),
       success: document.getElementById('testerSuccess'),
+      successManual: document.getElementById('testerSuccessManual'),
       successIos: document.getElementById('testerSuccessIos'),
     };
     const errorEl = document.getElementById('testerError');
@@ -393,11 +607,16 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
 
     // Platform selection
-    overlay.querySelector('[data-platform="android"]').addEventListener('click', () => showStep('form'));
+    overlay.querySelector('[data-platform="android"]').addEventListener('click', () => showStep('method'));
     overlay.querySelector('[data-platform="ios"]').addEventListener('click', () => showStep('ios'));
 
+    // Method selection
+    document.getElementById('tmMethodAuto').addEventListener('click', () => showStep('success'));
+    document.getElementById('tmMethodManual').addEventListener('click', () => showStep('form'));
+
     // Back buttons
-    document.getElementById('tmBack').addEventListener('click', () => showStep('platform'));
+    document.getElementById('tmBackMethod').addEventListener('click', () => showStep('platform'));
+    document.getElementById('tmBack').addEventListener('click', () => showStep('method'));
     document.getElementById('tmBackIos').addEventListener('click', () => showStep('platform'));
 
     // Generic form handler
@@ -445,8 +664,42 @@ const { apiUrl = 'https://games.sabino.cl/zoominchile/api/testers' } = Astro.pro
       });
     }
 
-    setupForm('testerForm', 'testerValidation', 'success');
+    setupForm('testerForm', 'testerValidation', 'successManual');
     setupForm('testerFormIos', 'testerValidationIos', 'successIos');
+
+    // ── Stepper logic for Android success flow ──
+    (function initStepper() {
+      var items = overlay.querySelectorAll('.tm-stepper-item');
+      if (!items.length) return;
+      var current = 0;
+
+      function update() {
+        items.forEach(function(item, i) {
+          item.classList.remove('tm-stepper-active', 'tm-stepper-done');
+          var num = item.querySelector('.tm-stepper-num');
+          if (i < current) {
+            item.classList.add('tm-stepper-done');
+            num.innerHTML = '<i class="ph ph-check"></i>';
+          } else if (i === current) {
+            item.classList.add('tm-stepper-active');
+            num.textContent = String(i + 1);
+          } else {
+            num.textContent = String(i + 1);
+          }
+        });
+      }
+
+      items.forEach(function(item, i) {
+        var btn = item.querySelector('.tm-stepper-confirm');
+        if (btn) {
+          btn.addEventListener('click', function() {
+            if (i === current) { current++; update(); }
+          });
+        }
+      });
+
+      update();
+    })();
 
     // Update placeholders on lang change
     const langObserver = new MutationObserver(() => {
