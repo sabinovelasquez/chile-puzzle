@@ -709,6 +709,16 @@ form[data-diff="6"] .tip-pair[data-diff="6"] { display: block; }
     box-shadow: 0 0 0 3px rgba(88,166,255,0.2);
     outline: none;
 }
+.btn-translate {
+    display: inline-flex; align-items: center; gap: 0.2rem;
+    margin-left: 0.5rem; padding: 0.15rem 0.5rem;
+    background: rgba(88,166,255,0.12); border: 1px solid rgba(88,166,255,0.3);
+    border-radius: 5px; color: var(--accent); font-size: 0.75rem;
+    cursor: pointer; vertical-align: middle;
+}
+.btn-translate:hover { background: rgba(88,166,255,0.25); }
+.btn-translate:disabled { opacity: 0.4; cursor: not-allowed; }
+
 #processLocationBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .process-status {

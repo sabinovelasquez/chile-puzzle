@@ -357,14 +357,16 @@ async function extractTextFromUrl(url) {
   }
 }
 
-function buildTipPrompt(locationName, sourceText) {
-  const hasSource = sourceText && sourceText.trim().length > 0;
+function buildTipPrompt(locationName, description, referenceText) {
+  const hasDesc = description && description.trim().length > 0;
+  const hasRef = referenceText && referenceText.trim().length > 0;
   return `You are a concise tourism fact writer for a Chilean locations puzzle game.
 
-Given the location name${hasSource ? ' and reference material' : ''} below, generate exactly 3 tips in both Spanish (ES) and English (EN).${!hasSource ? ' Use your own knowledge about this Chilean location.' : ''}
+Given the location name${hasDesc || hasRef ? ' and context' : ''} below, generate exactly 3 tips in both Spanish (ES) and English (EN).${!hasDesc && !hasRef ? ' Use your own knowledge about this Chilean location.' : ''}
 
 LOCATION: "${locationName}"
-${hasSource ? `\nREFERENCE MATERIAL:\n${sourceText}` : ''}
+${hasDesc ? `\nPHOTO DESCRIPTION (primary context — this describes what the player sees in the puzzle photo):\n${description.trim()}` : ''}
+${hasRef ? `\nREFERENCE MATERIAL (supplementary):\n${referenceText}` : ''}
 
 RULES:
 - Each tip MUST be under 200 characters (this is a hard limit — count carefully).
@@ -417,15 +419,13 @@ app.post('/api/locations/process', async (req, res) => {
     return res.status(500).json({ error: 'Gemini API key not configured on server' });
   }
   try {
-    const parts = [];
-    if (description?.trim()) parts.push('DESCRIPTION: ' + description.trim());
+    let referenceText = '';
     if (links.length > 0) {
       const results = await Promise.allSettled(links.map(extractTextFromUrl));
       const texts = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
-      if (texts.length > 0) parts.push(...texts);
+      referenceText = texts.join('\n\n---\n\n');
     }
-    const combinedText = parts.join('\n\n---\n\n');
-    const prompt = buildTipPrompt(locationName, combinedText || '');
+    const prompt = buildTipPrompt(locationName, description || '', referenceText);
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
     const result = await model.generateContent(prompt);
@@ -434,6 +434,22 @@ app.post('/api/locations/process', async (req, res) => {
   } catch (e) {
     console.error('process-location failed:', e);
     res.status(500).json({ error: e.message || 'AI processing failed' });
+  }
+});
+
+app.post('/api/translate', async (req, res) => {
+  const { text, from = 'es', to = 'en' } = req.body;
+  if (!text?.trim()) return res.status(400).json({ error: 'text is required' });
+  if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'Gemini API key not configured' });
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+    const prompt = `Translate the following text from ${from === 'es' ? 'Spanish' : 'English'} to ${to === 'en' ? 'English' : 'Spanish'}. Keep the same tone and length. Respond with ONLY the translated text, nothing else.\n\n${text.trim()}`;
+    const result = await model.generateContent(prompt);
+    res.json({ translated: result.response.text().trim() });
+  } catch (e) {
+    console.error('translate failed:', e);
+    res.status(500).json({ error: e.message || 'Translation failed' });
   }
 });
 

@@ -253,6 +253,33 @@ processBtn.addEventListener('click', async () => {
   }
 });
 
+// --- Expert tip translate ES → EN ---
+document.getElementById('translateExpertBtn').addEventListener('click', async function() {
+  const src = fTipExpertEs.value.trim();
+  if (!src) { showToast('Write the Expert tip in Spanish first', true); return; }
+  const btn = this;
+  const orig = btn.textContent;
+  btn.textContent = '…';
+  btn.disabled = true;
+  try {
+    const res = await fetch(API_BASE + '/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: src, from: 'es', to: 'en' }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Translation failed');
+    fTipExpertEn.value = data.translated;
+    refreshCharCounts();
+    showToast('Expert tip translated');
+  } catch (err) {
+    showToast('Translate error: ' + err.message, true);
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+});
+
 // Per-difficulty editor state
 const DEFAULT_CROPS = {
   '3': { x: 0,    y: 0,    w: 1,    h: 1    }, // Easy: always full image
