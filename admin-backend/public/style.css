@@ -651,6 +651,60 @@ form[data-diff="6"] .tip-pair[data-diff="6"] { display: block; }
     transform: translateX(-50%) translateY(0);
 }
 
+/* ---------- AI Process Location ---------- */
+.ai-process-section {
+    margin: 1.5rem 0 0.5rem;
+    padding: 1.25rem;
+    background: rgba(88,166,255,0.04);
+    border: 1px solid rgba(88,166,255,0.15);
+    border-radius: 10px;
+}
+.ai-process-section .section-heading { margin-top: 0; padding-top: 0; border-top: none; }
+
+.link-chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 0.5rem;
+    min-height: 44px;
+    align-items: center;
+    cursor: text;
+}
+.link-chips-container:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(88,166,255,0.2);
+}
+.link-chips { display: contents; }
+.link-chips-container input {
+    border: none; background: transparent; padding: 0.4rem;
+    flex: 1; min-width: 200px; color: white; outline: none;
+    font-size: 0.85rem;
+}
+
+.link-chip {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: rgba(88,166,255,0.15);
+    border: 1px solid rgba(88,166,255,0.3);
+    border-radius: 6px; padding: 0.25rem 0.5rem;
+    font-size: 0.8rem; color: var(--accent);
+    max-width: 300px;
+}
+.link-chip .chip-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link-chip .chip-remove {
+    cursor: pointer; opacity: 0.7; font-size: 1rem; line-height: 1; flex-shrink: 0;
+}
+.link-chip .chip-remove:hover { opacity: 1; color: var(--danger); }
+
+#processLocationBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.process-status {
+    display: none; margin-top: 0.75rem;
+    font-size: 0.85rem; color: var(--text-secondary);
+}
+
 /* ---------- Mobile (≤900px) ---------- */
 @media (max-width: 900px) {
     body {

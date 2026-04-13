@@ -8,6 +8,8 @@ const sharp = require('sharp');
 const { db, rowToLocation, locationToParams, rowToZone, rowToTrophy, rowToScoring, rowToTester, rowToRelease } = require('./db');
 const { renderDownloadEmail, renderReleaseEmail, renderProgressBackupEmail } = require('./email-templates');
 const { readChangelogEntry } = require('./changelog');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const cheerio = require('cheerio');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -332,6 +334,103 @@ app.post('/api/regenerate-crops', async (req, res) => {
     }
   }
   res.json(results);
+});
+
+// ── AI tip generation ──────────────────────────────────────────
+async function extractTextFromUrl(url) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ChilePuzzleAdmin/1.0)' },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const html = await res.text();
+    const $ = cheerio.load(html);
+    $('script, style, nav, footer, header, aside, iframe, noscript').remove();
+    const main = $('main, article, .content, .mw-parser-output, #bodyContent').first();
+    const text = (main.length ? main : $('body')).text();
+    return text.replace(/\s+/g, ' ').trim().slice(0, 8000);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function buildTipPrompt(locationName, sourceText) {
+  return `You are a concise tourism fact writer for a Chilean locations puzzle game.
+
+Given the location name and reference text below, generate exactly 3 tips in both Spanish (ES) and English (EN).
+
+LOCATION: "${locationName}"
+
+REFERENCE TEXT:
+${sourceText}
+
+RULES:
+- Each tip MUST be under 200 characters (this is a hard limit — count carefully).
+- Write in a factual, informative tone — no exclamation marks, no "Did you know?", no filler words.
+- Tips are shown as hints to help players identify a photo of this location.
+- Each tip reveals progressively more specific/obscure information.
+- EASY (Dato Físico/Geográfico): What it is, where it is located, and its primary function. General knowledge a tourist would know.
+- NORMAL (Dato Histórico/Constructivo): Year of origin, architect/designer, specific materials, or a key historical event tied to it.
+- HARD (Dato Técnico/Curiosidad): Precise dimensions, conservation status, a structural or engineering detail, or a little-known fact.
+
+OUTPUT FORMAT — respond with ONLY this JSON, no markdown fences, no commentary:
+{
+  "easy":   { "es": "...", "en": "..." },
+  "normal": { "es": "...", "en": "..." },
+  "hard":   { "es": "...", "en": "..." }
+}`;
+}
+
+function parseTipResponse(text) {
+  const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('Could not parse AI response as JSON');
+  const tips = JSON.parse(match[0]);
+  for (const level of ['easy', 'normal', 'hard']) {
+    if (!tips[level]?.es || !tips[level]?.en) {
+      throw new Error(`Missing ${level} tip in AI response`);
+    }
+    for (const lang of ['es', 'en']) {
+      if (tips[level][lang].length > 200) {
+        const truncated = tips[level][lang].slice(0, 197);
+        tips[level][lang] = truncated.slice(0, truncated.lastIndexOf(' ')) + '...';
+      }
+    }
+  }
+  return tips;
+}
+
+app.post('/api/locations/process', async (req, res) => {
+  const { locationName, links } = req.body;
+  if (!locationName || !Array.isArray(links) || links.length === 0) {
+    return res.status(400).json({ error: 'locationName and at least one link required' });
+  }
+  if (links.length > 5) {
+    return res.status(400).json({ error: 'Maximum 5 links allowed' });
+  }
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(500).json({ error: 'Gemini API key not configured on server' });
+  }
+  try {
+    const results = await Promise.allSettled(links.map(extractTextFromUrl));
+    const texts = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
+    if (texts.length === 0) {
+      return res.status(422).json({ error: 'Could not extract text from any provided link' });
+    }
+    const combinedText = texts.join('\n\n---\n\n');
+    const prompt = buildTipPrompt(locationName, combinedText);
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+    const result = await model.generateContent(prompt);
+    const tips = parseTipResponse(result.response.text());
+    res.json({ tips });
+  } catch (e) {
+    console.error('process-location failed:', e);
+    res.status(500).json({ error: e.message || 'AI processing failed' });
+  }
 });
 
 // ============================================================

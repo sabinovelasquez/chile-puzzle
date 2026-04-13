@@ -143,12 +143,112 @@ function refreshDeleteOrigBtn() {
   deleteOrigBtn.hidden = !fOriginal.value;
 }
 
+// ============================================================
+// AI TIP GENERATION
+// ============================================================
+const linkInput = document.getElementById('linkInput');
+const linkChips = document.getElementById('linkChips');
+const linkChipsContainer = document.getElementById('linkChipsContainer');
+const processBtn = document.getElementById('processLocationBtn');
+const processStatus = document.getElementById('processStatus');
+let referenceLinks = [];
+
+linkChipsContainer.addEventListener('click', () => linkInput.focus());
+
+function addLink(url) {
+  url = url.trim();
+  if (!url) return;
+  try { new URL(url); } catch {
+    try { url = 'https://' + url; new URL(url); } catch { return; }
+  }
+  if (referenceLinks.includes(url)) return;
+  referenceLinks.push(url);
+  renderChips();
+}
+
+function removeLink(url) {
+  referenceLinks = referenceLinks.filter(l => l !== url);
+  renderChips();
+}
+
+function renderChips() {
+  linkChips.innerHTML = '';
+  referenceLinks.forEach(url => {
+    const chip = document.createElement('span');
+    chip.className = 'link-chip';
+    let display;
+    try { display = new URL(url).hostname + new URL(url).pathname.slice(0, 30); } catch { display = url; }
+    chip.innerHTML = `<span class="chip-url" title="${esc(url)}">${esc(display)}</span><span class="chip-remove">&times;</span>`;
+    chip.querySelector('.chip-remove').onclick = (e) => { e.stopPropagation(); removeLink(url); };
+    linkChips.appendChild(chip);
+  });
+  processBtn.disabled = referenceLinks.length === 0;
+}
+
+linkInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    addLink(linkInput.value.replace(/,/g, ''));
+    linkInput.value = '';
+  }
+  if (e.key === 'Backspace' && !linkInput.value && referenceLinks.length) {
+    referenceLinks.pop();
+    renderChips();
+  }
+});
+
+linkInput.addEventListener('paste', (e) => {
+  setTimeout(() => {
+    const parts = linkInput.value.split(/[\n,]+/);
+    if (parts.length > 1) {
+      parts.forEach(p => addLink(p));
+      linkInput.value = '';
+    }
+  }, 0);
+});
+
+processBtn.addEventListener('click', async () => {
+  if (referenceLinks.length === 0) return;
+  const locationName = fNameEs.value.trim() || fNameEn.value.trim();
+  if (!locationName) {
+    showToast('Enter the location name first', true);
+    return;
+  }
+  startBtnSpinner(processBtn, 'Processing…');
+  processStatus.style.display = 'block';
+  processStatus.textContent = 'Fetching links and generating tips…';
+  processStatus.style.color = '';
+  try {
+    const res = await fetch(API_BASE + '/api/locations/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locationName, links: referenceLinks }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Processing failed');
+    const tips = data.tips;
+    if (tips.easy)   { fTipEn.value = tips.easy.en || '';   fTipEs.value = tips.easy.es || ''; }
+    if (tips.normal) { fTipNormalEn.value = tips.normal.en || ''; fTipNormalEs.value = tips.normal.es || ''; }
+    if (tips.hard)   { fTipHardEn.value = tips.hard.en || '';   fTipHardEs.value = tips.hard.es || ''; }
+    refreshCharCounts();
+    processStatus.textContent = 'Tips generated — review and edit before saving.';
+    processStatus.style.color = '#238636';
+    showToast('Tips generated — review before saving');
+  } catch (err) {
+    processStatus.textContent = 'Error: ' + err.message;
+    processStatus.style.color = '#f85149';
+    showToast('Process error: ' + err.message, true);
+  } finally {
+    stopBtnSpinner(processBtn);
+  }
+});
+
 // Per-difficulty editor state
 const DEFAULT_CROPS = {
-  '3': { x: 0,    y: 0,    w: 1,    h: 1    },
-  '4': { x: 0.1,  y: 0.1,  w: 0.8,  h: 0.8  },
-  '5': { x: 0.13, y: 0.13, w: 0.74, h: 0.74 },
-  '6': { x: 0.15, y: 0.15, w: 0.7,  h: 0.7  },
+  '3': { x: 0,    y: 0,    w: 1,    h: 1    }, // Easy: always full image
+  '4': { x: 0.05, y: 0.05, w: 0.9,  h: 0.9  }, // Normal: auto-interpolated
+  '5': { x: 0.1,  y: 0.1,  w: 0.8,  h: 0.8  }, // Hard: auto-interpolated
+  '6': { x: 0.15, y: 0.15, w: 0.7,  h: 0.7  }, // Expert: user-defined
 };
 const DIFF_META = {
   '3': { label: 'EASY',   color: '#238636' },
@@ -424,17 +524,20 @@ function openLocEditor(id) {
   fTipNormalEn.value = tbd['4']?.en || ''; fTipNormalEs.value = tbd['4']?.es || '';
   fTipHardEn.value   = tbd['5']?.en || ''; fTipHardEs.value   = tbd['5']?.es || '';
   fTipExpertEn.value = tbd['6']?.en || ''; fTipExpertEs.value = tbd['6']?.es || '';
-  // Load per-difficulty crops (fall back to sensible defaults)
+  // Load per-difficulty crops — Easy is always full image
   const src = loc.cropsByDifficulty || {};
   cropsByDifficulty = {
-    '3': { ...DEFAULT_CROPS['3'], ...(src['3'] || {}) },
+    '3': { x: 0, y: 0, w: 1, h: 1 },
     '4': { ...DEFAULT_CROPS['4'], ...(src['4'] || {}) },
     '5': { ...DEFAULT_CROPS['5'], ...(src['5'] || {}) },
     '6': { ...DEFAULT_CROPS['6'], ...(src['6'] || loc.crop || {}) },
   };
   setActiveLang('es');
-  setActiveDifficulty('3');
+  setActiveDifficulty('6');
   refreshCharCounts();
+  referenceLinks = [];
+  renderChips();
+  processStatus.style.display = 'none';
   if (fImage.value) cropToolLoad(fImage.value);
   else cropToolHide();
   fImageUpload.value = '';
@@ -728,6 +831,26 @@ const PHONE_RATIO = 16 / 9; // h/w in normalized coords relative to image
 function getActiveCrop() { return cropsByDifficulty[activeDifficulty]; }
 function setActiveCrop(x, y, w, h) {
   cropsByDifficulty[activeDifficulty] = { x, y, w, h };
+  // When Expert changes, auto-interpolate Normal and Hard
+  if (activeDifficulty === '6') interpolateMiddleCrops();
+}
+
+function interpolateMiddleCrops() {
+  const easy = cropsByDifficulty['3']; // always {0,0,1,1}
+  const expert = cropsByDifficulty['6'];
+  const lerp = (a, b, t) => parseFloat((a + (b - a) * t).toFixed(4));
+  cropsByDifficulty['4'] = {
+    x: lerp(easy.x, expert.x, 1 / 3),
+    y: lerp(easy.y, expert.y, 1 / 3),
+    w: lerp(easy.w, expert.w, 1 / 3),
+    h: lerp(easy.h, expert.h, 1 / 3),
+  };
+  cropsByDifficulty['5'] = {
+    x: lerp(easy.x, expert.x, 2 / 3),
+    y: lerp(easy.y, expert.y, 2 / 3),
+    w: lerp(easy.w, expert.w, 2 / 3),
+    h: lerp(easy.h, expert.h, 2 / 3),
+  };
 }
 
 function cropToolHide() {
@@ -829,7 +952,8 @@ function cropToolDraw() {
   // Active difficulty label
   cropCtx.fillStyle = meta.color;
   cropCtx.font = 'bold 11px Outfit, sans-serif';
-  cropCtx.fillText(meta.label, r.px + 6, r.py + 16);
+  const label = activeDifficulty === '3' ? meta.label + ' (full image)' : meta.label;
+  cropCtx.fillText(label, r.px + 6, r.py + 16);
 
   // Draw difficulty preview thumbnails
   drawCropPreviews();
@@ -980,6 +1104,7 @@ function cropSetValues(x, y, w, h) {
 
 function cropStartDrag(e) {
   e.preventDefault();
+  if (activeDifficulty === '3') return; // Easy is always full image
   const { x, y } = cropCanvasXY(e);
   const hit = cropHitTest(x, y);
   if (!hit) {
@@ -1006,7 +1131,7 @@ function cropMoveDrag(e) {
   if (!cropImg) return;
   const { x, y } = cropCanvasXY(e);
   if (!cropDrag) {
-    cropCanvas.style.cursor = cropCursorFor(cropHitTest(x, y));
+    cropCanvas.style.cursor = activeDifficulty === '3' ? 'default' : cropCursorFor(cropHitTest(x, y));
     return;
   }
   e.preventDefault();

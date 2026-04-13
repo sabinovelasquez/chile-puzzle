@@ -116,6 +116,20 @@
                         </div>
                     </div>
 
+                    <!-- AI tip generation -->
+                    <div class="ai-process-section">
+                        <h3 class="section-heading">AI Tip Generator</h3>
+                        <div class="form-group">
+                            <label>Reference links <small>Press Enter or comma to add</small></label>
+                            <div class="link-chips-container" id="linkChipsContainer">
+                                <div id="linkChips" class="link-chips"></div>
+                                <input type="text" id="linkInput" placeholder="Paste a URL and press Enter…">
+                            </div>
+                        </div>
+                        <button type="button" id="processLocationBtn" class="btn primary" disabled>Process Location</button>
+                        <div id="processStatus" class="process-status"></div>
+                    </div>
+
                     <!-- Tip pairs — one visible at a time based on [data-lang] + [data-diff] -->
                     <div class="tip-pairs">
                         <div class="tip-pair" data-diff="3">
