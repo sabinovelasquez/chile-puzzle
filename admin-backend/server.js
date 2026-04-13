@@ -358,14 +358,13 @@ async function extractTextFromUrl(url) {
 }
 
 function buildTipPrompt(locationName, sourceText) {
+  const hasSource = sourceText && sourceText.trim().length > 0;
   return `You are a concise tourism fact writer for a Chilean locations puzzle game.
 
-Given the location name and reference text below, generate exactly 3 tips in both Spanish (ES) and English (EN).
+Given the location name${hasSource ? ' and reference material' : ''} below, generate exactly 3 tips in both Spanish (ES) and English (EN).${!hasSource ? ' Use your own knowledge about this Chilean location.' : ''}
 
 LOCATION: "${locationName}"
-
-REFERENCE TEXT:
-${sourceText}
+${hasSource ? `\nREFERENCE MATERIAL:\n${sourceText}` : ''}
 
 RULES:
 - Each tip MUST be under 200 characters (this is a hard limit — count carefully).
@@ -404,9 +403,12 @@ function parseTipResponse(text) {
 }
 
 app.post('/api/locations/process', async (req, res) => {
-  const { locationName, links } = req.body;
-  if (!locationName || !Array.isArray(links) || links.length === 0) {
-    return res.status(400).json({ error: 'locationName and at least one link required' });
+  const { locationName, links = [], description } = req.body;
+  if (!locationName) {
+    return res.status(400).json({ error: 'locationName is required' });
+  }
+  if (links.length === 0 && !description?.trim()) {
+    return res.status(400).json({ error: 'Provide at least one link or a description' });
   }
   if (links.length > 5) {
     return res.status(400).json({ error: 'Maximum 5 links allowed' });
@@ -415,13 +417,15 @@ app.post('/api/locations/process', async (req, res) => {
     return res.status(500).json({ error: 'Gemini API key not configured on server' });
   }
   try {
-    const results = await Promise.allSettled(links.map(extractTextFromUrl));
-    const texts = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
-    if (texts.length === 0) {
-      return res.status(422).json({ error: 'Could not extract text from any provided link' });
+    const parts = [];
+    if (description?.trim()) parts.push('DESCRIPTION: ' + description.trim());
+    if (links.length > 0) {
+      const results = await Promise.allSettled(links.map(extractTextFromUrl));
+      const texts = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
+      if (texts.length > 0) parts.push(...texts);
     }
-    const combinedText = texts.join('\n\n---\n\n');
-    const prompt = buildTipPrompt(locationName, combinedText);
+    const combinedText = parts.join('\n\n---\n\n');
+    const prompt = buildTipPrompt(locationName, combinedText || '');
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
     const result = await model.generateContent(prompt);

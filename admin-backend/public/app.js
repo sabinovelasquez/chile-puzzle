@@ -151,6 +151,7 @@ const linkChips = document.getElementById('linkChips');
 const linkChipsContainer = document.getElementById('linkChipsContainer');
 const processBtn = document.getElementById('processLocationBtn');
 const processStatus = document.getElementById('processStatus');
+const processDescription = document.getElementById('processDescription');
 let referenceLinks = [];
 
 linkChipsContainer.addEventListener('click', () => linkInput.focus());
@@ -171,6 +172,10 @@ function removeLink(url) {
   renderChips();
 }
 
+function updateProcessBtn() {
+  processBtn.disabled = referenceLinks.length === 0 && !processDescription.value.trim();
+}
+
 function renderChips() {
   linkChips.innerHTML = '';
   referenceLinks.forEach(url => {
@@ -182,8 +187,10 @@ function renderChips() {
     chip.querySelector('.chip-remove').onclick = (e) => { e.stopPropagation(); removeLink(url); };
     linkChips.appendChild(chip);
   });
-  processBtn.disabled = referenceLinks.length === 0;
+  updateProcessBtn();
 }
+
+processDescription.addEventListener('input', updateProcessBtn);
 
 linkInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' || e.key === ',') {
@@ -208,7 +215,8 @@ linkInput.addEventListener('paste', (e) => {
 });
 
 processBtn.addEventListener('click', async () => {
-  if (referenceLinks.length === 0) return;
+  const description = processDescription.value.trim();
+  if (referenceLinks.length === 0 && !description) return;
   const locationName = fNameEs.value.trim() || fNameEn.value.trim();
   if (!locationName) {
     showToast('Enter the location name first', true);
@@ -216,13 +224,15 @@ processBtn.addEventListener('click', async () => {
   }
   startBtnSpinner(processBtn, 'Processing…');
   processStatus.style.display = 'block';
-  processStatus.textContent = 'Fetching links and generating tips…';
+  processStatus.textContent = referenceLinks.length ? 'Fetching links and generating tips…' : 'Generating tips from description…';
   processStatus.style.color = '';
   try {
+    const body = { locationName, links: referenceLinks };
+    if (description) body.description = description;
     const res = await fetch(API_BASE + '/api/locations/process', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ locationName, links: referenceLinks }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Processing failed');
@@ -537,6 +547,7 @@ function openLocEditor(id) {
   refreshCharCounts();
   referenceLinks = [];
   renderChips();
+  processDescription.value = '';
   processStatus.style.display = 'none';
   if (fImage.value) cropToolLoad(fImage.value);
   else cropToolHide();

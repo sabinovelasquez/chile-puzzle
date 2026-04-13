@@ -698,6 +698,17 @@ form[data-diff="6"] .tip-pair[data-diff="6"] { display: block; }
 }
 .link-chip .chip-remove:hover { opacity: 1; color: var(--danger); }
 
+#processDescription {
+    width: 100%; box-sizing: border-box;
+    background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border);
+    border-radius: 8px; padding: 0.5rem; color: white;
+    font-size: 0.85rem; resize: vertical;
+}
+#processDescription:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(88,166,255,0.2);
+    outline: none;
+}
 #processLocationBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .process-status {
