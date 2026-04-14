@@ -603,7 +603,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
     await sharp(req.file.path)
       .rotate()
       .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85 })
+      .jpeg({ quality: 95 })
       .toFile(optimized);
 
     // Thumbnail (400px wide)
@@ -675,7 +675,7 @@ async function renderPerDiffCrops(loc) {
       .rotate()                                       // honor EXIF orientation
       .extract({ left, top, width, height })
       .resize(3000, 3000, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85 })
+      .jpeg({ quality: 95 })
       .toFile(outPath);
     results[`image_d${diff}`] = `${URL_PREFIX}/uploads/${outName}`;
   }
@@ -730,7 +730,7 @@ app.post('/api/optimize-images', async (req, res) => {
       await sharp(filePath)
         .rotate()
         .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85 })
+        .jpeg({ quality: 95 })
         .toFile(tmpPath);
       const sizeAfter = fs.statSync(tmpPath).size;
       fs.renameSync(tmpPath, filePath);

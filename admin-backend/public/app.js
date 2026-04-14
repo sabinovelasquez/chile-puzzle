@@ -1039,7 +1039,7 @@ function drawCropPreviews() {
 // When the raw original file is still on disk, the admin save pipeline crops from it
 // and caps the result at RENDER_CAP. Simulate that math to warn BEFORE saving.
 // Locations without an original file fall back to measuring the served 2000px JPEG.
-const FULLSCREEN_TARGET = 1080;
+const FULLSCREEN_TARGET = 1000;
 const RENDER_CAP = 3000;
 
 function updatePixelationWarning() {
