@@ -7,6 +7,7 @@ import 'features/map/map_screen.dart';
 import 'features/ads/ad_service.dart';
 import 'core/services/audio_service.dart';
 import 'core/services/settings_service.dart';
+import 'core/services/loading_overlay_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +48,10 @@ class _ChilePuzzleAppState extends State<ChilePuzzleApp> {
       locale: _locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      // Wraps the whole navigator so the loading overlay can bridge route
+      // transitions (e.g. ad-dismiss → puzzle pop → map data reload).
+      builder: (context, child) =>
+          LoadingOverlayHost(child: child ?? const SizedBox.shrink()),
       home: const MapScreen(),
     );
   }

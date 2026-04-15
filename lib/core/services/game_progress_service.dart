@@ -4,7 +4,6 @@ import 'package:chile_puzzle/core/models/player_progress.dart';
 import 'package:chile_puzzle/core/models/scoring_config.dart';
 import 'package:chile_puzzle/core/models/trophy_model.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
-import 'package:chile_puzzle/core/services/settings_service.dart';
 import 'package:chile_puzzle/core/services/mock_backend.dart';
 
 class CompletionResult {
@@ -74,6 +73,9 @@ class GameProgressService {
     required ScoringConfig scoring,
     required List<TrophyModel> allTrophies,
     required List<LocationModel> allLocations,
+    bool lockInPlace = false,
+    bool multiSelect = false,
+    bool referenceEnabled = false,
   }) async {
     final base = scoring.basePoints[difficulty] ?? 50;
     final timeBonus = timeSecs < scoring.timeBonusThresholdSecs ? scoring.timeBonusPoints : 0;
@@ -82,10 +84,11 @@ class GameProgressService {
         : 0;
 
     int helpPenalty = 0;
-    if (SettingsService.referenceImage) helpPenalty += 10;
-    if (SettingsService.edgeShine) helpPenalty += 5;
-    if (SettingsService.lockInPlace) helpPenalty += 15;
-    if (SettingsService.multiSelect) helpPenalty += 20;
+    // Reference photo is the most "OP" hint — seeing the target while playing
+    // is a much bigger advantage than locking or group-drag, so it's costliest.
+    if (referenceEnabled) helpPenalty += 25;
+    if (lockInPlace) helpPenalty += 15;
+    if (multiSelect) helpPenalty += 20;
     final total = (base + timeBonus + efficiencyBonus - helpPenalty).clamp(0, 999999);
 
     final key = '${locationId}_$difficulty';

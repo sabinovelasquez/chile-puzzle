@@ -15,6 +15,15 @@ class PuzzleEngine extends StatefulWidget {
   final ValueNotifier<int> moveCount;
   final ValueNotifier<bool> imageLoaded;
 
+  final bool lockInPlace;
+  final bool multiSelect;
+  final ShimmerMode shimmerMode;
+
+  // Help trigger: parent bumps the notifier to request a tip. The engine picks
+  // the farthest mispositioned piece and animates a semi-transparent ghost
+  // from its current cell to its correct cell. Parent clears after animation.
+  final ValueNotifier<int?> helpFlashPieceId;
+
   PuzzleEngine({
     super.key,
     required this.location,
@@ -23,9 +32,14 @@ class PuzzleEngine extends StatefulWidget {
     Stopwatch? stopwatch,
     ValueNotifier<int>? moveCount,
     ValueNotifier<bool>? imageLoaded,
+    this.lockInPlace = false,
+    this.multiSelect = false,
+    this.shimmerMode = ShimmerMode.flash,
+    ValueNotifier<int?>? helpFlashPieceId,
   })  : stopwatch = stopwatch ?? Stopwatch(),
         moveCount = moveCount ?? ValueNotifier(0),
-        imageLoaded = imageLoaded ?? ValueNotifier(false);
+        imageLoaded = imageLoaded ?? ValueNotifier(false),
+        helpFlashPieceId = helpFlashPieceId ?? ValueNotifier(null);
 
   @override
   State<PuzzleEngine> createState() => _PuzzleEngineState();
@@ -54,12 +68,17 @@ class _PuzzleEngineState extends State<PuzzleEngine>
   // Completion animation
   late AnimationController _fadeController;
 
-  // Shine effect controllers
+  // Placement feedback (shimmer/flash) controllers, keyed by pieceId
   final Map<int, AnimationController> _shineControllers = {};
 
   // Lock rejection shake
   int? _shakingPieceId;
   AnimationController? _shakeController;
+
+  // Help ghost animation — a semi-transparent clone of the farthest
+  // mispositioned piece slides from its current cell to its correct cell.
+  AnimationController? _helpGhostController;
+  PuzzlePieceModel? _helpGhostPiece;
 
   Stopwatch get _stopwatch => widget.stopwatch;
   int get _moveCount => widget.moveCount.value;
@@ -72,9 +91,8 @@ class _PuzzleEngineState extends State<PuzzleEngine>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
-    // Start timer only after image loads
     widget.imageLoaded.addListener(_onImageLoaded);
-    // Preload image (per-difficulty pre-cropped when available, else the single image)
+    widget.helpFlashPieceId.addListener(_onHelpFlashChanged);
     final imageProvider = CachedNetworkImageProvider(
       widget.location.getImageForDifficulty(widget.difficulty),
     );
@@ -84,7 +102,7 @@ class _PuzzleEngineState extends State<PuzzleEngine>
           if (mounted) widget.imageLoaded.value = true;
         },
         onError: (_, __) {
-          if (mounted) widget.imageLoaded.value = true; // allow play even on error
+          if (mounted) widget.imageLoaded.value = true;
         },
       ),
     );
@@ -96,14 +114,70 @@ class _PuzzleEngineState extends State<PuzzleEngine>
     }
   }
 
+  void _onHelpFlashChanged() {
+    final trigger = widget.helpFlashPieceId.value;
+    _helpGhostController?.dispose();
+    _helpGhostController = null;
+    if (trigger == null) {
+      if (mounted) setState(() => _helpGhostPiece = null);
+      return;
+    }
+    final target = _findFarthestMispositionedPiece();
+    if (target == null) {
+      if (mounted) setState(() => _helpGhostPiece = null);
+      return;
+    }
+    // 1800ms total = two 900ms sweeps. The AnimatedBuilder reads the value
+    // and splits it into two phases, so the ghost slides current→correct,
+    // resets instantly, and slides again before fading out.
+    final ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    );
+    _helpGhostController = ctrl;
+    _helpGhostPiece = target;
+    ctrl.forward();
+    if (mounted) setState(() {});
+  }
+
+  /// Player touched a piece — cancel any running help ghost so the hint
+  /// doesn't keep dancing over their actual move.
+  void _cancelHelpGhost() {
+    if (_helpGhostController == null) return;
+    _helpGhostController?.dispose();
+    _helpGhostController = null;
+    _helpGhostPiece = null;
+    widget.helpFlashPieceId.value = null;
+  }
+
+  /// Picks the mispositioned piece whose current cell is furthest (euclidean)
+  /// from its correct cell. Returns null when the board is already solved.
+  PuzzlePieceModel? _findFarthestMispositionedPiece() {
+    PuzzlePieceModel? best;
+    double bestDist = -1;
+    for (final p in pieces) {
+      if (p.currentRow == p.correctRow && p.currentCol == p.correctCol) continue;
+      final dx = (p.currentCol - p.correctCol).toDouble();
+      final dy = (p.currentRow - p.correctRow).toDouble();
+      final d = dx * dx + dy * dy;
+      if (d > bestDist) {
+        bestDist = d;
+        best = p;
+      }
+    }
+    return best;
+  }
+
   @override
   void dispose() {
     widget.imageLoaded.removeListener(_onImageLoaded);
+    widget.helpFlashPieceId.removeListener(_onHelpFlashChanged);
     _fadeController.dispose();
     for (final c in _shineControllers.values) {
       c.dispose();
     }
     _shakeController?.dispose();
+    _helpGhostController?.dispose();
     super.dispose();
   }
 
@@ -154,13 +228,14 @@ class _PuzzleEngineState extends State<PuzzleEngine>
 
   void _onDragStart(PuzzlePieceModel piece, DragStartDetails details) {
     if (isCompleted || !widget.imageLoaded.value) return;
-    if (SettingsService.lockInPlace && piece.isCorrect) {
+    if (widget.lockInPlace && piece.isCorrect) {
       _triggerShakeRejection(piece.id);
       return;
     }
+    _cancelHelpGhost();
     setState(() {
       _draggingId = piece.id;
-      _draggingGroup = SettingsService.multiSelect ? _findGroup(piece) : null;
+      _draggingGroup = widget.multiSelect ? _findGroup(piece) : null;
       _dragGlobalStart = details.globalPosition;
       _dragPieceOrigin = Offset(
         piece.currentCol * pieceWidth,
@@ -211,7 +286,7 @@ class _PuzzleEngineState extends State<PuzzleEngine>
     final target = pieces.firstWhere(
       (p) => p.currentRow == targetRow && p.currentCol == targetCol,
     );
-    if (SettingsService.lockInPlace && target.isCorrect) return;
+    if (widget.lockInPlace && target.isCorrect) return;
 
     setState(() {
       int tmpRow = piece.currentRow;
@@ -224,7 +299,7 @@ class _PuzzleEngineState extends State<PuzzleEngine>
     _moveCount++;
     AudioService.playPiecePlaced();
 
-    if (SettingsService.edgeShine) {
+    if (widget.shimmerMode != ShimmerMode.off) {
       if (piece.isCorrect) _triggerShine(piece.id);
       if (target.isCorrect) _triggerShine(target.id);
     }
@@ -233,14 +308,12 @@ class _PuzzleEngineState extends State<PuzzleEngine>
   void _handleGroupMove(int deltaRow, int deltaCol) {
     final groupPieces = pieces.where((p) => _draggingGroup!.contains(p.id)).toList();
 
-    // Validate all targets in bounds
     for (final p in groupPieces) {
       final tr = p.currentRow + deltaRow;
       final tc = p.currentCol + deltaCol;
       if (tr < 0 || tr >= rows || tc < 0 || tc >= cols) return;
     }
 
-    // Find target cells and displaced pieces
     final sourceCells = groupPieces.map((p) => (p.currentRow, p.currentCol)).toSet();
     final targetCells = groupPieces.map((p) => (p.currentRow + deltaRow, p.currentCol + deltaCol)).toSet();
     final displacedCells = targetCells.difference(sourceCells);
@@ -249,17 +322,15 @@ class _PuzzleEngineState extends State<PuzzleEngine>
     final displacedPieces = <PuzzlePieceModel>[];
     for (final cell in displacedCells) {
       final p = pieces.firstWhere((p) => p.currentRow == cell.$1 && p.currentCol == cell.$2);
-      if (SettingsService.lockInPlace && p.isCorrect) return; // Can't displace locked piece
+      if (widget.lockInPlace && p.isCorrect) return;
       displacedPieces.add(p);
     }
 
     setState(() {
-      // Move group pieces to target positions
       for (final p in groupPieces) {
         p.currentRow += deltaRow;
         p.currentCol += deltaCol;
       }
-      // Move displaced pieces to vacated cells
       final vacatedList = vacatedCells.toList();
       for (int i = 0; i < displacedPieces.length; i++) {
         displacedPieces[i].currentRow = vacatedList[i].$1;
@@ -269,7 +340,7 @@ class _PuzzleEngineState extends State<PuzzleEngine>
     _moveCount++;
     AudioService.playPiecePlaced();
 
-    if (SettingsService.edgeShine) {
+    if (widget.shimmerMode != ShimmerMode.off) {
       for (final p in groupPieces) {
         if (p.isCorrect) _triggerShine(p.id);
       }
@@ -330,7 +401,6 @@ class _PuzzleEngineState extends State<PuzzleEngine>
         );
         if (group.contains(neighbor.id)) continue;
 
-        // Check relative correctness
         if ((current.correctRow - neighbor.correctRow == current.currentRow - neighbor.currentRow) &&
             (current.correctCol - neighbor.correctCol == current.currentCol - neighbor.currentCol)) {
           group.add(neighbor.id);
@@ -375,9 +445,6 @@ class _PuzzleEngineState extends State<PuzzleEngine>
   Widget _buildPieceWidget(PuzzlePieceModel piece, double borderOpacity) {
     final showBorder = !piece.isCorrect && borderOpacity > 0.01;
 
-    // When the backend provides a pre-rendered per-difficulty image, the whole
-    // image IS the crop — skip the interpolation math. Otherwise fall back to
-    // runtime extraction of the interpolated crop from the single image.
     final useCropped = widget.location.hasPreRenderedCrop(widget.difficulty);
     final imageUrl = widget.location.getImageForDifficulty(widget.difficulty);
     final crop = useCropped
@@ -387,7 +454,6 @@ class _PuzzleEngineState extends State<PuzzleEngine>
     final imgW = boardWidth / cW;
     final imgH = boardHeight / cH;
 
-    // Alignment to position this piece's portion of the cropped image
     final ax = cols > 1
         ? 2 * (cX * imgW + piece.correctCol * pieceWidth) / (imgW - pieceWidth) - 1
         : 0.0;
@@ -420,6 +486,53 @@ class _PuzzleEngineState extends State<PuzzleEngine>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildShineOverlay(int pieceId) {
+    final ctrl = _shineControllers[pieceId]!;
+    if (widget.shimmerMode == ShimmerMode.flash) {
+      return AnimatedBuilder(
+        animation: ctrl,
+        builder: (_, __) {
+          final v = ctrl.value;
+          // Fade-in-out: peak at 0.5, 0 at ends.
+          final opacity = (v < 0.5 ? v * 2 : (1 - v) * 2).clamp(0.0, 1.0) * 0.55;
+          return SizedBox(
+            width: pieceWidth,
+            height: pieceHeight,
+            child: IgnorePointer(
+              child: Container(color: Colors.white.withValues(alpha: opacity)),
+            ),
+          );
+        },
+      );
+    }
+    // Default: shimmer gradient sweep (legacy behavior).
+    return AnimatedBuilder(
+      animation: ctrl,
+      builder: (_, __) {
+        final value = ctrl.value;
+        return SizedBox(
+          width: pieceWidth,
+          height: pieceHeight,
+          child: ClipRect(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment(-1.0 + 3.0 * value, -1.0 + 3.0 * value),
+                  end: Alignment(-0.5 + 3.0 * value, -0.5 + 3.0 * value),
+                  colors: [
+                    Colors.white.withValues(alpha: 0),
+                    Colors.white.withValues(alpha: 0.4),
+                    Colors.white.withValues(alpha: 0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -481,33 +594,9 @@ class _PuzzleEngineState extends State<PuzzleEngine>
                         child: Stack(
                           children: [
                             _buildPieceWidget(piece, borderOpacity),
-                            // Shine effect
+                            // Placement feedback (shimmer or flash)
                             if (_shineControllers.containsKey(piece.id))
-                              AnimatedBuilder(
-                                animation: _shineControllers[piece.id]!,
-                                builder: (_, __) {
-                                  final value = _shineControllers[piece.id]!.value;
-                                  return SizedBox(
-                                    width: pieceWidth,
-                                    height: pieceHeight,
-                                    child: ClipRect(
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            begin: Alignment(-1.0 + 3.0 * value, -1.0 + 3.0 * value),
-                                            end: Alignment(-0.5 + 3.0 * value, -0.5 + 3.0 * value),
-                                            colors: [
-                                              Colors.white.withValues(alpha: 0),
-                                              Colors.white.withValues(alpha: 0.4),
-                                              Colors.white.withValues(alpha: 0),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
+                              _buildShineOverlay(piece.id),
                             // Shake rejection lock icon
                             if (_shakingPieceId == piece.id && _shakeController != null)
                               AnimatedBuilder(
@@ -541,8 +630,6 @@ class _PuzzleEngineState extends State<PuzzleEngine>
                                 animation: _shakeController!,
                                 builder: (_, __) {
                                   final t = _shakeController!.value;
-                                  // Quick pulse: fade-in 0-0.1, fade-out 0.1-0.3, then gone.
-                                  // Max opacity 0.3 — subtle anchor, not a selection rect.
                                   double borderOpacity;
                                   if (t < 0.1) {
                                     borderOpacity = (t / 0.1) * 0.3;
@@ -571,6 +658,44 @@ class _PuzzleEngineState extends State<PuzzleEngine>
                     ),
                   );
                 }),
+
+                // Help ghost — semi-transparent piece gliding from its current
+                // cell to its correct cell, fading out on arrival. Purely
+                // visual: the real piece stays where the player left it.
+                if (_helpGhostPiece != null && _helpGhostController != null)
+                  AnimatedBuilder(
+                    animation: _helpGhostController!,
+                    builder: (_, __) {
+                      final t = _helpGhostController!.value;
+                      final piece = _helpGhostPiece!;
+                      final startX = piece.currentCol * pieceWidth;
+                      final startY = piece.currentRow * pieceHeight;
+                      final endX = piece.correctCol * pieceWidth;
+                      final endY = piece.correctRow * pieceHeight;
+                      // Two-sweep loop: first half (t<0.5) plays once, second
+                      // half repeats. localT remaps each half to [0,1].
+                      final localT = (t < 0.5) ? t * 2 : (t - 0.5) * 2;
+                      final eased = Curves.easeInOutCubic.transform(localT);
+                      final x = startX + (endX - startX) * eased;
+                      final y = startY + (endY - startY) * eased;
+                      // Fade only in the final 12.5% of the entire run so both
+                      // sweeps stay fully visible until the ghost is exiting.
+                      final fadeStart = 0.875;
+                      final opacity = t < fadeStart
+                          ? 0.65
+                          : 0.65 * (1.0 - (t - fadeStart) / (1.0 - fadeStart));
+                      return Positioned(
+                        left: x,
+                        top: y,
+                        child: IgnorePointer(
+                          child: Opacity(
+                            opacity: opacity.clamp(0.0, 1.0),
+                            child: _buildPieceWidget(piece, 0.0),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
 
                 // Tap anywhere to reopen drawer
                 if (isCompleted)

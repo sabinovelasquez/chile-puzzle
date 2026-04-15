@@ -9,6 +9,8 @@ import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/models/game_config.dart';
 import 'package:chile_puzzle/core/services/mock_backend.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
+import 'package:chile_puzzle/core/services/settings_service.dart';
+import 'package:chile_puzzle/core/services/loading_overlay_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/features/puzzle/puzzle_screen.dart';
 import 'package:chile_puzzle/features/profile/profile_screen.dart';
@@ -84,7 +86,8 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen>
+    with SingleTickerProviderStateMixin {
   List<LocationModel> _locations = [];
   List<LocationModel> _allLocations = []; // cached for profile/puzzle
   GameConfig _config = GameConfig.fromJson({});
@@ -104,9 +107,17 @@ class _MapScreenState extends State<MapScreen> {
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
 
+  // Onboarding pulse — drives the fade-in-out of the play icon on unlocked
+  // cards for brand-new players (before their first puzzle completion).
+  late final AnimationController _onboardingPulse;
+
   @override
   void initState() {
     super.initState();
+    _onboardingPulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
     _initData();
     _initAuth();
     _scrollController.addListener(_onScroll);
@@ -114,6 +125,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
+    _onboardingPulse.dispose();
     _scrollController.dispose();
     _searchDebounce?.cancel();
     _searchController.dispose();
@@ -339,6 +351,17 @@ class _MapScreenState extends State<MapScreen> {
     }
     if (slides.isEmpty) return;
 
+    // Silhouette header badge earned by beating Expert OR by clearing every
+    // difficulty the location offers.
+    final expertDone = progress.completedPuzzles.containsKey('${loc.id}_6');
+    final locDiffsTip = loc.difficultyLevels.isNotEmpty
+        ? loc.difficultyLevels
+        : const [3];
+    final allLocDiffsDone = locDiffsTip.every(
+      (d) => progress.completedPuzzles.containsKey('${loc.id}_$d'),
+    );
+    final tipHeaderIsSilhouette = expertDone || allLocDiffsDone;
+
     final controller = PageController();
     final pageNotifier = ValueNotifier<int>(0);
 
@@ -358,7 +381,17 @@ class _MapScreenState extends State<MapScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 18, 12, 8),
                 child: Row(
                   children: [
-                    const Icon(PhosphorIconsBold.lightbulb, size: 20, color: AppTheme.trophyGold),
+                    tipHeaderIsSilhouette
+                        ? SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: SvgPicture.asset(
+                              'assets/girl_cat.svg',
+                              fit: BoxFit.contain,
+                            ),
+                          )
+                        : const Icon(PhosphorIconsBold.lightbulb,
+                            size: 20, color: AppTheme.trophyGold),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -518,18 +551,31 @@ class _MapScreenState extends State<MapScreen> {
     final allDone = difficulties.every(
       (d) => progress.completedPuzzles.containsKey('${loc.id}_$d'),
     );
+    final anyCompleted = difficulties.any(
+      (d) => progress.completedPuzzles.containsKey('${loc.id}_$d'),
+    );
     // Highest completed difficulty — used when opening the photo overlay from
     // the "Ver foto" button so the tip shown matches the hardest run.
     final topDiff = difficulties.reduce((a, b) => a > b ? a : b);
 
+    // Per-session hint toggles — on the very first run (no puzzles completed
+    // yet), start everything off so a new player doesn't get blindsided with
+    // pre-toggled penalties. After that, remember the last choice.
+    final isFirstRun = progress.completedPuzzles.isEmpty;
+    bool hintLock = isFirstRun ? false : SettingsService.lastHintLock;
+    bool hintMulti = isFirstRun ? false : SettingsService.lastHintMulti;
+    bool hintReference = isFirstRun ? false : SettingsService.lastHintReference;
+
     showDialog(
       context: context,
-      builder: (ctx) => MediaQuery(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => MediaQuery(
         data: MediaQuery.of(ctx).copyWith(textScaler: TextScaler.noScaling),
         child: Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         clipBehavior: Clip.antiAlias,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -610,31 +656,78 @@ class _MapScreenState extends State<MapScreen> {
               ],
             ),
 
-            // Difficulty grid
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  allDone
-                      ? (langCode == 'es' ? 'TODAS COMPLETADAS' : 'ALL COMPLETED')
-                      : (langCode == 'es' ? 'ELIGE DIFICULTAD' : 'CHOOSE DIFFICULTY'),
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12, fontWeight: FontWeight.w700,
-                    color: allDone ? AppTheme.accentGreen : Colors.grey.shade700, letterSpacing: 1,
-                  ),
+            // Optional per-session hints + running penalty, all in one
+            // centered row so the cost reads like a direct consequence of
+            // the active toggles. Each toggle fires a trophy-style top
+            // notification with a short explanation (no penalty text — the
+            // pill reports the total).
+            if (!allDone)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _hintIconToggle(
+                      icon: PhosphorIconsBold.lock,
+                      selected: hintLock,
+                      onTap: () {
+                        setDialogState(() => hintLock = !hintLock);
+                        _showHintNotification(
+                          ctx: ctx, langCode: langCode,
+                          hint: _HintKind.lock, enabled: hintLock,
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 14),
+                    _hintIconToggle(
+                      icon: PhosphorIconsBold.squaresFour,
+                      selected: hintMulti,
+                      onTap: () {
+                        setDialogState(() => hintMulti = !hintMulti);
+                        _showHintNotification(
+                          ctx: ctx, langCode: langCode,
+                          hint: _HintKind.multi, enabled: hintMulti,
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 14),
+                    _hintIconToggle(
+                      icon: PhosphorIconsBold.image,
+                      selected: hintReference,
+                      onTap: () {
+                        setDialogState(() => hintReference = !hintReference);
+                        _showHintNotification(
+                          ctx: ctx, langCode: langCode,
+                          hint: _HintKind.reference, enabled: hintReference,
+                        );
+                      },
+                    ),
+                    if (_hintTotalPenalty(hintLock, hintMulti, hintReference) > 0) ...[
+                      const SizedBox(width: 14),
+                      _HintPenaltyBadge(
+                        penalty: _hintTotalPenalty(hintLock, hintMulti, hintReference),
+                        langCode: langCode,
+                      ),
+                    ],
+                  ],
                 ),
               ),
+
+            // Subtle separator between hints row and the level list.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+              child: Divider(color: Colors.grey.shade200, height: 1, thickness: 1),
             ),
+            // Difficulty grid — each tile stacks: icon · name · points.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GridView.count(
+                crossAxisCount: 2,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
-                childAspectRatio: 1.5,
+                childAspectRatio: 1.25,
                 children: difficulties.map((diff) {
                   final key = '${loc.id}_$diff';
                   final isCompleted = progress.completedPuzzles.containsKey(key);
@@ -643,53 +736,83 @@ class _MapScreenState extends State<MapScreen> {
                   final pts = _config.scoring.basePoints[diff] ?? 50;
                   final icon = _diffIcon(diff);
 
+                  final bg = isCompleted ? color : color.withValues(alpha: 0.12);
+                  final fg = isCompleted ? Colors.white : color;
+                  final subFg = isCompleted
+                      ? Colors.white.withValues(alpha: 0.9)
+                      : color.withValues(alpha: 0.85);
+
                   return GestureDetector(
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(ctx);
-                      _launchPuzzle(loc, diff);
+                      await SettingsService.setLastHints(
+                        lock: hintLock,
+                        multi: hintMulti,
+                        reference: hintReference,
+                      );
+                      if (!mounted) return;
+                      _launchPuzzle(
+                        loc,
+                        diff,
+                        lockInPlace: hintLock,
+                        multiSelect: hintMulti,
+                        referenceEnabled: hintReference,
+                      );
                     },
                     child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                       decoration: BoxDecoration(
-                        color: isCompleted ? color.withValues(alpha: 0.12) : color.withValues(alpha: 0.06),
+                        color: bg,
                         borderRadius: BorderRadius.circular(14),
-                        border: isCompleted ? Border.all(color: color.withValues(alpha: 0.4), width: 1.5) : null,
                       ),
                       child: Stack(
                         children: [
-                          if (isCompleted)
-                            Positioned(
-                              top: 8, right: 8,
-                              child: Container(
-                                width: 20, height: 20,
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(PhosphorIconsBold.check, size: 12, color: Colors.white),
-                              ),
-                            ),
                           Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(icon, size: 24, color: color),
+                                Icon(icon, size: 22, color: fg),
                                 const SizedBox(height: 6),
                                 Text(
                                   label,
                                   style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 14, fontWeight: FontWeight.w700, color: color,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: fg,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '$diff cols · $pts pts',
+                                  '$pts pts',
                                   style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11, color: Colors.grey.shade600,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: subFg,
                                   ),
                                 ),
                               ],
                             ),
                           ),
+                          if (isCompleted)
+                            Positioned(
+                              top: 0,
+                              right: 0,
+                              child: Container(
+                                width: 20,
+                                height: 20,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  PhosphorIconsBold.check,
+                                  size: 13,
+                                  color: color,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -697,48 +820,147 @@ class _MapScreenState extends State<MapScreen> {
                 }).toList(),
               ),
             ),
+            const SizedBox(height: 4),
 
-            // View photo button (only when all completed) — unified with tip overlay
-            if (allDone)
+            // Ver completados — available as soon as at least one level is done.
+            if (anyCompleted)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _showFullPhoto(loc, langCode, topDiff);
-                  },
-                  icon: const Icon(PhosphorIconsBold.image, size: 18),
-                  label: Text(langCode == 'es' ? 'Ver foto' : 'View photo'),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _showFullPhoto(loc, langCode, topDiff);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.seedColor,
+                      side: const BorderSide(color: AppTheme.seedColor),
+                    ),
+                    icon: const Icon(PhosphorIconsBold.image, size: 18),
+                    label: Text(langCode == 'es' ? 'Ver completados' : 'View completed'),
+                  ),
                 ),
               ),
 
-            // View in Google Maps button (only when all completed)
-            if (allDone)
+            // Ver en Google Maps — same unlock rule as Ver foto.
+            if (anyCompleted)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: OutlinedButton.icon(
-                  onPressed: () => _openInGoogleMaps(loc),
-                  icon: const Icon(PhosphorIconsBold.mapPin, size: 18),
-                  label: Text(langCode == 'es' ? 'Ver en Google Maps' : 'See on Google Maps'),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openInGoogleMaps(loc),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.seedColor,
+                      side: const BorderSide(color: AppTheme.seedColor),
+                    ),
+                    icon: const Icon(PhosphorIconsBold.mapPin, size: 18),
+                    label: Text(langCode == 'es' ? 'Ver en Google Maps' : 'See on Google Maps'),
+                  ),
                 ),
               ),
 
             // Cancel
             Padding(
               padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + MediaQuery.of(ctx).padding.bottom.clamp(0, 16)),
-              child: TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(
-                  langCode == 'es' ? 'Cerrar' : 'Close',
-                  style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade600),
+              child: SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    langCode == 'es' ? 'Cerrar' : 'Close',
+                    style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade600),
+                  ),
                 ),
               ),
             ),
           ],
         ),
+        ),
+      ),
       ),
       ),
     );
+  }
+
+  Widget _hintIconToggle({
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    // When on: 2 px accentGreen border + white bg + accentGreen icon.
+    // When off: flat grey bg + muted icon — reads clearly as "disabled".
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: selected ? Colors.white : Colors.grey.shade200,
+          shape: BoxShape.circle,
+          border: selected
+              ? Border.all(color: AppTheme.accentGreen, width: 2)
+              : null,
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          icon,
+          size: 20,
+          color: selected ? AppTheme.accentGreen : Colors.grey.shade500,
+        ),
+      ),
+    );
+  }
+
+  /// Trophy-style top notification for a hint toggle. Bilingual, no penalty
+  /// text (the running pill handles that). Inserting into the root overlay
+  /// means the notification sits above the difficulty modal and is cleanly
+  /// replaced when the player taps another toggle in rapid succession.
+  void _showHintNotification({
+    required BuildContext ctx,
+    required String langCode,
+    required _HintKind hint,
+    required bool enabled,
+  }) {
+    final es = langCode == 'es';
+    late final PhosphorIconData icon;
+    late final String text;
+    switch (hint) {
+      case _HintKind.lock:
+        icon = PhosphorIconsBold.lock;
+        text = enabled
+            ? (es
+                ? 'Piezas correctas quedan fijas.'
+                : 'Correct pieces stay locked.')
+            : (es ? 'Fijar piezas: desactivado.' : 'Lock pieces: off.');
+        break;
+      case _HintKind.multi:
+        icon = PhosphorIconsBold.squaresFour;
+        text = enabled
+            ? (es
+                ? 'Arrastras grupos de piezas juntas.'
+                : 'Drag groups of pieces together.')
+            : (es ? 'Mover grupos: desactivado.' : 'Move groups: off.');
+        break;
+      case _HintKind.reference:
+        icon = PhosphorIconsBold.image;
+        text = enabled
+            ? (es
+                ? 'Ves la foto original durante el juego.'
+                : 'See the original photo during play.')
+            : (es ? 'Foto de referencia: desactivado.' : 'Reference photo: off.');
+        break;
+    }
+    _HintNotificationHost.show(ctx, icon: icon, text: text);
+  }
+
+  /// Sum of penalties for the currently-enabled hints. 0 when nothing selected.
+  /// Reference (-25) is the costliest because seeing the finished photo during
+  /// play is the biggest advantage of the three.
+  int _hintTotalPenalty(bool lock, bool multi, bool reference) {
+    return (lock ? 15 : 0) + (multi ? 20 : 0) + (reference ? 25 : 0);
   }
 
   PhosphorIconData _zoneIcon(String iconName) {
@@ -802,7 +1024,13 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  Future<void> _launchPuzzle(LocationModel loc, int difficulty) async {
+  Future<void> _launchPuzzle(
+    LocationModel loc,
+    int difficulty, {
+    bool lockInPlace = false,
+    bool multiSelect = false,
+    bool referenceEnabled = false,
+  }) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -811,17 +1039,23 @@ class _MapScreenState extends State<MapScreen> {
           difficulty: difficulty,
           gameConfig: _config,
           allLocations: _allLocations,
+          lockInPlace: lockInPlace,
+          multiSelect: multiSelect,
+          referenceEnabled: referenceEnabled,
         ),
       ),
     );
     if (mounted) {
       // Refresh to pick up new progress, favorites, etc.
-      _loadLocations();
+      await _loadLocations();
       // Update allLocations cache too
       MockBackend.fetchLocations().then((locs) {
         if (mounted) _allLocations = locs;
       });
     }
+    // Hide the global loader if the puzzle flow raised it (after ad dismiss).
+    // Safe to call unconditionally — hide() is a no-op when already hidden.
+    LoadingOverlayService.hide();
   }
 
   @override
@@ -1155,6 +1389,36 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
               ),
+            // Onboarding play pulse — brand-new players only. Disappears
+            // permanently after the first puzzle is completed.
+            if (isUnlocked && progress.completedPuzzles.isEmpty)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Center(
+                    child: AnimatedBuilder(
+                      animation: _onboardingPulse,
+                      builder: (_, __) {
+                        final t = _onboardingPulse.value;
+                        return Opacity(
+                          opacity: 0.45 + 0.55 * t,
+                          child: Container(
+                            width: 54, height: 54,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.45),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              PhosphorIconsFill.play,
+                              color: Colors.black,
+                              size: 24,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
             // Favorite heart (unlocked only)
             if (isUnlocked)
               Positioned(
@@ -1482,8 +1746,20 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
   Widget build(BuildContext context) {
     final loc = widget.location;
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    // "Ver foto" (all levels done): always show silhouette
-    final showSilAny = _slides.any((s) => loc.showsSilhouetteAt(s.difficulty));
+    // Silhouette (both the toggle thumbnail and the big overlay) is a reward
+    // for finishing Expert OR clearing every difficulty a location exposes
+    // (locations without an expert level still earn the badge). Otherwise
+    // fall back to a plain bulb and skip the overlay.
+    final progressMap = GameProgressService.progress.completedPuzzles;
+    final expertDone = progressMap.containsKey('${loc.id}_6');
+    final locDiffs = loc.difficultyLevels.isNotEmpty
+        ? loc.difficultyLevels
+        : const [3];
+    final allDifficultiesDone = locDiffs
+        .every((d) => progressMap.containsKey('${loc.id}_$d'));
+    final silhouetteEarned = expertDone || allDifficultiesDone;
+    final showSilAny = silhouetteEarned &&
+        _slides.any((s) => loc.showsSilhouetteAt(s.difficulty));
     final screenW = MediaQuery.of(context).size.width;
     final silW = screenW * 0.48;
     final silH = silW * 623 / 749;
@@ -1553,10 +1829,23 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
                   child: SizedBox(
                     width: 44,
                     height: 44,
-                    child: Image.asset(
-                      'assets/girl_cat_toggle.png',
-                      fit: BoxFit.contain,
-                    ),
+                    child: silhouetteEarned
+                        ? Image.asset(
+                            'assets/girl_cat_toggle.png',
+                            fit: BoxFit.contain,
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              PhosphorIconsBold.lightbulb,
+                              size: 22,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
               ),
@@ -1617,7 +1906,11 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
                               fit: BoxFit.contain,
                             ),
                           )
-                        : const SizedBox.shrink(key: ValueKey('sil-off')),
+                        : SizedBox(
+                            key: const ValueKey('sil-off'),
+                            width: silW,
+                            height: silH,
+                          ),
                   ),
                 ),
               ],
@@ -1792,6 +2085,150 @@ class _LoaderGif extends StatelessWidget {
       width: 100,
       height: 100,
       fit: BoxFit.cover,
+    );
+  }
+}
+
+/// Identifies which optional hint is being toggled — lets the notification
+/// helper pick the right bilingual explanation.
+enum _HintKind { lock, multi, reference }
+
+/// Top-screen notification for hint toggles. Visual parity with the trophy
+/// notifications (dark teal card, gold icon, white bold text). Uses the
+/// root overlay so it sits above the difficulty modal, and keeps a single
+/// in-flight entry — a fresh call replaces the current notification so the
+/// player only ever sees the latest toggle's explanation.
+class _HintNotificationHost {
+  static OverlayEntry? _current;
+  static Timer? _timer;
+
+  static void show(
+    BuildContext context, {
+    required PhosphorIconData icon,
+    required String text,
+  }) {
+    final overlay = Overlay.of(context, rootOverlay: true);
+    _current?.remove();
+    _timer?.cancel();
+
+    late final OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => _HintNotificationCard(icon: icon, text: text),
+    );
+    _current = entry;
+    overlay.insert(entry);
+
+    _timer = Timer(const Duration(milliseconds: 2600), () {
+      if (_current == entry) {
+        entry.remove();
+        _current = null;
+      }
+    });
+  }
+}
+
+class _HintNotificationCard extends StatefulWidget {
+  final PhosphorIconData icon;
+  final String text;
+  const _HintNotificationCard({required this.icon, required this.text});
+
+  @override
+  State<_HintNotificationCard> createState() => _HintNotificationCardState();
+}
+
+class _HintNotificationCardState extends State<_HintNotificationCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+    _slide = Tween(begin: const Offset(0, -1), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 12,
+      left: 24,
+      right: 24,
+      child: SlideTransition(
+        position: _slide,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B3A4B),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(widget.icon, size: 26, color: AppTheme.trophyGold),
+                const SizedBox(height: 6),
+                Text(
+                  widget.text,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small pill showing the running total of hint penalties. Invisible when 0.
+class _HintPenaltyBadge extends StatelessWidget {
+  final int penalty;
+  final String langCode;
+  const _HintPenaltyBadge({required this.penalty, required this.langCode});
+
+  @override
+  Widget build(BuildContext context) {
+    if (penalty <= 0) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.red.shade200, width: 1),
+      ),
+      child: Text(
+        '−$penalty pts',
+        style: GoogleFonts.spaceGrotesk(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: Colors.red.shade400,
+        ),
+      ),
     );
   }
 }

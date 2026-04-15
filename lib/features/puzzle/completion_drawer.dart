@@ -180,9 +180,8 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                           setState(() => _navigating = true);
                           AdService.showInterstitial(
                             onAdDismissed: () {
-                              if (context.mounted) {
-                                Navigator.of(context).pop(result);
-                              }
+                              if (!context.mounted) return;
+                              Navigator.of(context).pop(result);
                             },
                           );
                         },

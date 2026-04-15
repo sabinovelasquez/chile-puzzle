@@ -1,48 +1,72 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+enum ShimmerMode { shimmer, flash, off }
+
 class SettingsService {
   static late SharedPreferences _prefs;
 
-  static const _referenceImageKey = 'setting_reference_image';
-  static const _edgeShineKey = 'setting_edge_shine';
-  static const _lockInPlaceKey = 'setting_lock_in_place';
-  static const _multiSelectKey = 'setting_multi_select';
+  static const _shimmerModeKey = 'setting_shimmer_mode';
+  static const _hintLockKey = 'hint_lock_last';
+  static const _hintMultiKey = 'hint_multi_last';
+  static const _hintReferenceKey = 'hint_reference_last';
 
-  static bool _referenceImage = false;
-  static bool _edgeShine = false;
-  static bool _lockInPlace = false;
-  static bool _multiSelect = false;
+  static ShimmerMode _shimmerMode = ShimmerMode.flash;
+  // Last-picked per-session hints — pre-fill the difficulty modal so the
+  // player doesn't re-tick the same ayuda icons every launch.
+  static bool _hintLock = false;
+  static bool _hintMulti = false;
+  static bool _hintReference = false;
 
-  static bool get referenceImage => _referenceImage;
-  static bool get edgeShine => _edgeShine;
-  static bool get lockInPlace => _lockInPlace;
-  static bool get multiSelect => _multiSelect;
+  static ShimmerMode get shimmerMode => _shimmerMode;
+  static bool get lastHintLock => _hintLock;
+  static bool get lastHintMulti => _hintMulti;
+  static bool get lastHintReference => _hintReference;
 
   static Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
-    _referenceImage = _prefs.getBool(_referenceImageKey) ?? false;
-    _edgeShine = _prefs.getBool(_edgeShineKey) ?? false;
-    _lockInPlace = _prefs.getBool(_lockInPlaceKey) ?? false;
-    _multiSelect = _prefs.getBool(_multiSelectKey) ?? false;
+
+    final raw = _prefs.getString(_shimmerModeKey);
+    if (raw != null) {
+      _shimmerMode = ShimmerMode.values.firstWhere(
+        (m) => m.name == raw,
+        orElse: () => ShimmerMode.flash,
+      );
+    } else {
+      // Migrate legacy `setting_edge_shine` bool: true → shimmer, false → off.
+      // New users (no key) default to flash.
+      final legacy = _prefs.getBool('setting_edge_shine');
+      _shimmerMode = legacy == null
+          ? ShimmerMode.flash
+          : (legacy ? ShimmerMode.shimmer : ShimmerMode.off);
+      await _prefs.setString(_shimmerModeKey, _shimmerMode.name);
+    }
+
+    _hintLock = _prefs.getBool(_hintLockKey) ?? false;
+    _hintMulti = _prefs.getBool(_hintMultiKey) ?? false;
+    _hintReference = _prefs.getBool(_hintReferenceKey) ?? false;
+
+    // Clean up legacy session-toggle keys (superseded by the difficulty modal).
+    await _prefs.remove('setting_edge_shine');
+    await _prefs.remove('setting_reference_image');
+    await _prefs.remove('setting_lock_in_place');
+    await _prefs.remove('setting_multi_select');
   }
 
-  static Future<void> setReferenceImage(bool v) async {
-    _referenceImage = v;
-    await _prefs.setBool(_referenceImageKey, v);
+  static Future<void> setShimmerMode(ShimmerMode mode) async {
+    _shimmerMode = mode;
+    await _prefs.setString(_shimmerModeKey, mode.name);
   }
 
-  static Future<void> setEdgeShine(bool v) async {
-    _edgeShine = v;
-    await _prefs.setBool(_edgeShineKey, v);
-  }
-
-  static Future<void> setLockInPlace(bool v) async {
-    _lockInPlace = v;
-    await _prefs.setBool(_lockInPlaceKey, v);
-  }
-
-  static Future<void> setMultiSelect(bool v) async {
-    _multiSelect = v;
-    await _prefs.setBool(_multiSelectKey, v);
+  static Future<void> setLastHints({
+    required bool lock,
+    required bool multi,
+    required bool reference,
+  }) async {
+    _hintLock = lock;
+    _hintMulti = multi;
+    _hintReference = reference;
+    await _prefs.setBool(_hintLockKey, lock);
+    await _prefs.setBool(_hintMultiKey, multi);
+    await _prefs.setBool(_hintReferenceKey, reference);
   }
 }

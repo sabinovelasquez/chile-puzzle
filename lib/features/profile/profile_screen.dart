@@ -344,17 +344,31 @@ class _SettingsDialog extends StatefulWidget {
   State<_SettingsDialog> createState() => _SettingsDialogState();
 }
 
-class _SettingsDialogState extends State<_SettingsDialog> {
+class _SettingsDialogState extends State<_SettingsDialog>
+    with SingleTickerProviderStateMixin {
+  // Drives the in-settings preview box so Flash and Shimmer play once on
+  // selection — matches what the player will actually see mid-puzzle.
+  late final AnimationController _shimmerPreviewController;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerPreviewController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 850),
+    );
+  }
+
+  @override
+  void dispose() {
+    _shimmerPreviewController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final langCode = Localizations.localeOf(context).languageCode;
     final es = langCode == 'es';
-
-    int totalPenalty = 0;
-    if (SettingsService.referenceImage) totalPenalty += 10;
-    if (SettingsService.edgeShine) totalPenalty += 5;
-    if (SettingsService.lockInPlace) totalPenalty += 15;
-    if (SettingsService.multiSelect) totalPenalty += 20;
 
     return MediaQuery(
       data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
@@ -411,91 +425,139 @@ class _SettingsDialogState extends State<_SettingsDialog> {
                   setState(() {});
                 },
               ),
-              // Subtle separator before penalty-bearing settings
-              const SizedBox(height: 10),
-              Container(height: 1, color: Colors.grey.shade300),
-              const SizedBox(height: 6),
-              _toggleRow(
-                icon: PhosphorIconsFill.sparkle,
-                iconColor: AppTheme.trophyGold,
-                label: es ? 'Brillo' : 'Shine',
-                subtitle: es ? 'Brillo cuando la pieza es correcta' : 'Shimmer when piece is correct',
-                value: SettingsService.edgeShine,
-                penalty: 5,
-                onChanged: (v) async {
-                  await SettingsService.setEdgeShine(v);
-                  setState(() {});
-                },
-              ),
               Divider(color: Colors.grey.shade200, height: 1),
-              _toggleRow(
-                icon: PhosphorIconsFill.image,
-                iconColor: AppTheme.accentBlue,
-                label: es ? 'Imagen de referencia' : 'Reference image',
-                subtitle: es ? 'Mostrar imagen completa en el puzzle' : 'Show full image during puzzle',
-                value: SettingsService.referenceImage,
-                penalty: 10,
-                onChanged: (v) async {
-                  await SettingsService.setReferenceImage(v);
-                  setState(() {});
-                },
-              ),
-              Divider(color: Colors.grey.shade200, height: 1),
-              _toggleRow(
-                icon: PhosphorIconsFill.lockSimple,
-                iconColor: AppTheme.accentGreen,
-                label: es ? 'Fijar en su lugar' : 'Lock in place',
-                subtitle: es ? 'Fijar piezas correctas' : 'Lock correctly placed pieces',
-                value: SettingsService.lockInPlace,
-                penalty: 15,
-                onChanged: (v) async {
-                  await SettingsService.setLockInPlace(v);
-                  setState(() {});
-                },
-              ),
-              Divider(color: Colors.grey.shade200, height: 1),
-              _toggleRow(
-                icon: PhosphorIconsFill.squaresFour,
-                iconColor: AppTheme.accentPurple,
-                label: es ? 'Multi-selección' : 'Multi-select',
-                subtitle: es ? 'Mover piezas agrupadas juntas' : 'Move grouped pieces together',
-                value: SettingsService.multiSelect,
-                penalty: 20,
-                onChanged: (v) async {
-                  await SettingsService.setMultiSelect(v);
-                  setState(() {});
-                },
-              ),
-              if (totalPenalty > 0) ...[
-                const SizedBox(height: 10),
-                Container(height: 1, color: Colors.grey.shade300),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        es ? 'Penalización total' : 'Total penalty',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '-$totalPenalty pts',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.red.shade400,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              // Piece-placement feedback: 3-mode preference (no penalty).
+              _shimmerModeRow(es: es),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _shimmerModeRow({required bool es}) {
+    final mode = SettingsService.shimmerMode;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            es ? 'Brillo' : 'Shine',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14, fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            es ? 'Efecto al acertar la pieza' : 'Effect on correct placement',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Tapping replays the effect on the button itself — pill-shaped so
+          // the diagonal sweep has real canvas, not just a 44px circle.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _shimmerAvatar(
+                icon: PhosphorIconsFill.lightning,
+                mode: ShimmerMode.flash,
+                current: mode,
+                selectedBg: Colors.indigo.shade500,
+                onTap: () async {
+                  await SettingsService.setShimmerMode(ShimmerMode.flash);
+                  setState(() {});
+                  _previewShimmer();
+                },
+              ),
+              const SizedBox(width: 14),
+              _shimmerAvatar(
+                icon: PhosphorIconsFill.sparkle,
+                mode: ShimmerMode.shimmer,
+                current: mode,
+                selectedBg: Colors.indigo.shade500,
+                onTap: () async {
+                  await SettingsService.setShimmerMode(ShimmerMode.shimmer);
+                  setState(() {});
+                  _previewShimmer();
+                },
+              ),
+              const SizedBox(width: 14),
+              _shimmerAvatar(
+                icon: PhosphorIconsBold.prohibit,
+                mode: ShimmerMode.off,
+                current: mode,
+                selectedBg: Colors.grey.shade600,
+                onTap: () async {
+                  await SettingsService.setShimmerMode(ShimmerMode.off);
+                  setState(() {});
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _previewShimmer() {
+    _shimmerPreviewController.forward(from: 0.0);
+  }
+
+  Widget _shimmerAvatar({
+    required IconData icon,
+    required ShimmerMode mode,
+    required ShimmerMode current,
+    required Color selectedBg,
+    required VoidCallback onTap,
+  }) {
+    final selected = mode == current;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedBuilder(
+        animation: _shimmerPreviewController,
+        builder: (_, __) {
+          final t = selected ? _shimmerPreviewController.value : 0.0;
+          final animating = selected && mode != ShimmerMode.off && t > 0;
+          BoxDecoration deco;
+          if (animating && mode == ShimmerMode.flash) {
+            // Whole-button pulse: lerp selectedBg → white → selectedBg.
+            final pulse =
+                (t < 0.5 ? t * 2 : (1 - t) * 2).clamp(0.0, 1.0);
+            deco = BoxDecoration(
+              color: Color.lerp(selectedBg, Colors.white, pulse * 0.9),
+              borderRadius: BorderRadius.circular(14),
+            );
+          } else if (animating && mode == ShimmerMode.shimmer) {
+            // Diagonal band across the whole pill.
+            deco = BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: LinearGradient(
+                begin: Alignment(-1.0 + 3.0 * t, -1.0 + 3.0 * t),
+                end: Alignment(-0.5 + 3.0 * t, -0.5 + 3.0 * t),
+                colors: [selectedBg, Colors.white, selectedBg],
+              ),
+            );
+          } else {
+            deco = BoxDecoration(
+              color: selected ? selectedBg : Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(14),
+            );
+          }
+          return Container(
+            width: 72,
+            height: 48,
+            decoration: deco,
+            alignment: Alignment.center,
+            child: Icon(
+              icon,
+              size: 22,
+              color: selected ? Colors.white : Colors.grey.shade600,
+            ),
+          );
+        },
       ),
     );
   }
@@ -777,7 +839,7 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'v1.9.2',
+              'v1.10.0',
               style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade400),
             ),
           ),

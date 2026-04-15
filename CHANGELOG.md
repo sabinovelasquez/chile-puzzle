@@ -8,6 +8,28 @@ emails to testers.
 New releases go on top. Each entry has an `**ES**` and `**EN**`
 sub-block with one bullet per line.
 
+## 1.10.0+15 — 2026-04-15
+
+**ES**
+- Nueva ayuda en el puzzle: un botón en el footer anima una pieza fantasma hacia la pieza más alejada de su lugar. Se recarga en 2 minutos con una barra de progreso visible.
+- Preferencia de destello en Ajustes: elige entre Shimmer, Flash o Apagado, con vista previa del efecto en el botón. El modo Flash es la nueva opción por defecto.
+- Modal de dificultad rediseñado: cuadrícula 2×2 con ícono, nombre y puntos en cada nivel, marcas de completado por color, y la opción de ayudas visuales ahora vive aquí (no en el perfil).
+- La imagen de referencia tiene un límite de 3 usos por partida; cuando se agota, ver un anuncio otorga 3 usos más.
+- Icono pulsante de inicio en las fichas desbloqueadas para jugadores nuevos (desaparece al completar el primer puzzle).
+- El ícono del tip cambia a la silueta de fotógrafa solo al superar el nivel Experto o completar todos los niveles disponibles; antes siempre mostraba la silueta.
+- Los trofeos ganados se destacan con un fondo dorado brillante y texto en verde oscuro para mejor legibilidad.
+- Los puntos por partida no pueden ser negativos, aunque se usen todas las ayudas.
+
+**EN**
+- New in-puzzle help: a footer button animates a ghost piece toward the most misplaced piece. Recharges in 2 minutes with a visible progress bar.
+- Shimmer preference in Settings: choose Shimmer, Flash, or Off, with a live preview on the button. Flash is the new default.
+- Difficulty modal redesigned: 2×2 grid with icon, name and points per level, color-coded completion badges, and the visual hints option now lives here instead of in Profile.
+- Reference image limited to 3 peeks per session; when depleted, watching an ad grants 3 more.
+- Pulsing play icon on unlocked cards for brand-new players (disappears after the first completion).
+- The tip icon switches to the photographer silhouette only after beating Expert or completing every available difficulty; previously it always showed the silhouette.
+- Earned trophies are highlighted with a bright gold background and dark-teal text for better readability.
+- Puzzle score can no longer go negative, even with all hints active.
+
 ## 1.9.2+14 — 2026-04-12
 
 **ES**
