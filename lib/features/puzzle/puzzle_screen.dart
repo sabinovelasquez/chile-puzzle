@@ -341,10 +341,28 @@ class _PuzzleScreenState extends State<PuzzleScreen>
       ),
     );
     if (confirm != true || !mounted) return;
+    _stopwatch.stop();
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(seconds: 1),
+      pageBuilder: (_, __, ___) => const Center(
+        child: ClipOval(
+          child: SizedBox(width: 95, height: 95, child: _LoaderGif()),
+        ),
+      ),
+      transitionBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child),
+    );
     AdService.showInterstitial(
       onAdDismissed: () {
         if (!mounted) return;
+        Navigator.of(context, rootNavigator: true).pop();
         setState(() => _referenceUsesLeft += _referenceAdRefill);
+        Future.delayed(const Duration(seconds: 1), () {
+          if (!mounted) return;
+          _stopwatch.start();
+        });
       },
     );
   }
@@ -985,7 +1003,7 @@ class _PuzzleScreenState extends State<PuzzleScreen>
                                         child: Icon(PhosphorIconsBold.pause, size: 12, color: Colors.white70),
                                       ),
                                     Text(
-                                      '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}  ·  $moves mov',
+                                      '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}  ·  $moves ${langCode == 'es' ? 'jugadas' : 'moves'}',
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 12, fontWeight: FontWeight.w500,
                                         color: Colors.white,

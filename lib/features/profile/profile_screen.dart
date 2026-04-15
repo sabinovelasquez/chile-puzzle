@@ -355,7 +355,7 @@ class _SettingsDialogState extends State<_SettingsDialog>
     super.initState();
     _shimmerPreviewController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 850),
+      duration: const Duration(milliseconds: 350),
     );
   }
 
@@ -521,40 +521,48 @@ class _SettingsDialogState extends State<_SettingsDialog>
         builder: (_, __) {
           final t = selected ? _shimmerPreviewController.value : 0.0;
           final animating = selected && mode != ShimmerMode.off && t > 0;
-          BoxDecoration deco;
-          if (animating && mode == ShimmerMode.flash) {
-            // Whole-button pulse: lerp selectedBg → white → selectedBg.
-            final pulse =
-                (t < 0.5 ? t * 2 : (1 - t) * 2).clamp(0.0, 1.0);
-            deco = BoxDecoration(
-              color: Color.lerp(selectedBg, Colors.white, pulse * 0.9),
-              borderRadius: BorderRadius.circular(14),
-            );
-          } else if (animating && mode == ShimmerMode.shimmer) {
-            // Diagonal band across the whole pill.
-            deco = BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              gradient: LinearGradient(
-                begin: Alignment(-1.0 + 3.0 * t, -1.0 + 3.0 * t),
-                end: Alignment(-0.5 + 3.0 * t, -0.5 + 3.0 * t),
-                colors: [selectedBg, Colors.white, selectedBg],
-              ),
-            );
-          } else {
-            deco = BoxDecoration(
-              color: selected ? selectedBg : Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(14),
-            );
-          }
           return Container(
             width: 72,
             height: 48,
-            decoration: deco,
-            alignment: Alignment.center,
-            child: Icon(
-              icon,
-              size: 22,
-              color: selected ? Colors.white : Colors.grey.shade600,
+            decoration: BoxDecoration(
+              color: selected ? selectedBg : Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (animating && mode == ShimmerMode.flash)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(
+                        alpha: ((t < 0.5 ? t * 2 : (1 - t) * 2).clamp(0.0, 1.0)) * 0.55,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                if (animating && mode == ShimmerMode.shimmer)
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: LinearGradient(
+                        begin: Alignment(-1.0 + 3.0 * t, -1.0 + 3.0 * t),
+                        end: Alignment(-0.5 + 3.0 * t, -0.5 + 3.0 * t),
+                        colors: [
+                          Colors.white.withValues(alpha: 0),
+                          Colors.white.withValues(alpha: 0.4),
+                          Colors.white.withValues(alpha: 0),
+                        ],
+                      ),
+                    ),
+                  ),
+                Center(
+                  child: Icon(
+                    icon,
+                    size: 22,
+                    color: selected ? Colors.white : Colors.grey.shade600,
+                  ),
+                ),
+              ],
             ),
           );
         },
