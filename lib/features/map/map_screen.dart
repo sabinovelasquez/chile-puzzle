@@ -89,14 +89,10 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen>
     with SingleTickerProviderStateMixin {
   List<LocationModel> _locations = [];
-  List<LocationModel> _allLocations = []; // cached for profile/puzzle
+  List<LocationModel> _allLocations = [];
   GameConfig _config = GameConfig.fromJson({});
   bool _isLoading = true;
-  bool _isLoadingMore = false;
   String? _error;
-  int _currentPage = 0;
-  bool _hasMore = true;
-  static const _pageSize = 20;
 
   // Filters
   String _activeFilter = 'all'; // 'all','new','in_progress','completed','favorites'
@@ -120,7 +116,6 @@ class _MapScreenState extends State<MapScreen>
     )..repeat(reverse: true);
     _initData();
     _initAuth();
-    _scrollController.addListener(_onScroll);
   }
 
   @override
@@ -132,13 +127,6 @@ class _MapScreenState extends State<MapScreen>
     super.dispose();
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      _loadMore();
-    }
-  }
-
   Future<void> _initAuth() async {
     try {
       if (!await AuthService.isSignedIn()) await AuthService.signIn();
@@ -147,14 +135,17 @@ class _MapScreenState extends State<MapScreen>
 
   Future<void> _initData() async {
     try {
-      final config = await MockBackend.fetchGameConfig();
-      if (mounted) {
-        setState(() { _config = config; });
-      }
-      await _loadLocations();
-      // Cache all locations for profile/puzzle screens
-      _allLocations = await MockBackend.fetchLocations();
-      if (mounted) setState(() {});
+      final results = await Future.wait([
+        MockBackend.fetchGameConfig(),
+        MockBackend.fetchLocations(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _config = results[0] as GameConfig;
+        _allLocations = results[1] as List<LocationModel>;
+        _isLoading = false;
+      });
+      _applyFilters();
     } catch (e) {
       if (mounted) {
         setState(() { _isLoading = false; _error = e.toString(); });
@@ -162,79 +153,57 @@ class _MapScreenState extends State<MapScreen>
     }
   }
 
-  Future<void> _loadLocations() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-      _locations = [];
-      _currentPage = 0;
-      _hasMore = true;
-    });
-    await _fetchPage(0);
-  }
+  /// Computes `_locations` from `_allLocations` + the active filter, zone, and
+  /// search query. All client-side — sorting for the 'all' view happens later
+  /// in `_sortByStatus` so it stays in sync with player progress on rebuild.
+  void _applyFilters() {
+    final progress = GameProgressService.progress;
+    Iterable<LocationModel> result = _allLocations;
 
-  Future<void> _loadMore() async {
-    if (_isLoadingMore || !_hasMore) return;
-    // ID-based filters and "new" return all at once, no pagination
-    if (['in_progress', 'completed', 'favorites', 'new'].contains(_activeFilter)) return;
-    setState(() { _isLoadingMore = true; });
-    await _fetchPage(_currentPage + 1);
-    setState(() { _isLoadingMore = false; });
-  }
-
-  Future<void> _fetchPage(int page) async {
-    try {
-      PaginatedLocations result;
-      final progress = GameProgressService.progress;
-
-      if (_activeFilter == 'in_progress') {
-        final ids = _getInProgressIds(progress);
-        if (ids.isEmpty) {
-          if (mounted) setState(() { _locations = []; _isLoading = false; _hasMore = false; });
-          return;
-        }
-        result = await MockBackend.fetchLocationsPaginated(ids: ids);
-      } else if (_activeFilter == 'completed') {
-        final ids = _getCompletedIds(progress);
-        if (ids.isEmpty) {
-          if (mounted) setState(() { _locations = []; _isLoading = false; _hasMore = false; });
-          return;
-        }
-        result = await MockBackend.fetchLocationsPaginated(ids: ids);
-      } else if (_activeFilter == 'favorites') {
-        final ids = GameProgressService.favoriteLocationIds;
-        if (ids.isEmpty) {
-          if (mounted) setState(() { _locations = []; _isLoading = false; _hasMore = false; });
-          return;
-        }
-        result = await MockBackend.fetchLocationsPaginated(ids: ids);
-      } else {
-        result = await MockBackend.fetchLocationsPaginated(
-          page: page,
-          limit: _activeFilter == 'new' ? 25 : _pageSize,
-          zone: _activeZone,
-          query: _searchQuery.isNotEmpty ? _searchQuery : null,
-          isNew: _activeFilter == 'new' ? true : null,
-        );
-      }
-
-      if (mounted) {
-        setState(() {
-          if (page == 0) {
-            _locations = result.data;
-          } else {
-            _locations.addAll(result.data);
-          }
-          _currentPage = page;
-          _hasMore = result.hasMore;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() { _isLoading = false; _error = e.toString(); });
-      }
+    if (_activeZone != null && _activeZone!.isNotEmpty) {
+      result = result.where((l) => l.region == _activeZone);
     }
+
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      result = result.where((l) =>
+          l.getLocalizedName('es').toLowerCase().contains(q) ||
+          l.getLocalizedName('en').toLowerCase().contains(q));
+    }
+
+    switch (_activeFilter) {
+      case 'in_progress':
+        final ids = _getInProgressIds(progress).toSet();
+        result = result.where((l) => ids.contains(l.id));
+        break;
+      case 'completed':
+        final ids = _getCompletedIds(progress).toSet();
+        result = result.where((l) => ids.contains(l.id));
+        break;
+      case 'favorites':
+        final ids = GameProgressService.favoriteLocationIds.toSet();
+        result = result.where((l) => ids.contains(l.id));
+        break;
+      case 'new':
+        final sorted = result.toList()..sort(_byCreatedAtDesc);
+        result = sorted.take(25);
+        break;
+      // 'all': no extra filtering; `_sortByStatus` handles bucket ordering.
+    }
+
+    if (mounted) {
+      setState(() {
+        _locations = result.toList();
+      });
+    }
+  }
+
+  static int _byCreatedAtDesc(LocationModel a, LocationModel b) {
+    final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final cmp = bDate.compareTo(aDate);
+    if (cmp != 0) return cmp;
+    return a.id.compareTo(b.id);
   }
 
   int _getDifficultyCount(String locId) {
@@ -275,7 +244,7 @@ class _MapScreenState extends State<MapScreen>
     _activeZone = null;
     _searchQuery = '';
     _searchController.clear();
-    _loadLocations();
+    _applyFilters();
   }
 
   void _onZoneChanged(String? zone) {
@@ -283,7 +252,7 @@ class _MapScreenState extends State<MapScreen>
     _activeFilter = 'all';
     _searchQuery = '';
     _searchController.clear();
-    _loadLocations();
+    _applyFilters();
   }
 
   void _onSearchChanged(String value) {
@@ -293,7 +262,7 @@ class _MapScreenState extends State<MapScreen>
       _searchQuery = value;
       _activeFilter = 'all';
       _activeZone = null;
-      _loadLocations();
+      _applyFilters();
     });
   }
 
@@ -1046,12 +1015,12 @@ class _MapScreenState extends State<MapScreen>
       ),
     );
     if (mounted) {
-      // Refresh to pick up new progress, favorites, etc.
-      await _loadLocations();
-      // Update allLocations cache too
-      MockBackend.fetchLocations().then((locs) {
-        if (mounted) _allLocations = locs;
-      });
+      // Refresh to pick up new progress, favorites, and any admin-side edits.
+      try {
+        final fresh = await MockBackend.fetchLocations();
+        if (mounted) _allLocations = fresh;
+      } catch (_) {}
+      if (mounted) _applyFilters();
     }
     // Hide the global loader if the puzzle flow raised it (after ad dismiss).
     // Safe to call unconditionally — hide() is a no-op when already hidden.
@@ -1150,9 +1119,14 @@ class _MapScreenState extends State<MapScreen>
       final aBucket = bucket(aUnlocked, aDone, aDiffs.length);
       final bBucket = bucket(bUnlocked, bDone, bDiffs.length);
       if (aBucket != bBucket) return aBucket.compareTo(bBucket);
-      // Within in-progress bucket, sort least completed first
-      if (aBucket == 1) return aDone.compareTo(bDone);
-      return 0;
+      // Within in-progress bucket, sort least completed first.
+      if (aBucket == 1) {
+        final progCmp = aDone.compareTo(bDone);
+        if (progCmp != 0) return progCmp;
+      }
+      // Within the same bucket, newest first (freshly uploaded locations
+      // surface at the top of "new unlocks"). `id` is the stable tiebreaker.
+      return _byCreatedAtDesc(a, b);
     });
     return sorted;
   }
@@ -1186,7 +1160,7 @@ class _MapScreenState extends State<MapScreen>
                     _searchController.clear();
                     _searchQuery = '';
                     setState(() => _searchExpanded = false);
-                    _loadLocations();
+                    _applyFilters();
                   },
                 ),
                 filled: true,
@@ -1282,21 +1256,9 @@ class _MapScreenState extends State<MapScreen>
                     mainAxisSpacing: 12,
                     childAspectRatio: 0.72,
                   ),
-                  itemCount: sorted.length + (_isLoadingMore ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index >= sorted.length) {
-                      // Loading indicator at bottom
-                      return const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: SizedBox(width: 24, height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                      );
-                    }
-                    return _buildLocationCard(sorted[index], langCode, progress);
-                  },
+                  itemCount: sorted.length,
+                  itemBuilder: (context, index) =>
+                      _buildLocationCard(sorted[index], langCode, progress),
                 ),
         ),
       ],
@@ -1770,6 +1732,12 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
         fit: StackFit.expand,
         children: [
           InteractiveViewer(
+            // Zoom & pan only unlock once the player earns the silhouette
+            // reward (Expert cleared, or every difficulty cleared on locations
+            // that don't ship an Expert level). Until then the image stays
+            // static so zooming isn't a freebie after Easy.
+            panEnabled: silhouetteEarned,
+            scaleEnabled: silhouetteEarned,
             child: Center(
               child: CachedNetworkImage(
                 imageUrl: loc.image,

@@ -861,35 +861,43 @@ class _PuzzleScreenState extends State<PuzzleScreen>
                 ],
               ),
             ),
-            // Help cooldown separator — driven directly by the bar controller
-            // so drain and refill both render at 60 fps. Doubles as the visual
-            // boundary between the board and the footer.
-            if (!_completed)
-              AnimatedBuilder(
-                animation: _helpBarController,
-                builder: (_, __) {
-                  final v = _helpBarController.value;
-                  // Progressive fill color: starts muted white and lerps toward
-                  // accentGreen as the bar refills, so the player feels the
-                  // readiness approach rather than a binary off→on swap.
-                  final color = Color.lerp(
-                    Colors.white54,
-                    AppTheme.accentGreen,
-                    v,
-                  )!;
-                  return SizedBox(
-                    height: 3,
-                    child: LinearProgressIndicator(
-                      value: v,
-                      minHeight: 3,
-                      backgroundColor: Colors.white10,
-                      valueColor: AlwaysStoppedAnimation<Color>(color),
-                    ),
-                  );
-                },
-              ),
-            // Bottom footer — hidden when viewing the completed photo
-            if (!_completed || _showDrawer)
+            // Help cooldown separator + bottom footer. Kept invisible (but
+            // space reserved) while the image loads so the board sizes the
+            // same before and after — otherwise the footer lands on top of
+            // the bottom pieces when it reappears.
+            ValueListenableBuilder<bool>(
+              valueListenable: _imageLoaded,
+              builder: (_, loaded, __) {
+                return Visibility(
+                  visible: loaded,
+                  maintainSize: true,
+                  maintainAnimation: true,
+                  maintainState: true,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                    if (!_completed)
+                      AnimatedBuilder(
+                        animation: _helpBarController,
+                        builder: (_, __) {
+                          final v = _helpBarController.value;
+                          final color = Color.lerp(
+                            Colors.white54,
+                            AppTheme.accentGreen,
+                            v,
+                          )!;
+                          return SizedBox(
+                            height: 3,
+                            child: LinearProgressIndicator(
+                              value: v,
+                              minHeight: 3,
+                              backgroundColor: Colors.white10,
+                              valueColor: AlwaysStoppedAnimation<Color>(color),
+                            ),
+                          );
+                        },
+                      ),
+                    if (!_completed || _showDrawer)
             MediaQuery.withClampedTextScaling(
               maxScaleFactor: 1.3,
               child: Container(
@@ -998,6 +1006,11 @@ class _PuzzleScreenState extends State<PuzzleScreen>
                       ],
                     ),
             ),
+            ),
+                  ],
+                  ),
+                );
+              },
             ),
           ],
         ),

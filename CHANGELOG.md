@@ -8,6 +8,20 @@ emails to testers.
 New releases go on top. Each entry has an `**ES**` and `**EN**`
 sub-block with one bullet per line.
 
+## 1.10.1+16 — 2026-04-15
+
+**ES**
+- La cuadrícula de ubicaciones ahora carga todo de una vez y mantiene un orden estable: primero las nuevas, luego las que están en progreso, después las completadas, y al final las bloqueadas. Antes, al bajar por la lista podían aparecer ubicaciones faltantes y otras saltaban de posición.
+- El zoom en la foto de referencia a pantalla completa ahora se desbloquea correctamente solo al completar el nivel Experto, no al terminar cualquier dificultad.
+- La pantalla de carga del puzzle ya no muestra el footer antes de que la imagen esté lista.
+- El footer oculto durante la carga ya no desplaza las piezas al reaparecer: las piezas permanecen en su lugar.
+
+**EN**
+- The location grid now loads everything at once and keeps a stable order: new unlocks first, then in-progress, completed, and locked at the bottom. Previously, scrolling down could show missing locations or cause others to jump positions.
+- Zoom on the fullscreen reference photo now correctly unlocks only after completing the Expert difficulty, not after any difficulty.
+- The puzzle loading screen no longer shows the footer before the image is ready.
+- The footer hidden during loading no longer shifts pieces when it reappears: pieces stay in place.
+
 ## 1.10.0+15 — 2026-04-15
 
 **ES**

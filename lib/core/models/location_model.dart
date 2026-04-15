@@ -27,6 +27,9 @@ class LocationModel {
   /// the completed-puzzle photo view and inside the completion drawer's tip
   /// card. Keyed by difficulty (3/4/5/6). Admin-controlled.
   final Map<int, bool> silhouetteByDifficulty;
+  /// When the row was first inserted in the backend. Used to surface freshly
+  /// uploaded locations at the top of the grid.
+  final DateTime? createdAt;
 
   const LocationModel({
     required this.id,
@@ -46,6 +49,7 @@ class LocationModel {
     this.cropW = 0.7,
     this.cropH = 0.7,
     this.silhouetteByDifficulty = const {},
+    this.createdAt,
   });
 
   /// Whether the girl_cat silhouette should appear for [difficulty].
@@ -130,6 +134,9 @@ class LocationModel {
       cropW: (crop?['w'] as num?)?.toDouble() ?? 0.7,
       cropH: (crop?['h'] as num?)?.toDouble() ?? 0.7,
       silhouetteByDifficulty: parsedSil,
+      createdAt: json['createdAt'] is String
+          ? DateTime.tryParse(json['createdAt'] as String)
+          : null,
     );
   }
 
