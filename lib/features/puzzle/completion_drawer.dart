@@ -8,6 +8,7 @@ import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/features/ads/ad_service.dart';
 import 'package:chile_puzzle/core/services/mock_backend.dart';
+import 'package:chile_puzzle/core/services/settings_service.dart';
 import 'package:chile_puzzle/features/leaderboard/initials_input.dart';
 import 'package:chile_puzzle/features/leaderboard/leaderboard_screen.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
@@ -417,14 +418,45 @@ class _RankingButtonState extends State<_RankingButton> {
   bool _submitting = false;
   int _qualifyingScore = 0;
   int? _rank;
+  // True when we silently auto-submitted this run (auto-submit setting is ON
+  // and iniciales exist). Changes the UI contract: only top-10 gets a button.
+  bool _autoEnrolled = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchQualifyingScore();
+    _init();
   }
 
-  Future<void> _fetchQualifyingScore() async {
+  Future<void> _init() async {
+    final initials = GameProgressService.leaderboardInitials;
+    final hasInitials = initials != null && initials.length == 3;
+
+    // Auto-submit path: silently push the per-location score so the player
+    // never has to tap "ingresar" again. Only show a button if they landed
+    // in top 10 (celebratory "¡Top 10! Ver ranking").
+    if (SettingsService.autoSubmitRanking && hasInitials) {
+      final result = await MockBackend.submitLocationScore(
+        initials: initials,
+        locationId: widget.location.id,
+        difficulty: widget.difficulty,
+        points: widget.runPoints,
+        timeSeconds: widget.timeSecs,
+        moves: widget.moves,
+      );
+      if (!mounted) return;
+      setState(() {
+        _autoEnrolled = true;
+        _rank = (result != null && !result.containsKey('error'))
+            ? result['rank'] as int?
+            : null;
+        _loading = false;
+      });
+      return;
+    }
+
+    // Manual path: fetch the qualifying threshold so the button only shows
+    // when the score would actually land in the top 25.
     final result = await MockBackend.fetchLocationLeaderboard(
       widget.location.id,
       widget.difficulty,
@@ -521,7 +553,40 @@ class _RankingButtonState extends State<_RankingButton> {
       );
     }
 
-    // After successful submit: show rank + open leaderboard on tap
+    // Auto-submit path: only celebrate top 10. Outside that, hide the button
+    // entirely — the silent submit already covered everything.
+    if (_autoEnrolled) {
+      final rank = _rank;
+      if (rank == null || rank > 10) return const SizedBox.shrink();
+      return GestureDetector(
+        onTap: disabled ? null : _openLeaderboard,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(PhosphorIconsFill.ranking, size: 18, color: color),
+              const SizedBox(width: 8),
+              Text(
+                langCode == 'es'
+                    ? '¡Top 10! Ver ranking #$rank'
+                    : 'Top 10! View ranking #$rank',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 14, fontWeight: FontWeight.w700, color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Manual path: after successful submit, show rank + open leaderboard.
     if (_rank != null) {
       return GestureDetector(
         onTap: disabled ? null : _openLeaderboard,
@@ -535,7 +600,7 @@ class _RankingButtonState extends State<_RankingButton> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(PhosphorIconsFill.trophy, size: 18, color: color),
+              Icon(PhosphorIconsFill.ranking, size: 18, color: color),
               const SizedBox(width: 8),
               Text(
                 langCode == 'es' ? 'ranking #$_rank' : 'ranked #$_rank',
@@ -572,7 +637,7 @@ class _RankingButtonState extends State<_RankingButton> {
                   child: CircularProgressIndicator(strokeWidth: 2, color: color),
                 )
               else ...[
-                Icon(PhosphorIconsBold.listNumbers, size: 18, color: color),
+                Icon(PhosphorIconsBold.ranking, size: 18, color: color),
                 const SizedBox(width: 8),
                 Text(
                   langCode == 'es' ? 'ingresar al ranking' : 'enter ranking',
@@ -600,7 +665,7 @@ class _RankingButtonState extends State<_RankingButton> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(PhosphorIconsBold.listNumbers, size: 18, color: color),
+            Icon(PhosphorIconsBold.ranking, size: 18, color: color),
             const SizedBox(width: 8),
             Text(
               langCode == 'es' ? 'ver ranking' : 'view ranking',

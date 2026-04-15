@@ -14,6 +14,7 @@ import 'package:chile_puzzle/core/services/loading_overlay_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/features/puzzle/puzzle_screen.dart';
 import 'package:chile_puzzle/features/profile/profile_screen.dart';
+import 'package:chile_puzzle/features/leaderboard/leaderboard_screen.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 import 'package:chile_puzzle/features/auth/auth_service.dart';
 import 'package:chile_puzzle/main.dart';
@@ -517,9 +518,6 @@ class _MapScreenState extends State<MapScreen>
     final progress = GameProgressService.progress;
     final difficulties = loc.difficultyLevels.isNotEmpty ? loc.difficultyLevels : [3];
     final labels = langCode == 'es' ? _diffLabelsEs : _diffLabelsEn;
-    final allDone = difficulties.every(
-      (d) => progress.completedPuzzles.containsKey('${loc.id}_$d'),
-    );
     final anyCompleted = difficulties.any(
       (d) => progress.completedPuzzles.containsKey('${loc.id}_$d'),
     );
@@ -630,57 +628,59 @@ class _MapScreenState extends State<MapScreen>
             // the active toggles. Each toggle fires a trophy-style top
             // notification with a short explanation (no penalty text — the
             // pill reports the total).
-            if (!allDone)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _hintIconToggle(
-                      icon: PhosphorIconsBold.lock,
-                      selected: hintLock,
-                      onTap: () {
-                        setDialogState(() => hintLock = !hintLock);
-                        _showHintNotification(
-                          ctx: ctx, langCode: langCode,
-                          hint: _HintKind.lock, enabled: hintLock,
-                        );
-                      },
-                    ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _hintIconToggle(
+                    icon: PhosphorIconsBold.lock,
+                    iconFill: PhosphorIconsFill.lock,
+                    selected: hintLock,
+                    onTap: () {
+                      setDialogState(() => hintLock = !hintLock);
+                      _showHintNotification(
+                        ctx: ctx, langCode: langCode,
+                        hint: _HintKind.lock, enabled: hintLock,
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 14),
+                  _hintIconToggle(
+                    icon: PhosphorIconsBold.squaresFour,
+                    iconFill: PhosphorIconsFill.squaresFour,
+                    selected: hintMulti,
+                    onTap: () {
+                      setDialogState(() => hintMulti = !hintMulti);
+                      _showHintNotification(
+                        ctx: ctx, langCode: langCode,
+                        hint: _HintKind.multi, enabled: hintMulti,
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 14),
+                  _hintIconToggle(
+                    icon: PhosphorIconsBold.image,
+                    iconFill: PhosphorIconsFill.image,
+                    selected: hintReference,
+                    onTap: () {
+                      setDialogState(() => hintReference = !hintReference);
+                      _showHintNotification(
+                        ctx: ctx, langCode: langCode,
+                        hint: _HintKind.reference, enabled: hintReference,
+                      );
+                    },
+                  ),
+                  if (_hintTotalPenalty(hintLock, hintMulti, hintReference) > 0) ...[
                     const SizedBox(width: 14),
-                    _hintIconToggle(
-                      icon: PhosphorIconsBold.squaresFour,
-                      selected: hintMulti,
-                      onTap: () {
-                        setDialogState(() => hintMulti = !hintMulti);
-                        _showHintNotification(
-                          ctx: ctx, langCode: langCode,
-                          hint: _HintKind.multi, enabled: hintMulti,
-                        );
-                      },
+                    _HintPenaltyBadge(
+                      penalty: _hintTotalPenalty(hintLock, hintMulti, hintReference),
+                      langCode: langCode,
                     ),
-                    const SizedBox(width: 14),
-                    _hintIconToggle(
-                      icon: PhosphorIconsBold.image,
-                      selected: hintReference,
-                      onTap: () {
-                        setDialogState(() => hintReference = !hintReference);
-                        _showHintNotification(
-                          ctx: ctx, langCode: langCode,
-                          hint: _HintKind.reference, enabled: hintReference,
-                        );
-                      },
-                    ),
-                    if (_hintTotalPenalty(hintLock, hintMulti, hintReference) > 0) ...[
-                      const SizedBox(width: 14),
-                      _HintPenaltyBadge(
-                        penalty: _hintTotalPenalty(hintLock, hintMulti, hintReference),
-                        langCode: langCode,
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
+            ),
 
             // Subtle separator between hints row and the level list.
             Padding(
@@ -830,6 +830,42 @@ class _MapScreenState extends State<MapScreen>
                 ),
               ),
 
+            // Ver ranking — opens the per-location leaderboard for the
+            // highest difficulty the player has completed here (Normal as
+            // fallback if none).
+            if (anyCompleted)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      final pickDiff = [6, 5, 4, 3].firstWhere(
+                        (d) => GameProgressService.getBestPoints(loc.id, d) != null,
+                        orElse: () => 4,
+                      );
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LeaderboardScreen(
+                            locationId: loc.id,
+                            difficulty: pickDiff,
+                            locationName: loc.getLocalizedName(langCode),
+                          ),
+                        ),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.seedColor,
+                      side: const BorderSide(color: AppTheme.seedColor),
+                    ),
+                    icon: const Icon(PhosphorIconsBold.ranking, size: 18),
+                    label: Text(langCode == 'es' ? 'Ver ranking' : 'View ranking'),
+                  ),
+                ),
+              ),
+
             // Cancel
             Padding(
               padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + MediaQuery.of(ctx).padding.bottom.clamp(0, 16)),
@@ -855,30 +891,54 @@ class _MapScreenState extends State<MapScreen>
 
   Widget _hintIconToggle({
     required IconData icon,
+    required IconData iconFill,
     required bool selected,
     required VoidCallback onTap,
   }) {
-    // When on: 2 px accentGreen border + white bg + accentGreen icon.
-    // When off: flat grey bg + muted icon — reads clearly as "disabled".
+    // Off = outlined icon on light grey. On = white bg + dark grey fill icon
+    // + small green check badge at the top-right so the active state is
+    // impossible to miss.
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.grey.shade200,
-          shape: BoxShape.circle,
-          border: selected
-              ? Border.all(color: AppTheme.accentGreen, width: 2)
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: Icon(
-          icon,
-          size: 20,
-          color: selected ? AppTheme.accentGreen : Colors.grey.shade500,
-        ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: selected ? Colors.white : Colors.grey.shade200,
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              selected ? iconFill : icon,
+              size: 20,
+              color: selected ? Colors.grey.shade700 : Colors.grey.shade500,
+            ),
+          ),
+          if (selected)
+            Positioned(
+              right: -2,
+              top: -2,
+              child: Container(
+                width: 16,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: AppTheme.accentGreen,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  PhosphorIconsBold.check,
+                  size: 9,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -917,8 +977,8 @@ class _MapScreenState extends State<MapScreen>
         icon = PhosphorIconsBold.image;
         text = enabled
             ? (es
-                ? 'Ves la foto original durante el juego.'
-                : 'See the original photo during play.')
+                ? 'Ves la foto original durante el juego (3 vistas).'
+                : 'See the original photo during play (3 peeks).')
             : (es ? 'Foto de referencia: desactivado.' : 'Reference photo: off.');
         break;
     }

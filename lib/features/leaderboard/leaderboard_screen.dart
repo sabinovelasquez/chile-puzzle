@@ -145,7 +145,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(PhosphorIconsBold.trophy, size: 48, color: Colors.grey.shade400),
+                      Icon(PhosphorIconsBold.ranking, size: 48, color: Colors.grey.shade400),
                       const SizedBox(height: 12),
                       Text(
                         langCode == 'es' ? 'Sin puntajes aún' : 'No scores yet',

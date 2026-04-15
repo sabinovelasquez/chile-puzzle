@@ -8,6 +8,24 @@ emails to testers.
 New releases go on top. Each entry has an `**ES**` and `**EN**`
 sub-block with one bullet per line.
 
+## 1.11.0+17 — 2026-04-15
+
+**ES**
+- Nueva opción en Ajustes: "Ranking global" (apagada por defecto). Al activarla, tus puntajes se envían automáticamente al ranking. Tus iniciales aparecen subrayadas — un toque las cambia.
+- Al terminar un puzzle con el ranking automático activo, el botón "Ver ranking" sólo aparece si entraste al Top 10 de ese nivel.
+- Nuevo botón "Ver ranking" en el selector de dificultad de cada ubicación.
+- La foto de referencia se cierra sola después de 5 segundos; un anillo alrededor del ícono de cerrar muestra la cuenta regresiva.
+- El botón de ayuda es transparente mientras se recarga y se vuelve blanco con destello cuando está listo.
+- Ícono "ranking" unificado en Ajustes, Perfil y todos los botones de ver/ingresar al ranking.
+
+**EN**
+- New Settings option: "Global ranking" (off by default). When on, your scores are sent to the ranking silently. Your initials show underlined — tap to change them.
+- With auto-ranking on, the "View ranking" button at puzzle completion appears only if you reach the Top 10 for that level.
+- New "View ranking" button in each location's difficulty picker.
+- The reference photo now auto-closes after 5 seconds; a ring around the close icon shows the countdown.
+- The help button is transparent while charging and turns white with a flash when ready.
+- Unified "ranking" icon across Settings, Profile and every view/enter ranking button.
+
 ## 1.10.1+16 — 2026-04-15
 
 **ES**

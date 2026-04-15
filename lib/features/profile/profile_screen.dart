@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:chile_puzzle/core/models/game_config.dart';
@@ -13,6 +14,7 @@ import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/l10n/generated/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:chile_puzzle/features/leaderboard/leaderboard_screen.dart';
+import 'package:chile_puzzle/features/leaderboard/initials_input.dart';
 import 'package:chile_puzzle/main.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -235,7 +237,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
               ),
-              icon: const Icon(PhosphorIconsBold.listNumbers, size: 20),
+              icon: const Icon(PhosphorIconsBold.ranking, size: 20),
               label: Text(langCode == 'es' ? 'Ver ranking' : 'View ranking'),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 48),
@@ -426,6 +428,8 @@ class _SettingsDialogState extends State<_SettingsDialog>
                 },
               ),
               Divider(color: Colors.grey.shade200, height: 1),
+              _rankingAutoSubmitRow(es: es),
+              Divider(color: Colors.grey.shade200, height: 1),
               // Piece-placement feedback: 3-mode preference (no penalty).
               _shimmerModeRow(es: es),
             ],
@@ -433,6 +437,104 @@ class _SettingsDialogState extends State<_SettingsDialog>
         ),
       ),
     );
+  }
+
+  Widget _rankingAutoSubmitRow({required bool es}) {
+    final initials = GameProgressService.leaderboardInitials;
+    final hasInitials = initials != null && initials.length == 3;
+    final value = SettingsService.autoSubmitRanking;
+    final label = es ? 'Ranking global' : 'Global ranking';
+
+    final subtitleStyle = GoogleFonts.plusJakartaSans(
+      fontSize: 11, color: Colors.grey.shade500,
+    );
+    final displayInitials = hasInitials ? initials : '---';
+    // Tappable chip inline with the sentence — opens the 3-letter picker.
+    // "---" when none set so it reads visibly empty, not defaulted to AAA.
+    final initialsStyle = GoogleFonts.spaceGrotesk(
+      fontSize: 11,
+      fontWeight: FontWeight.w800,
+      color: AppTheme.accentBlue,
+      decoration: TextDecoration.underline,
+      decorationColor: AppTheme.accentBlue,
+    );
+    final subtitleWidget = Text.rich(
+      TextSpan(
+        style: subtitleStyle,
+        children: [
+          TextSpan(text: es ? 'Envía ' : 'Sends '),
+          TextSpan(
+            text: displayInitials,
+            style: initialsStyle,
+            recognizer: TapGestureRecognizer()..onTap = _editInitials,
+          ),
+          TextSpan(
+            text: es
+                ? ' al ranking global al terminar cada puzzle'
+                : ' to the global ranking after each puzzle',
+          ),
+        ],
+      ),
+    );
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () async {
+        // Can't enable without initials — prompt for them first, enable only
+        // if the player confirms. Disabling stays free.
+        if (!value && !hasInitials) {
+          final picked = await showInitialsInput(context);
+          if (picked == null || picked.length != 3) return;
+          await GameProgressService.setLeaderboardInitials(picked);
+          await SettingsService.setAutoSubmitRanking(true);
+        } else {
+          await SettingsService.setAutoSubmitRanking(!value);
+        }
+        if (mounted) setState(() {});
+      },
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 56),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Icon(PhosphorIconsFill.ranking, size: 20, color: AppTheme.accentOrange),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13, fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitleWidget,
+                ],
+              ),
+            ),
+            Icon(
+              value ? PhosphorIconsFill.checkCircle : PhosphorIconsBold.circle,
+              size: 28,
+              color: value ? AppTheme.accentBlue : Colors.grey.shade400,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editInitials() async {
+    final current = GameProgressService.leaderboardInitials;
+    final result = await showInitialsInput(
+      context,
+      currentInitials: current,
+    );
+    if (result != null && result.length == 3) {
+      await GameProgressService.setLeaderboardInitials(result);
+      if (mounted) setState(() {});
+    }
   }
 
   Widget _shimmerModeRow({required bool es}) {
@@ -847,7 +949,7 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'v1.10.1',
+              'v1.11.0',
               style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade400),
             ),
           ),

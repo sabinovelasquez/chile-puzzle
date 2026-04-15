@@ -5,6 +5,7 @@ import 'package:chile_puzzle/core/models/scoring_config.dart';
 import 'package:chile_puzzle/core/models/trophy_model.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/services/mock_backend.dart';
+import 'package:chile_puzzle/core/services/settings_service.dart';
 
 class CompletionResult {
   final int basePoints;
@@ -121,11 +122,13 @@ class GameProgressService {
 
     await _save();
 
-    // Silent auto-submit to global leaderboard if the player has already
-    // opted in by storing initials (via a prior "enter ranking" tap).
-    // Fire-and-forget — never block UI on this, never surface errors.
+    // Silent auto-submit to global leaderboard — only if the player has
+    // stored initials AND explicitly opted in via Settings. Fire-and-forget:
+    // never block UI on this, never surface errors.
     final initials = _prefs.getString(_initialsKey);
-    if (initials != null && initials.length == 3) {
+    if (initials != null &&
+        initials.length == 3 &&
+        SettingsService.autoSubmitRanking) {
       unawaited(MockBackend.submitScore(
         initials: initials,
         totalPoints: _progress.totalPoints,

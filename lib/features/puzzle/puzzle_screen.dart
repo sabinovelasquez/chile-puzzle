@@ -135,6 +135,9 @@ class _PuzzleScreenState extends State<PuzzleScreen>
   // Fires once each time the cooldown completes — drives the shimmer/flash
   // "ready!" flourish on the help button, mode picked from SettingsService.
   late final AnimationController _helpReadyEffectController;
+  // 5-second countdown driving the auto-close of the reference-photo peek +
+  // the ring around the close icon. Resets on every open.
+  late final AnimationController _referencePeekController;
 
   final List<_PendingNotification> _notificationQueue = [];
   bool _notificationShowing = false;
@@ -176,8 +179,16 @@ class _PuzzleScreenState extends State<PuzzleScreen>
     );
     _helpReadyEffectController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 850),
+      duration: const Duration(milliseconds: 350),
     );
+    _referencePeekController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed && mounted && _showReference) {
+          setState(() => _showReference = false);
+        }
+      });
   }
 
   @override
@@ -187,6 +198,7 @@ class _PuzzleScreenState extends State<PuzzleScreen>
     _helpBarController.dispose();
     _helpRisingController.dispose();
     _helpReadyEffectController.dispose();
+    _referencePeekController.dispose();
     _helpFlashPieceId.dispose();
     super.dispose();
   }
@@ -203,7 +215,10 @@ class _PuzzleScreenState extends State<PuzzleScreen>
   Future<void> _onHelpTapped() async {
     if (!_canUseHelp) return;
     // Reference overlay would cover the hint animation — close it first.
-    if (_showReference) setState(() => _showReference = false);
+    if (_showReference) {
+      _referencePeekController.stop();
+      setState(() => _showReference = false);
+    }
     _helpBarController.stop();
     await _helpBarController.animateTo(
       0.0,
@@ -264,7 +279,6 @@ class _PuzzleScreenState extends State<PuzzleScreen>
                     decoration: BoxDecoration(
                       color: AppTheme.accentOrange,
                       borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: Colors.white, width: 2),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -427,6 +441,7 @@ class _PuzzleScreenState extends State<PuzzleScreen>
       _showDrawer = true;
       _showReference = false;
     });
+    _referencePeekController.stop();
 
     if (!mounted) return;
     final langCode = Localizations.localeOf(context).languageCode;
@@ -571,7 +586,10 @@ class _PuzzleScreenState extends State<PuzzleScreen>
                           if (_showReference)
                             Positioned.fill(
                               child: GestureDetector(
-                                onTap: () => setState(() => _showReference = false),
+                                onTap: () {
+                                  _referencePeekController.stop();
+                                  setState(() => _showReference = false);
+                                },
                                 child: Container(
                                   color: Colors.black,
                                   child: _ReferenceCropView(
@@ -587,12 +605,14 @@ class _PuzzleScreenState extends State<PuzzleScreen>
                             child: GestureDetector(
                               onTap: () {
                                 if (_showReference) {
+                                  _referencePeekController.stop();
                                   setState(() => _showReference = false);
                                 } else if (_referenceUsesLeft > 0) {
                                   setState(() {
                                     _showReference = true;
                                     _referenceUsesLeft--;
                                   });
+                                  _referencePeekController.forward(from: 0);
                                 } else {
                                   _showReferenceRefillDialog();
                                 }
@@ -611,6 +631,23 @@ class _PuzzleScreenState extends State<PuzzleScreen>
                                       size: 20, color: Colors.white,
                                     ),
                                   ),
+                                  // 5-second countdown ring around the X while
+                                  // the peek is open — empties clockwise so the
+                                  // player sees the peek draining.
+                                  if (_showReference)
+                                    Positioned.fill(
+                                      child: IgnorePointer(
+                                        child: AnimatedBuilder(
+                                          animation: _referencePeekController,
+                                          builder: (_, __) => CircularProgressIndicator(
+                                            value: (1 - _referencePeekController.value).clamp(0.0, 1.0),
+                                            strokeWidth: 2.5,
+                                            valueColor: const AlwaysStoppedAnimation(Colors.white),
+                                            backgroundColor: Colors.white24,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   // Badge — remaining count when > 0,
                                   // megaphone "tap-for-ad" when depleted.
                                   if (!_showReference)
@@ -625,10 +662,6 @@ class _PuzzleScreenState extends State<PuzzleScreen>
                                               ? AppTheme.accentOrange
                                               : AppTheme.accentBlue,
                                           shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: 1.5,
-                                          ),
                                         ),
                                         child: _referenceUsesLeft > 0
                                             ? Text(
@@ -1052,61 +1085,31 @@ class _PuzzleScreenState extends State<PuzzleScreen>
         // a visible "charging" feel instead of a sudden state flip.
         final saturation =
             v < 0.5 ? 0.0 : ((v - 0.5) * 2).clamp(0.0, 1.0);
-        // Opacity: 10% right after a tap, climbs to 100% as the bar refills.
-        final buttonOpacity = (0.1 + 0.9 * v).clamp(0.1, 1.0);
 
         // Ready flourish — only animates after the bar completes refill.
+        // When the player disabled shimmer in settings, default to shimmer
+        // here anyway so the readiness cue is always noticeable.
         final et = _helpReadyEffectController.value;
-        final effectMode = SettingsService.shimmerMode;
-        final effectActive = ready &&
-            et > 0 &&
-            et < 1.0 &&
-            effectMode != ShimmerMode.off;
+        final rawMode = SettingsService.shimmerMode;
+        final effectMode =
+            rawMode == ShimmerMode.off ? ShimmerMode.shimmer : rawMode;
+        final effectActive = ready && et > 0 && et < 1.0;
 
         // Must match the reference-photo toggle button (40×40) so the footer
         // row height stays constant — the reference photo layout depends on
         // this footer height.
         const size = 40.0;
 
-        // White effect: button stays white, visible via a pulsing white
-        // box-shadow (flash) or a gentle white gradient sweep + halo
-        // (shimmer). No colored tint — purely a "glow" aesthetic.
-        BoxDecoration deco;
-        if (effectActive && effectMode == ShimmerMode.flash) {
-          final pulse =
-              (et < 0.5 ? et * 2 : (1 - et) * 2).clamp(0.0, 1.0);
-          deco = BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.white.withValues(alpha: 0.85 * pulse),
-                blurRadius: 20 * pulse,
-                spreadRadius: 5 * pulse,
-              ),
-            ],
-          );
-        } else if (effectActive && effectMode == ShimmerMode.shimmer) {
-          deco = BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              begin: Alignment(-1.0 + 3.0 * et, -1.0 + 3.0 * et),
-              end: Alignment(-0.5 + 3.0 * et, -0.5 + 3.0 * et),
-              colors: [Colors.grey.shade100, Colors.white, Colors.grey.shade100],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.white.withValues(alpha: 0.55),
-                blurRadius: 12,
-                spreadRadius: 2,
-              ),
-            ],
-          );
+        // While charging, bg is transparent so the footer shows through; only
+        // the (desaturated) icon hints that the button exists. At ready, bg
+        // turns white so the flash/shimmer flourish registers clearly.
+        final Color bg;
+        if (!ready) {
+          bg = Colors.transparent;
+        } else if (effectActive) {
+          bg = Colors.grey.shade100;
         } else {
-          deco = const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white,
-          );
+          bg = Colors.white;
         }
 
         return GestureDetector(
@@ -1115,21 +1118,51 @@ class _PuzzleScreenState extends State<PuzzleScreen>
             clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
-              Opacity(
-                opacity: buttonOpacity,
-                child: Container(
-                  width: size,
-                  height: size,
-                  decoration: deco,
-                  alignment: Alignment.center,
-                  child: ColorFiltered(
-                    colorFilter: _saturationFilter(saturation),
-                    child: Icon(
-                      PhosphorIconsFill.pill,
-                      size: 20,
-                      color: Colors.red.shade500,
+              Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: bg,
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (effectActive && effectMode == ShimmerMode.flash)
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(
+                            alpha: ((et < 0.5 ? et * 2 : (1 - et) * 2).clamp(0.0, 1.0)) * 0.55,
+                          ),
+                        ),
+                      ),
+                    if (effectActive && effectMode == ShimmerMode.shimmer)
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment(-1.0 + 3.0 * et, -1.0 + 3.0 * et),
+                            end: Alignment(-0.5 + 3.0 * et, -0.5 + 3.0 * et),
+                            colors: [
+                              Colors.white.withValues(alpha: 0),
+                              Colors.white.withValues(alpha: 0.4),
+                              Colors.white.withValues(alpha: 0),
+                            ],
+                          ),
+                        ),
+                      ),
+                    Center(
+                      child: ColorFiltered(
+                        colorFilter: _saturationFilter(saturation),
+                        child: Icon(
+                          PhosphorIconsFill.pill,
+                          size: 20,
+                          color: Colors.red.shade500,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
               // Red first-aid icon rising from the button and fading out —
