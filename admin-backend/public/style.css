@@ -114,6 +114,76 @@ header p {
     gap: 0.5rem;
 }
 
+.item-list-empty {
+    color: var(--text-secondary, rgba(255,255,255,0.55));
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 1.2rem 0.5rem;
+    opacity: 0.8;
+}
+
+/* ---------- Locations sidebar filters (search + status chips) ---------- */
+.loc-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+}
+.loc-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.loc-search {
+    flex: 1;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: var(--text-primary, #fff);
+    padding: 0.55rem 3rem 0.55rem 0.75rem;
+    font-size: 0.85rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+}
+.loc-search::placeholder { color: rgba(255,255,255,0.4); }
+.loc-search:focus {
+    border-color: var(--accent);
+    background: rgba(88,166,255,0.08);
+}
+.loc-search-count {
+    position: absolute;
+    right: 0.6rem;
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.45);
+    pointer-events: none;
+    letter-spacing: 0.02em;
+}
+.chip-row {
+    display: flex;
+    gap: 0.35rem;
+}
+.chip-row .chip {
+    flex: 1;
+    padding: 0.35rem 0.6rem;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    border-radius: 999px;
+    color: var(--text-secondary, rgba(255,255,255,0.65));
+    font-size: 0.72rem;
+    font-family: inherit;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.chip-row .chip:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+.chip-row .chip.active {
+    background: rgba(88,166,255,0.18);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
 .item {
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
@@ -526,6 +596,35 @@ form[data-diff="6"] .tip-pair[data-diff="6"] { display: block; }
     font-size: 0.8rem;
     color: var(--accent);
     text-align: center;
+}
+
+/* Drag-and-drop full-screen overlay. pointer-events:none avoids event
+   thrashing when the cursor passes over the overlay itself. */
+#dropOverlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(88,166,255,0.18);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 4px dashed rgba(88,166,255,0.9);
+    box-sizing: border-box;
+    z-index: 9999;
+    pointer-events: none;
+}
+#dropOverlay.visible { display: flex; }
+#dropOverlay .drop-msg {
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 1.4rem;
+    letter-spacing: 0.01em;
+    padding: 1.2rem 1.8rem;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
 }
 
 /* ---------- Pixelation warning bar ---------- */

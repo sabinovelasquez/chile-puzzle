@@ -407,9 +407,9 @@ fZone.addEventListener('change', () => {
   populatePointsDropdown(fZone.value, parseInt(fRequiredPoints.value) || 0);
 });
 
-// Multi-file upload → batch-stub (the ONLY way to create new locations)
-fImageUpload.addEventListener('change', async (e) => {
-  const files = Array.from(e.target.files || []);
+// Multi-file upload → batch-stub (the ONLY way to create new locations).
+// Triggered by the "+ Upload image(s)" button AND by drag-and-drop.
+async function uploadAndCreateLocations(files) {
   if (!files.length) return;
   const label = document.querySelector('.upload-label');
   label.classList.add('busy');
@@ -442,9 +442,61 @@ fImageUpload.addEventListener('change', async (e) => {
   } finally {
     label.classList.remove('busy');
     uploadProgressEl.hidden = true;
-    fImageUpload.value = '';
   }
+}
+
+fImageUpload.addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  await uploadAndCreateLocations(files);
+  fImageUpload.value = '';
 });
+
+// Drag-and-drop upload: drop image files anywhere while the Locations tab is
+// active to run the same batch-stub flow as the button.
+(() => {
+  const overlay = document.createElement('div');
+  overlay.id = 'dropOverlay';
+  overlay.innerHTML = '<div class="drop-msg">Drop image(s) to upload</div>';
+  document.body.appendChild(overlay);
+
+  const hasFiles = (e) =>
+    e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+  const locationsTabActive = () =>
+    !!document.querySelector('.tab-content.active[data-tab="locations"]');
+
+  // Counter pattern: dragenter/leave fire per-element during traversal, so a
+  // single bool flickers. Increment on enter, decrement on leave.
+  let depth = 0;
+  window.addEventListener('dragenter', (e) => {
+    if (!hasFiles(e) || !locationsTabActive()) return;
+    e.preventDefault();
+    depth++;
+    overlay.classList.add('visible');
+  });
+  window.addEventListener('dragover', (e) => {
+    if (!hasFiles(e) || !locationsTabActive()) return;
+    e.preventDefault();
+  });
+  window.addEventListener('dragleave', (e) => {
+    if (!hasFiles(e)) return;
+    depth = Math.max(0, depth - 1);
+    if (depth === 0) overlay.classList.remove('visible');
+  });
+  window.addEventListener('drop', async (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth = 0;
+    overlay.classList.remove('visible');
+    if (!locationsTabActive()) return;
+    const files = Array.from(e.dataTransfer.files || [])
+      .filter((f) => f.type.startsWith('image/'));
+    if (!files.length) {
+      showToast('Please drop image files only', true);
+      return;
+    }
+    await uploadAndCreateLocations(files);
+  });
+})();
 
 // Replace image on the currently-edited location
 fReplaceUpload.addEventListener('change', async (e) => {
@@ -505,10 +557,47 @@ deleteOrigBtn.addEventListener('click', async () => {
   }
 });
 
+let locSearchQuery = '';
+let locStatusFilter = 'all'; // 'all' | 'active' | 'inactive'
+
+function filteredLocations() {
+  const q = locSearchQuery.trim().toLowerCase();
+  return locations.filter((loc) => {
+    if (locStatusFilter === 'active' && loc.active === false) return false;
+    if (locStatusFilter === 'inactive' && loc.active !== false) return false;
+    if (!q) return true;
+    const nameEs = (loc.name?.es && loc.name.es !== SENTINEL) ? loc.name.es : '';
+    const nameEn = (loc.name?.en && loc.name.en !== SENTINEL) ? loc.name.en : '';
+    const region = (loc.region && loc.region !== SENTINEL) ? loc.region : '';
+    return (
+      nameEs.toLowerCase().includes(q) ||
+      nameEn.toLowerCase().includes(q) ||
+      region.toLowerCase().includes(q) ||
+      loc.id.toLowerCase().includes(q)
+    );
+  });
+}
+
 function renderLocList() {
   const el = document.getElementById('locationList');
+  const countEl = document.getElementById('locSearchCount');
   el.innerHTML = '';
-  locations.forEach(loc => {
+  const visible = filteredLocations();
+  if (countEl) {
+    countEl.textContent = locSearchQuery || locStatusFilter !== 'all'
+      ? `${visible.length}/${locations.length}`
+      : `${locations.length}`;
+  }
+  if (!visible.length) {
+    const empty = document.createElement('div');
+    empty.className = 'item-list-empty';
+    empty.textContent = locations.length
+      ? 'No locations match your filters.'
+      : 'No locations yet — upload an image to create one.';
+    el.appendChild(empty);
+    return;
+  }
+  visible.forEach(loc => {
     const div = document.createElement('div');
     const isInactive = loc.active === false;
     div.className = 'item' +
@@ -522,6 +611,32 @@ function renderLocList() {
     el.appendChild(div);
   });
 }
+
+// Wire up search + status chips. Debounced so rapid typing doesn't thrash DOM.
+(() => {
+  const search = document.getElementById('locSearch');
+  const chips = document.getElementById('locStatusChips');
+  if (search) {
+    let t;
+    search.addEventListener('input', (e) => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        locSearchQuery = e.target.value;
+        renderLocList();
+      }, 120);
+    });
+  }
+  if (chips) {
+    chips.addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip');
+      if (!btn) return;
+      locStatusFilter = btn.dataset.status || 'all';
+      chips.querySelectorAll('.chip').forEach((c) =>
+        c.classList.toggle('active', c === btn));
+      renderLocList();
+    });
+  }
+})();
 
 function populateZoneDropdown() {
   fZone.innerHTML = zones.map(z => `<option value="${z.id}">${z.name.es || z.id}</option>`).join('');
@@ -580,6 +695,9 @@ function openLocEditor(id) {
   else cropToolHide();
   fImageUpload.value = '';
   renderLocList();
+  // On mobile, the sidebar is a slide-in drawer — hide it once the user
+  // has committed to a location so the editor has the full screen.
+  document.body.classList.remove('drawer-open');
 }
 
 document.getElementById('deleteLocationBtn').onclick = async () => {

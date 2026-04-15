@@ -34,6 +34,17 @@
                 </label>
                 <input type="file" id="locImageUpload" accept="image/*" multiple hidden>
                 <div id="uploadProgress" class="upload-progress" hidden></div>
+                <div class="loc-filters">
+                    <div class="loc-search-wrap">
+                        <input type="search" id="locSearch" class="loc-search" placeholder="Search by name, zone or ID…" autocomplete="off">
+                        <span class="loc-search-count" id="locSearchCount"></span>
+                    </div>
+                    <div class="chip-row" id="locStatusChips">
+                        <button type="button" class="chip active" data-status="all">All</button>
+                        <button type="button" class="chip" data-status="active">Active</button>
+                        <button type="button" class="chip" data-status="inactive">Inactive</button>
+                    </div>
+                </div>
                 <div id="locationList" class="item-list"></div>
             </aside>
             <main class="editor-area">
