@@ -923,6 +923,21 @@ try {
     }
 
     /* ═══════════════════ HALL OF FAME ═══════════════════ */
+    .walking-divider {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem 1rem;
+      background: var(--bg);
+    }
+
+    .walking-gif {
+      height: 100px;
+      width: auto;
+      display: block;
+      pointer-events: none;
+    }
+
     .hof-section {
       padding: 5rem 2rem;
       background: var(--bg);
@@ -1381,15 +1396,12 @@ try {
       left: 50%;
       transform: translateX(-50%);
       z-index: 3;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       pointer-events: none;
     }
 
     .hero-cat {
-      width: 120px;
-      height: 106px;
+      width: 85px;
+      height: 75px;
       display: block;
     }
 
@@ -1405,48 +1417,38 @@ try {
       color: var(--text);
       white-space: nowrap;
       box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      margin-bottom: 0.35rem;
     }
 
     .hero-bubble-right {
-      align-self: flex-end;
-      transform: translateX(60%);
+      grid-column: 2;
+      justify-self: start;
+      margin-left: 1.25rem;
     }
 
     .hero-bubble-left {
-      align-self: flex-start;
-      transform: translateX(-55%);
+      grid-column: 1;
+      justify-self: end;
+      margin-right: 1.25rem;
+      margin-bottom: -1.5rem;
+      z-index: 1;
     }
 
-    .hero-bubble-tail {
-      position: absolute;
-      bottom: -5px;
-      width: 10px;
-      height: 10px;
-      background: var(--bg-card);
-      border-right: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      transform: rotate(45deg);
+    .hero-cat,
+    .about-separator-png {
+      grid-column: 1 / -1;
+      justify-self: center;
     }
-
-    .hero-bubble-tail-right { right: 18px; }
-    .hero-bubble-tail-left { left: 18px; }
 
     .hero-bubble.reveal {
       opacity: 0;
-      transform: translateY(12px);
+      transform: translateY(10px);
       transition: opacity 0.5s ease, transform 0.5s ease;
     }
 
-    .hero-bubble-right.reveal { transform: translateX(60%) translateY(12px); }
-    .hero-bubble-left.reveal { transform: translateX(-55%) translateY(12px); }
-
     .hero-bubble.reveal.visible {
       opacity: 1;
+      transform: translateY(0);
     }
-
-    .hero-bubble-right.reveal.visible { transform: translateX(60%) translateY(0); }
-    .hero-bubble-left.reveal.visible { transform: translateX(-55%) translateY(0); }
 
     .hero-bubble-left.reveal {
       transition-delay: 0.45s;
@@ -1458,7 +1460,20 @@ try {
       margin-top: 3rem;
     }
 
-    .about-separator img {
+    /* Shared chat stack: 2-col grid so bubbles anchor to the center line.
+       Use minmax(0, 1fr) so wide bubbles (nowrap) can't bloat their column
+       and shift the image off-center. */
+    .chat-stack {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      justify-items: stretch;
+      align-items: end;
+      width: 400px;
+      margin: 0 auto;
+      row-gap: 0.35rem;
+    }
+
+    .about-separator-png {
       height: 122px;
       width: auto;
       display: block;
@@ -1473,6 +1488,27 @@ try {
       height: auto;
       pointer-events: none;
       z-index: 1;
+    }
+
+    .cta-heart {
+      position: absolute;
+      right: 72px;
+      bottom: 80px;
+      transform: translateX(50%) translateY(10px);
+      font-size: 26px;
+      color: #000;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .cta-heart.visible {
+      animation: heart-float 3s ease forwards;
+    }
+
+    @keyframes heart-float {
+      0%   { opacity: 1; transform: translateX(50%) translateY(0); }
+      100% { opacity: 0; transform: translateX(50%) translateY(-50px); }
     }
 
 
@@ -1602,14 +1638,9 @@ try {
       .hero-sub { margin: 0 auto 2rem; }
       .hero-actions { justify-content: center; }
       .hero-stats { justify-content: center; }
-      .hero { padding-bottom: 10rem; }
+      .hero { padding-bottom: 12rem; }
+      .chat-stack { width: 340px; }
       .hero-bubble { font-size: 0.72rem; padding: 0.4rem 0.75rem; }
-      .hero-bubble-right { transform: translateX(50%); }
-      .hero-bubble-left { transform: translateX(-45%); }
-      .hero-bubble-right.reveal { transform: translateX(50%) translateY(12px); }
-      .hero-bubble-left.reveal { transform: translateX(-45%) translateY(12px); }
-      .hero-bubble-right.reveal.visible { transform: translateX(50%) translateY(0); }
-      .hero-bubble-left.reveal.visible { transform: translateX(-45%) translateY(0); }
       .hero-phone { order: -1; }
       .about-features-grid { grid-template-columns: 1fr; gap: 2.5rem; }
       .story-col { text-align: center; }
@@ -1732,16 +1763,14 @@ try {
         </div>
       </div>
     </div>
-    <div class="hero-chat">
+    <div class="hero-chat chat-stack">
       <div class="hero-bubble hero-bubble-right reveal" id="heroBubble1">
-        <span data-es="Solo … lugares, Gato?" data-en="Only … locations, Gato?">{"Solo … lugares, Gato?"}</span>
-        <div class="hero-bubble-tail hero-bubble-tail-right"></div>
+        <span data-es="Solo ... lugares, Gato?" data-en="Only ... places, Gato?">{"Solo ... lugares, Gato?"}</span>
       </div>
       <div class="hero-bubble hero-bubble-left reveal" id="heroBubble2">
         <span data-es="Estoy subiendo m&aacute;s..." data-en="I'm uploading more...">Estoy subiendo m&aacute;s...</span>
-        <div class="hero-bubble-tail hero-bubble-tail-left"></div>
       </div>
-      <img class="hero-cat" src={`${baseUrl}girl_cat_sit.png`} alt="" width="120" height="106" />
+      <img class="hero-cat" src={`${baseUrl}girl_cat_sit.png`} alt="" width="85" height="75" />
     </div>
   </section>
 
@@ -1816,7 +1845,15 @@ try {
       </div>
     </div>
     <div class="about-separator reveal">
-      <img src={`${baseUrl}girl_cat_stand.png`} alt="" width="106" height="122" />
+      <div class="chat-stack">
+        <div class="hero-bubble hero-bubble-right reveal" id="aboutBubble1">
+          <span data-es="&iquest;Quieres pasear, Gato?" data-en="Want to go for a walk, Gato?">&iquest;Quieres pasear, Gato?</span>
+        </div>
+        <div class="hero-bubble hero-bubble-left reveal" id="aboutBubble2">
+          <span data-es="Siempre, Cachorra." data-en="Always, Cachorra.">Siempre, Cachorra.</span>
+        </div>
+        <img class="about-separator-png" src={`${baseUrl}girl_cat_stand.png`} alt="" width="106" height="122" />
+      </div>
     </div>
   </section>
 
@@ -1904,6 +1941,11 @@ try {
     <video id="galleryLightboxVideo" src="" autoplay loop muted playsinline style="display:none;"></video>
   </div>
 
+  <!-- Walking divider -->
+  <div class="walking-divider reveal">
+    <img src={`${baseUrl}walking.gif`} alt="" class="walking-gif" />
+  </div>
+
   <!-- HALL OF FAME -->
   <section class="hof-section" id="hof">
     <div class="hof-inner">
@@ -1980,6 +2022,7 @@ try {
   <!-- CTA -->
   <section class="cta" id="download">
     <img class="cta-cat" src={`${baseUrl}girl_cat_chill.png`} alt="" width="144" height="91" />
+    <i class="ph-fill ph-heart cta-heart" aria-hidden="true"></i>
     <div class="cta-box">
       <h2 class="reveal" data-es="Pronto en Google Play" data-en="Coming soon to Google Play">Pronto en Google Play</h2>
       <p class="reveal stagger-1" data-es="Estamos en fase de testing. &Uacute;nete como tester y s&eacute; de los primeros en jugar." data-en="We're in testing phase. Join as a tester and be among the first to play.">Estamos en fase de testing. &Uacute;nete como tester y s&eacute; de los primeros en jugar.</p>
@@ -2026,7 +2069,37 @@ try {
       });
     }, { threshold: 0.1 });
 
-    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    document.querySelectorAll('.reveal:not(.hero-bubble)').forEach(el => observer.observe(el));
+
+    // Bubble trigger helper: toggle `.visible` on bubbles when anchor crosses viewport middle.
+    // Reusable for any section that has an illustration + dialog bubbles.
+    const bindBubbleTrigger = (anchorSel, bubblesSel) => {
+      const anchor = document.querySelector(anchorSel);
+      const bubbles = document.querySelectorAll(bubblesSel);
+      if (!anchor || !bubbles.length) return;
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          bubbles.forEach(b => b.classList.toggle('visible', e.isIntersecting));
+        });
+      }, { threshold: 0, rootMargin: '-40% 0px -40% 0px' });
+      obs.observe(anchor);
+    };
+    bindBubbleTrigger('.hero-cat', '#heroBubble1, #heroBubble2');
+    bindBubbleTrigger('.about-separator-png', '#aboutBubble1, #aboutBubble2');
+
+    // Heart animation: single run every time CTA silhouette re-enters viewport
+    (() => {
+      const anchor = document.querySelector('.cta-cat');
+      const heart = document.querySelector('.cta-heart');
+      if (!anchor || !heart) return;
+      heart.addEventListener('animationend', () => heart.classList.remove('visible'));
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) heart.classList.add('visible');
+        });
+      }, { threshold: 0.4 });
+      obs.observe(anchor);
+    })();
 
     // ── Gallery Coverflow ──
     (() => {
@@ -2231,8 +2304,8 @@ try {
         if (b1) {
           const sp = b1.querySelector('span');
           sp.setAttribute('data-es', `Solo ${count} lugares, Gato?`);
-          sp.setAttribute('data-en', `Only ${count} locations, Gato?`);
-          sp.textContent = lang === 'en' ? `Only ${count} locations, Gato?` : `Solo ${count} lugares, Gato?`;
+          sp.setAttribute('data-en', `Only ${count} places, Gato?`);
+          sp.textContent = lang === 'en' ? `Only ${count} places, Gato?` : `Solo ${count} lugares, Gato?`;
         }
       } catch (_) {}
     })();
