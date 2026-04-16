@@ -1374,17 +1374,82 @@ try {
       overflow: hidden;
     }
 
-    /* ── girl_cat illustrations ── */
-    .hero-cat {
+    /* ── hero chat bubbles + girl_cat ── */
+    .hero-chat {
       position: absolute;
-      left: 50%;
       bottom: 0;
+      left: 50%;
       transform: translateX(-50%);
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .hero-cat {
       width: 120px;
       height: 106px;
-      pointer-events: none;
-      z-index: 3;
       display: block;
+    }
+
+    .hero-bubble {
+      position: relative;
+      padding: 0.5rem 0.9rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 0.35rem;
+    }
+
+    .hero-bubble-right {
+      align-self: flex-end;
+      transform: translateX(60%);
+    }
+
+    .hero-bubble-left {
+      align-self: flex-start;
+      transform: translateX(-55%);
+    }
+
+    .hero-bubble-tail {
+      position: absolute;
+      bottom: -5px;
+      width: 10px;
+      height: 10px;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      transform: rotate(45deg);
+    }
+
+    .hero-bubble-tail-right { right: 18px; }
+    .hero-bubble-tail-left { left: 18px; }
+
+    .hero-bubble.reveal {
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .hero-bubble-right.reveal { transform: translateX(60%) translateY(12px); }
+    .hero-bubble-left.reveal { transform: translateX(-55%) translateY(12px); }
+
+    .hero-bubble.reveal.visible {
+      opacity: 1;
+    }
+
+    .hero-bubble-right.reveal.visible { transform: translateX(60%) translateY(0); }
+    .hero-bubble-left.reveal.visible { transform: translateX(-55%) translateY(0); }
+
+    .hero-bubble-left.reveal {
+      transition-delay: 0.45s;
     }
 
     .about-separator {
@@ -1537,7 +1602,14 @@ try {
       .hero-sub { margin: 0 auto 2rem; }
       .hero-actions { justify-content: center; }
       .hero-stats { justify-content: center; }
-      .hero { padding-bottom: 9rem; }
+      .hero { padding-bottom: 10rem; }
+      .hero-bubble { font-size: 0.72rem; padding: 0.4rem 0.75rem; }
+      .hero-bubble-right { transform: translateX(50%); }
+      .hero-bubble-left { transform: translateX(-45%); }
+      .hero-bubble-right.reveal { transform: translateX(50%) translateY(12px); }
+      .hero-bubble-left.reveal { transform: translateX(-45%) translateY(12px); }
+      .hero-bubble-right.reveal.visible { transform: translateX(50%) translateY(0); }
+      .hero-bubble-left.reveal.visible { transform: translateX(-45%) translateY(0); }
       .hero-phone { order: -1; }
       .about-features-grid { grid-template-columns: 1fr; gap: 2.5rem; }
       .story-col { text-align: center; }
@@ -1660,7 +1732,17 @@ try {
         </div>
       </div>
     </div>
-    <img class="hero-cat" src={`${baseUrl}girl_cat_sit.png`} alt="" width="120" height="106" />
+    <div class="hero-chat">
+      <div class="hero-bubble hero-bubble-right reveal" id="heroBubble1">
+        <span data-es="Solo {n} lugares, Gato?" data-en="Only {n} locations, Gato?">Solo {n} lugares, Gato?</span>
+        <div class="hero-bubble-tail hero-bubble-tail-right"></div>
+      </div>
+      <div class="hero-bubble hero-bubble-left reveal" id="heroBubble2">
+        <span data-es="Estoy subiendo m&aacute;s..." data-en="I'm uploading more...">Estoy subiendo m&aacute;s...</span>
+        <div class="hero-bubble-tail hero-bubble-tail-left"></div>
+      </div>
+      <img class="hero-cat" src={`${baseUrl}girl_cat_sit.png`} alt="" width="120" height="106" />
+    </div>
   </section>
 
   <!-- ABOUT + FEATURES (side by side) -->
@@ -2144,6 +2226,14 @@ try {
         dot.className = 'live-dot';
         dot.setAttribute('aria-label', 'Live');
         chip.insertBefore(dot, chip.firstChild);
+        // Update hero chat bubble with real count
+        const b1 = document.getElementById('heroBubble1');
+        if (b1) {
+          const sp = b1.querySelector('span');
+          sp.setAttribute('data-es', `Solo ${count} lugares, Gato?`);
+          sp.setAttribute('data-en', `Only ${count} locations, Gato?`);
+          sp.textContent = lang === 'en' ? `Only ${count} locations, Gato?` : `Solo ${count} lugares, Gato?`;
+        }
       } catch (_) {}
     })();
 
