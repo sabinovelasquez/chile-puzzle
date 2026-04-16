@@ -1122,6 +1122,7 @@ try {
       .hof-podium {
         display: flex;
         flex-direction: column;
+        align-items: stretch;
         gap: 0;
         background: var(--bg-card);
         border: 1px solid var(--border);
@@ -1152,9 +1153,14 @@ try {
       :global(.hof-podium-card.is-rank-3) { order: 3; }
       :global(.hof-podium-card.is-fourth) { order: 4; margin-top: 0; }
       :global(.hof-podium-rank) { display: none; }
+      :global(.hof-podium-rank-col) {
+        flex: 0 0 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
       :global(.hof-podium-medal) { font-size: 1.6rem; }
       :global(.hof-podium-card.is-rank-1 .hof-podium-medal) { font-size: 1.85rem; }
-      :global(.hof-podium-rank-pill) { min-width: 34px; }
       :global(.hof-podium-initials) {
         flex: 0 0 auto;
         min-width: 78px;
@@ -1226,18 +1232,20 @@ try {
     }
 
     :global(.hof-initials) {
-      flex: 1;
-      height: 34px;
-      max-width: 110px;
-      background: var(--accent);
-      color: #fff;
+      flex: 0 0 auto;
+      min-width: 78px;
+      height: 32px;
+      padding: 0 0.7rem;
+      background: transparent;
+      color: var(--accent);
+      border: 1.5px solid var(--border);
       border-radius: 8px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       font-family: var(--font-display);
       font-weight: 800;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       letter-spacing: 0.18em;
     }
 
@@ -1246,8 +1254,10 @@ try {
     }
 
     :global(.hof-row.is-top1 .hof-initials) {
-      background: linear-gradient(135deg, #1565C0, #1976D2);
-      box-shadow: 0 2px 8px rgba(21,101,192,0.25);
+      border-color: rgba(21,101,192,0.35);
+      color: #1565C0;
+      background: transparent;
+      box-shadow: none;
     }
 
     :global(.hof-points) {
@@ -1368,7 +1378,6 @@ try {
       border-radius: 18px;
       background-size: cover;
       background-position: center;
-      box-shadow: 0 6px 20px rgba(21,101,192,0.18), 0 0 0 4px #fff, 0 0 0 5px var(--gold);
       position: relative;
     }
 
@@ -1847,10 +1856,10 @@ try {
           </div>
           <div class="feature-card reveal stagger-2">
             <div class="feature-icon" style="background: var(--green-light);">
-              <i class="ph ph-map-trifold" style="color: var(--green);"></i>
+              <i class="ph ph-camera" style="color: var(--green);"></i>
             </div>
             <h3 data-es="Lugares Reales" data-en="Real Places">Lugares Reales</h3>
-            <p data-es="Fotos reales desde Atacama hasta la Patagonia." data-en="Real photos from Atacama to Patagonia.">Fotos reales desde Atacama hasta la Patagonia.</p>
+            <p data-es="Fotos tomadas por nosotros en nuestros viajes." data-en="Photos taken by us on our trips.">Fotos tomadas por nosotros en nuestros viajes.</p>
           </div>
           <div class="feature-card reveal stagger-3">
             <div class="feature-icon" style="background: var(--purple-light);">
@@ -1915,53 +1924,76 @@ try {
         </div>
         <div class="gallery-phone" data-index="1">
           <div class="gallery-phone-frame">
-            <img src={`${baseUrl}screenshots/dialog.jpg`} alt="Detalle — diálogo de ubicación con vista previa de la foto, puntos y opciones de dificultad" />
+            <video
+              src={`${baseUrl}screenshots/locations.mp4`}
+              autoplay loop muted playsinline preload="metadata"
+              aria-label="Ubicaciones — recorrido por la grilla de lugares disponibles"
+            ></video>
           </div>
         </div>
         <div class="gallery-phone" data-index="2">
           <div class="gallery-phone-frame">
-            <img src={`${baseUrl}screenshots/difficulty.jpg`} alt="Dificultad — selección con cuatro niveles: Fácil (3 columnas, 100 pts), Normal (4 columnas), Difícil (5 columnas) y Experto (6 columnas, 350 pts)" />
+            <img src={`${baseUrl}screenshots/dialog.jpg`} alt="Detalle — diálogo de ubicación con vista previa de la foto, puntos y opciones de dificultad" />
           </div>
         </div>
         <div class="gallery-phone" data-index="3">
           <div class="gallery-phone-frame">
-            <img src={`${baseUrl}screenshots/puzzle.jpg`} alt="Puzzle — puzzle activo de Galería de la Merced mostrando un edificio con maceteros de frutilla rojos, cronómetro en 3:07 y 104 movimientos" />
+            <video
+              src={`${baseUrl}screenshots/dificulty.mp4`}
+              autoplay loop muted playsinline preload="metadata"
+              aria-label="Dificultad — video de selección de nivel con vista previa animada"
+            ></video>
           </div>
         </div>
         <div class="gallery-phone" data-index="4">
           <div class="gallery-phone-frame">
-            <video
-              src={`${baseUrl}screenshots/help.mp4`}
-              autoplay
-              loop
-              muted
-              playsinline
-              preload="metadata"
-              aria-label="Ayuda — demostración en video del sistema de pistas y ayudas dentro del puzzle"
-            ></video>
+            <img src={`${baseUrl}screenshots/difficulty.jpg`} alt="Dificultad — selección con cuatro niveles: Fácil (3 columnas, 100 pts), Normal (4 columnas), Difícil (5 columnas) y Experto (6 columnas, 350 pts)" />
           </div>
         </div>
         <div class="gallery-phone" data-index="5">
           <div class="gallery-phone-frame">
-            <img src={`${baseUrl}screenshots/points_system.jpg`} alt="Puntos — explicación del sistema de puntaje según la dificultad elegida" />
+            <img src={`${baseUrl}screenshots/puzzle.jpg`} alt="Puzzle — puzzle activo de Galería de la Merced mostrando un edificio con maceteros de frutilla rojos, cronómetro en 3:07 y 104 movimientos" />
           </div>
         </div>
         <div class="gallery-phone" data-index="6">
           <div class="gallery-phone-frame">
-            <img src={`${baseUrl}screenshots/ranking.jpg`} alt="Ranking — clasificación por ubicación con los mejores jugadores, iniciales y puntos" />
+            <video
+              src={`${baseUrl}screenshots/help.mp4`}
+              autoplay loop muted playsinline preload="metadata"
+              aria-label="Ayuda — demostración en video del sistema de pistas y ayudas dentro del puzzle"
+            ></video>
           </div>
         </div>
         <div class="gallery-phone" data-index="7">
           <div class="gallery-phone-frame">
-            <img src={`${baseUrl}screenshots/profile.jpg`} alt="Perfil — perfil de explorador con 2630 puntos, 24 puzzles resueltos, mejor tiempo de 21 segundos, 13 de 14 ubicaciones descubiertas y 43% de progreso total" />
+            <img src={`${baseUrl}screenshots/points_system.jpg`} alt="Puntos — explicación del sistema de puntaje según la dificultad elegida" />
           </div>
         </div>
         <div class="gallery-phone" data-index="8">
           <div class="gallery-phone-frame">
-            <img src={`${baseUrl}screenshots/trophies.jpg`} alt="Trofeos — colección con 16 de 27 desbloqueados, incluyendo Primeros Pasos, En Marcha, Amante de Puzzles y logros bloqueados como Maestro de Puzzles" />
+            <video
+              src={`${baseUrl}screenshots/celebration.mp4`}
+              autoplay loop muted playsinline preload="metadata"
+              aria-label="Celebración — video de la pantalla de puzzle completado con confeti"
+            ></video>
           </div>
         </div>
         <div class="gallery-phone" data-index="9">
+          <div class="gallery-phone-frame">
+            <img src={`${baseUrl}screenshots/ranking.jpg`} alt="Ranking — clasificación por ubicación con los mejores jugadores, iniciales y puntos" />
+          </div>
+        </div>
+        <div class="gallery-phone" data-index="10">
+          <div class="gallery-phone-frame">
+            <img src={`${baseUrl}screenshots/profile.jpg`} alt="Perfil — perfil de explorador con 2630 puntos, 24 puzzles resueltos, mejor tiempo de 21 segundos, 13 de 14 ubicaciones descubiertas y 43% de progreso total" />
+          </div>
+        </div>
+        <div class="gallery-phone" data-index="11">
+          <div class="gallery-phone-frame">
+            <img src={`${baseUrl}screenshots/trophies.jpg`} alt="Trofeos — colección con 16 de 27 desbloqueados, incluyendo Primeros Pasos, En Marcha, Amante de Puzzles y logros bloqueados como Maestro de Puzzles" />
+          </div>
+        </div>
+        <div class="gallery-phone" data-index="12">
           <div class="gallery-phone-frame">
             <img src={`${baseUrl}screenshots/restore.jpg`} alt="Respaldo — pantalla de respaldo y restauración de progreso con un código corto para recuperar el avance en otro teléfono" />
           </div>
@@ -2420,7 +2452,7 @@ try {
         return `
           <div class="${classes.join(' ')}">
             ${rankNum}
-            ${medalEl}
+            <div class="hof-podium-rank-col">${medalEl}</div>
             <div class="hof-podium-initials">${initials}</div>
             <div class="hof-podium-points">${fmtPts(pts)}<span class="hof-podium-points-unit">pts</span></div>
           </div>
@@ -2447,7 +2479,7 @@ try {
         // Inline: top 4 (podium pricing-pack cards)
         list.innerHTML = entries.slice(0, 4).map(cardHtml).join('');
         loading.style.display = 'none';
-        list.style.display = 'grid';
+        list.style.display = '';
 
         // Footer "View all" only when there are more than 4 entries
         if (entries.length > 4) {
