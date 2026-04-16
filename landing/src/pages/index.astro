@@ -1116,16 +1116,38 @@ try {
       letter-spacing: 0.02em;
     }
 
-    @media (max-width: 480px) {
-      .hof-podium { gap: 0.6rem; }
-      :global(.hof-podium-card) { padding: 0.85rem 0.5rem; gap: 0.4rem; }
-      :global(.hof-podium-medal) { font-size: 1.35rem; }
+    @media (max-width: 600px) {
+      /* Stack top-4 as a vertical list with horizontal rows. */
+      .hof-podium {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      :global(.hof-podium-card) {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        text-align: left;
+        gap: 0.75rem;
+        padding: 0.75rem 0.9rem;
+      }
+      :global(.hof-podium-card.is-rank-1) { order: 1; padding: 0.85rem 0.9rem; }
+      :global(.hof-podium-card.is-rank-2) { order: 2; }
+      :global(.hof-podium-card.is-rank-3) { order: 3; }
+      :global(.hof-podium-card.is-fourth) { order: 4; margin-top: 0; }
+      :global(.hof-podium-rank) { display: none; }
+      :global(.hof-podium-medal) { font-size: 1.4rem; }
       :global(.hof-podium-card.is-rank-1 .hof-podium-medal) { font-size: 1.55rem; }
-      :global(.hof-podium-initials) { min-width: 64px; height: 28px; font-size: 0.8rem; }
-      :global(.hof-podium-points) { font-size: 0.85rem; }
-      :global(.hof-podium-card.is-rank-1 .hof-podium-rank) { font-size: 1.65rem; }
-      :global(.hof-podium-card.is-rank-2 .hof-podium-rank),
-      :global(.hof-podium-card.is-rank-3 .hof-podium-rank) { font-size: 1.25rem; }
+      :global(.hof-podium-initials) {
+        flex: 0 0 auto;
+        min-width: 72px;
+        height: 30px;
+        font-size: 0.85rem;
+      }
+      :global(.hof-podium-points) {
+        margin-left: auto;
+        font-size: 0.9rem;
+      }
     }
 
     /* Rows are injected via innerHTML and don't carry the Astro scope
