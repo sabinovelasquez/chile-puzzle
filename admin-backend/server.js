@@ -59,6 +59,14 @@ async function sendBrevoEmail({ to, subject, htmlContent }) {
 }
 
 // ============================================================
+// STATS — lightweight public endpoint for landing page
+// ============================================================
+app.get('/api/stats', (req, res) => {
+  const { n } = db.prepare('SELECT COUNT(*) as n FROM locations WHERE active = 1').get();
+  res.json({ activeLocations: n, updatedAt: new Date().toISOString() });
+});
+
+// ============================================================
 // LOCATIONS — Paginated GET with filters
 // ============================================================
 app.get('/api/locations', (req, res) => {

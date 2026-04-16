@@ -2123,10 +2123,10 @@ try {
     document.querySelectorAll('.lang-toggle button').forEach(btn => {
       btn.addEventListener('click', () => setLang(btn.dataset.lang));
     });
-    // ── Live locations count (reads lightweight stats.json, not the full API) ──
+    // ── Live locations count (lightweight endpoint, not the full locations API) ──
     (async () => {
       try {
-        const res = await fetch('https://games.sabino.cl/zoominchile/stats.json');
+        const res = await fetch('https://games.sabino.cl/zoominchile/api/stats');
         if (!res.ok) return;
         const stats = await res.json();
         const count = stats.activeLocations || 0;
