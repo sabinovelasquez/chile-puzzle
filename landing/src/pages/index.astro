@@ -101,6 +101,7 @@ try {
 
   <!-- Phosphor Icons -->
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
 
   <!-- JSON-LD -->
   <script type="application/ld+json" set:html={JSON.stringify({
@@ -370,24 +371,31 @@ try {
 
     .hero-stats {
       display: flex;
-      gap: 2rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
       margin-top: 2.5rem;
       padding-top: 2rem;
       border-top: 1px solid var(--border);
     }
 
-    .stat-item { text-align: left; }
-
-    .stat-num {
-      font-family: var(--font-display);
-      font-size: 1.1rem;
-      font-weight: 700;
+    .stat-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.85rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 600;
       color: var(--text);
+      letter-spacing: -0.005em;
     }
 
-    .stat-label {
-      font-size: 0.78rem;
-      color: var(--text-dim);
+    .stat-chip .ph {
+      font-size: 0.95rem;
+      color: var(--accent);
     }
 
     /* ═══════════════════ PHONE MOCKUP ═══════════════════ */
@@ -550,8 +558,9 @@ try {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 1.25rem;
+      padding: 1.5rem 1.25rem;
       transition: all 0.25s;
+      text-align: center;
     }
 
     .feature-card:hover {
@@ -567,7 +576,7 @@ try {
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 0.75rem;
+      margin: 0 auto 0.75rem;
     }
 
     .feature-icon .ph {
@@ -588,9 +597,9 @@ try {
       line-height: 1.55;
     }
 
-    /* ═══════════════════ GALLERY (app screenshots) ═══════════════════ */
+    /* ═══════════════════ GALLERY (coverflow carousel) ═══════════════════ */
     .gallery {
-      padding: 5rem 2rem;
+      padding: 5rem 0 6rem;
       overflow: hidden;
       background: var(--bg);
     }
@@ -598,7 +607,7 @@ try {
     .gallery-header {
       max-width: var(--max-w);
       margin: 0 auto;
-      padding: 0 0 2.5rem;
+      padding: 0 2rem 2.5rem;
       text-align: center;
     }
 
@@ -608,39 +617,87 @@ try {
       margin-top: 0.5rem;
     }
 
-    .gallery-track {
-      display: inline-flex;
-      gap: 1.5rem;
-      padding: 0 2rem 1rem;
+    /* Stage: 2D minimal carousel with edge fade */
+    .gallery-stage {
+      position: relative;
+      width: 100%;
+      height: 560px;
+      padding-bottom: 24px;
+      overflow: hidden;
+      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14%, #000 86%, transparent 100%);
+              mask-image: linear-gradient(to right, transparent 0, #000 14%, #000 86%, transparent 100%);
     }
 
-    .gallery-track-wrapper {
-      overflow-x: auto;
-      scrollbar-width: none;
-      scroll-snap-type: x mandatory;
-      text-align: center;
-    }
-    .gallery-track-wrapper::-webkit-scrollbar {
-      display: none;
+    .gallery-track {
+      position: absolute;
+      inset: 0;
     }
 
     .gallery-phone {
-      flex: 0 0 auto;
-      width: 180px;
-      scroll-snap-align: start;
-      transition: transform 0.3s;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 240px;
+      /* aspect-ratio drives height so we never overflow */
+      aspect-ratio: 9 / 19.5;
+      transform-origin: center center;
+      cursor: pointer;
+      will-change: transform, opacity;
+      transition:
+        transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+      /* Default = far/hidden; JS positions active siblings */
+      transform: translate(-50%, -50%) scale(0.5);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 0;
     }
 
-    .gallery-phone:hover {
-      transform: translateY(-6px);
+    /* 2D positions — phones never overlap each other ───────────────── */
+    .gallery-phone.is-active {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+      z-index: 30;
+    }
+
+    .gallery-phone.is-near-prev {
+      transform: translate(-50%, -50%) translateX(-115%) scale(0.82);
+      opacity: 0.78;
+      pointer-events: auto;
+      z-index: 20;
+    }
+
+    .gallery-phone.is-near-next {
+      transform: translate(-50%, -50%) translateX(115%) scale(0.82);
+      opacity: 0.78;
+      pointer-events: auto;
+      z-index: 20;
+    }
+
+    .gallery-phone.is-far-prev {
+      transform: translate(-50%, -50%) translateX(-205%) scale(0.65);
+      opacity: 0.45;
+      pointer-events: auto;
+      z-index: 10;
+    }
+
+    .gallery-phone.is-far-next {
+      transform: translate(-50%, -50%) translateX(205%) scale(0.65);
+      opacity: 0.45;
+      pointer-events: auto;
+      z-index: 10;
     }
 
     .gallery-phone-frame {
       background: #1A1A1A;
-      border-radius: 24px;
+      border-radius: 28px;
       padding: 8px;
       box-shadow: var(--shadow-lg);
       position: relative;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
     }
 
     .gallery-phone-frame::before {
@@ -649,37 +706,99 @@ try {
       top: 8px;
       left: 50%;
       transform: translateX(-50%);
-      width: 60px;
+      width: 64px;
       height: 18px;
       background: #1A1A1A;
-      border-radius: 0 0 10px 10px;
+      border-radius: 0 0 11px 11px;
       z-index: 10;
     }
 
-    .gallery-phone-frame img {
+    .gallery-phone-frame img,
+    .gallery-phone-frame video {
       width: 100%;
-      border-radius: 18px;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 20px;
       display: block;
+      background: #000;
     }
 
-    .gallery-phone-label {
-      text-align: center;
-      margin-top: 0.75rem;
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: var(--text-dim);
+    .gallery-phone-frame img {
+      filter: blur(0.4px) contrast(1.03);
     }
 
-    .gallery-placeholder {
-      width: 100%;
-      aspect-ratio: 9/19.5;
-      border-radius: 18px;
-      background: var(--bg-alt);
+    /* Gallery lightbox modal */
+    .gallery-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--text-dim);
-      font-size: 0.75rem;
+      padding: 1.5rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+      cursor: pointer;
+    }
+
+    .gallery-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .gallery-overlay img,
+    .gallery-overlay video {
+      max-width: min(420px, 90vw);
+      max-height: 85vh;
+      border-radius: 16px;
+      object-fit: contain;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+      transform: translateY(16px) scale(0.95);
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+      cursor: default;
+    }
+
+    .gallery-overlay.open img,
+    .gallery-overlay.open video {
+      transform: translateY(0) scale(1);
+    }
+
+    /* Navigation chevrons — hidden per spec; navigation via dots/swipe/click */
+    .gallery-nav { display: none !important; }
+
+    /* Dots indicator (JS-injected → :global so scoped CSS doesn't strip them) */
+    .gallery-dots {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-top: 0.5rem;
+    }
+    :global(.gallery-dot) {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      opacity: 0.35;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.2s, background 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    :global(.gallery-dot:hover) { opacity: 0.7; }
+    :global(.gallery-dot.is-active) {
+      opacity: 1;
+      transform: scale(1.4);
+      background: var(--accent);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .gallery-phone { transition: opacity 0.2s; }
     }
 
     /* ═══════════════════ CHANGELOG ═══════════════════ */
@@ -803,13 +922,494 @@ try {
       background: var(--accent);
     }
 
+    /* ═══════════════════ HALL OF FAME ═══════════════════ */
+    .hof-section {
+      padding: 5rem 2rem;
+      background: var(--bg);
+    }
+
+    .hof-inner {
+      max-width: 640px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .hof-inner .section-title {
+      margin-left: auto;
+      margin-right: auto;
+      margin-bottom: 0.5rem;
+    }
+
+    .hof-sub {
+      color: var(--text-dim);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .hof-card {
+      /* Transparent layout wrapper — each rank below renders as its own card */
+      text-align: left;
+    }
+
+    .hof-card-footer {
+      margin-top: 1.25rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .hof-view-all {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.25rem;
+      background: var(--bg-card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .hof-view-all:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: var(--shadow-md);
+    }
+
+    .hof-view-all .ph { font-size: 1rem; }
+
+    /* ── Podium: top 4 mini-cards (pricing-pack style) ── */
+    .hof-podium {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.85rem;
+      align-items: end;
+    }
+
+    :global(.hof-podium-card) {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 0.75rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    }
+
+    :global(.hof-podium-card:hover) {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    /* Podium order: #2 left, #1 center (taller), #3 right, #4 below center */
+    :global(.hof-podium-card.is-rank-1) {
+      grid-column: 2;
+      grid-row: 1;
+      background: linear-gradient(180deg, rgba(201,169,97,0.14), var(--bg-card) 65%);
+      border-color: rgba(201,169,97,0.35);
+      padding: 1.35rem 0.85rem;
+    }
+    :global(.hof-podium-card.is-rank-2) { grid-column: 1; grid-row: 1; }
+    :global(.hof-podium-card.is-rank-3) { grid-column: 3; grid-row: 1; }
+    :global(.hof-podium-card.is-fourth) {
+      grid-column: 2;
+      grid-row: 2;
+      margin-top: 0.35rem;
+    }
+
+    /* Rank number */
+    :global(.hof-podium-rank) {
+      font-family: var(--font-display);
+      font-weight: 800;
+      color: var(--text-dim);
+      line-height: 1;
+    }
+    :global(.hof-podium-card.is-rank-1 .hof-podium-rank) { font-size: 2rem; color: #C9A961; }
+    :global(.hof-podium-card.is-rank-2 .hof-podium-rank) { font-size: 1.5rem; color: #BFC7CF; }
+    :global(.hof-podium-card.is-rank-3 .hof-podium-rank) { font-size: 1.5rem; color: #CD7F32; }
+
+    :global(.hof-podium-medal) {
+      font-size: 1.55rem;
+      line-height: 1;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
+    }
+
+    :global(.hof-podium-card.is-rank-1 .hof-podium-medal) {
+      font-size: 1.85rem;
+      filter: drop-shadow(0 2px 6px rgba(201,169,97,0.45));
+    }
+
+    :global(.hof-podium-rank-pill) {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 36px;
+      height: 28px;
+      padding: 0 0.5rem;
+      border-radius: 8px;
+      background: #F1F4F8;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      letter-spacing: 0.02em;
+    }
+
+    /* Initials: outlined (border grey, text blue) instead of solid bg */
+    :global(.hof-podium-initials) {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 78px;
+      height: 32px;
+      padding: 0 0.7rem;
+      background: transparent;
+      color: var(--accent);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 0.9rem;
+      letter-spacing: 0.18em;
+    }
+
+    :global(.hof-podium-card.is-rank-1 .hof-podium-initials) {
+      border-color: rgba(21,101,192,0.35);
+      color: #1565C0;
+    }
+
+    :global(.hof-podium-points) {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--gold);
+      font-variant-numeric: tabular-nums;
+    }
+
+    :global(.hof-podium-points-unit) {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      font-weight: 500;
+      margin-left: 0.15rem;
+      letter-spacing: 0.02em;
+    }
+
+    @media (max-width: 480px) {
+      .hof-podium { gap: 0.6rem; }
+      :global(.hof-podium-card) { padding: 0.85rem 0.5rem; gap: 0.4rem; }
+      :global(.hof-podium-medal) { font-size: 1.35rem; }
+      :global(.hof-podium-card.is-rank-1 .hof-podium-medal) { font-size: 1.55rem; }
+      :global(.hof-podium-initials) { min-width: 64px; height: 28px; font-size: 0.8rem; }
+      :global(.hof-podium-points) { font-size: 0.85rem; }
+      :global(.hof-podium-card.is-rank-1 .hof-podium-rank) { font-size: 1.65rem; }
+      :global(.hof-podium-card.is-rank-2 .hof-podium-rank),
+      :global(.hof-podium-card.is-rank-3 .hof-podium-rank) { font-size: 1.25rem; }
+    }
+
+    /* Rows are injected via innerHTML and don't carry the Astro scope
+       attribute, so anything inside .hof-row must be :global(). */
+    :global(.hof-list) {
+      display: flex;
+      flex-direction: column;
+    }
+
+    :global(.hof-row) {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1px solid #EEF1F5;
+      transition: background 0.15s;
+    }
+
+    :global(.hof-row:last-child) {
+      border-bottom: none;
+    }
+
+    :global(.hof-row.is-top1) {
+      background: linear-gradient(90deg, rgba(201,169,97,0.10), transparent 60%);
+    }
+
+    :global(.hof-rank-col) {
+      width: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    :global(.hof-medal) {
+      font-size: 1.6rem;
+      line-height: 1;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.12));
+    }
+
+    :global(.hof-row.is-top1 .hof-medal) {
+      font-size: 1.95rem;
+      filter: drop-shadow(0 2px 6px rgba(201,169,97,0.45));
+    }
+
+    :global(.hof-rank) {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 26px;
+      padding: 0 0.4rem;
+      border-radius: 7px;
+      background: #F1F4F8;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      letter-spacing: 0.02em;
+    }
+
+    :global(.hof-initials) {
+      flex: 1;
+      height: 34px;
+      max-width: 110px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 0.95rem;
+      letter-spacing: 0.18em;
+    }
+
+    :global(.hof-points) {
+      margin-left: auto;
+    }
+
+    :global(.hof-row.is-top1 .hof-initials) {
+      background: linear-gradient(135deg, #1565C0, #1976D2);
+      box-shadow: 0 2px 8px rgba(21,101,192,0.25);
+    }
+
+    :global(.hof-points) {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--gold);
+      font-variant-numeric: tabular-nums;
+      min-width: 78px;
+      text-align: right;
+    }
+
+    :global(.hof-points-unit) {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      font-weight: 500;
+      margin-left: 0.15rem;
+      letter-spacing: 0.02em;
+    }
+
+    .hof-empty {
+      padding: 2.5rem 1rem;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    .hof-empty i {
+      font-size: 2.25rem;
+      color: var(--border);
+    }
+
+    .hof-loading {
+      padding: 2rem 1rem;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    /* ── Hall of Fame Modal ── */
+    .hof-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+
+    .hof-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .hof-modal {
+      background: var(--bg-card);
+      border-radius: 20px;
+      max-width: 480px;
+      width: 100%;
+      max-height: 90vh;
+      position: relative;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+      transform: translateY(16px);
+      transition: transform 0.25s;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .hof-overlay.open .hof-modal {
+      transform: translateY(0);
+    }
+
+    .hof-modal-close {
+      position: absolute;
+      top: 0.85rem;
+      right: 0.85rem;
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: rgba(255,255,255,0.85);
+      border-radius: 50%;
+      font-size: 1.15rem;
+      color: var(--text-dim);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, color 0.2s;
+      z-index: 2;
+    }
+
+    .hof-modal-close:hover {
+      background: #fff;
+      color: var(--text);
+    }
+
+    .hof-modal-header {
+      padding: 1.75rem 1.5rem 1.25rem;
+      text-align: center;
+      background: linear-gradient(180deg, var(--accent-light) 0%, transparent 100%);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hof-tease {
+      width: 88px;
+      height: 88px;
+      margin: 0 auto 0.85rem;
+      border-radius: 18px;
+      background-size: cover;
+      background-position: center;
+      box-shadow: 0 6px 20px rgba(21,101,192,0.18), 0 0 0 4px #fff, 0 0 0 5px var(--gold);
+      position: relative;
+    }
+
+    .hof-tease::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 18px;
+      background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.18), transparent 60%);
+      pointer-events: none;
+    }
+
+    .hof-modal-eyebrow {
+      font-family: var(--font-body);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.35rem;
+    }
+
+    .hof-modal-title {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .hof-modal-body {
+      padding: 0.5rem 0;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .hof-modal-loading {
+      padding: 2rem 1rem;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 540px) {
+      .hof-modal { max-height: 92vh; }
+      .hof-tease { width: 76px; height: 76px; }
+      .hof-modal-title { font-size: 1.2rem; }
+    }
+
     /* ═══════════════════ CTA ═══════════════════ */
     .cta {
       padding: 5rem 2rem;
       text-align: center;
       position: relative;
       background: var(--bg);
+      overflow: hidden;
     }
+
+    /* ── girl_cat illustrations ── */
+    .hero-cat {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 106px;
+      pointer-events: none;
+      z-index: 3;
+      display: block;
+    }
+
+    .about-separator {
+      display: flex;
+      justify-content: center;
+      margin-top: 3rem;
+    }
+
+    .about-separator img {
+      height: 122px;
+      width: auto;
+      display: block;
+      pointer-events: none;
+    }
+
+    .cta-cat {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 144px;
+      height: auto;
+      pointer-events: none;
+      z-index: 1;
+    }
+
 
     .cta-box {
       max-width: 560px;
@@ -937,6 +1537,7 @@ try {
       .hero-sub { margin: 0 auto 2rem; }
       .hero-actions { justify-content: center; }
       .hero-stats { justify-content: center; }
+      .hero { padding-bottom: 9rem; }
       .hero-phone { order: -1; }
       .about-features-grid { grid-template-columns: 1fr; gap: 2.5rem; }
       .story-col { text-align: center; }
@@ -944,20 +1545,45 @@ try {
       .story-credits { justify-content: center; }
       .features-grid { grid-template-columns: 1fr 1fr; }
       .nav-links a.hide-mobile { display: none; }
-      .gallery-phone { width: 160px; }
-      .gallery-track { padding: 0 1.5rem 1rem; }
-      .gallery-track-wrapper { text-align: left; }
+      .gallery-stage { height: 480px; }
+      .gallery-phone { width: 210px; }
+      .gallery-phone.is-near-prev { transform: translate(-50%, -50%) translateX(-110%) scale(0.78); }
+      .gallery-phone.is-near-next { transform: translate(-50%, -50%) translateX(110%)  scale(0.78); }
+      .gallery-phone.is-far-prev  { transform: translate(-50%, -50%) translateX(-195%) scale(0.62); }
+      .gallery-phone.is-far-next  { transform: translate(-50%, -50%) translateX(195%)  scale(0.62); }
     }
 
     @media (max-width: 600px) {
       .features-grid { grid-template-columns: 1fr; }
       .phone-frame { width: 240px; height: 500px; }
-      .hero-stats { gap: 1.5rem; }
-      .stat-num { font-size: 1.4rem; }
       nav { padding: 0.65rem 1rem; }
-      .gallery-phone { width: 140px; }
-      .gallery-track { padding: 0 1rem 1rem; }
-      .gallery-track-wrapper { text-align: left; }
+      .gallery { padding: 4rem 0 5rem; }
+      .gallery-stage { height: 420px; }
+      .gallery-phone { width: 180px; }
+      .gallery-phone.is-near-prev { transform: translate(-50%, -50%) translateX(-105%) scale(0.74); }
+      .gallery-phone.is-near-next { transform: translate(-50%, -50%) translateX(105%)  scale(0.74); }
+      .gallery-phone.is-far-prev  { transform: translate(-50%, -50%) translateX(-185%) scale(0.58); }
+      .gallery-phone.is-far-next  { transform: translate(-50%, -50%) translateX(185%)  scale(0.58); }
+    }
+  </style>
+
+  <!-- Global styles for JS-injected elements (Astro scoping doesn't reach them) -->
+  <style is:global>
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22C55E;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+      animation: live-pulse 1.8s ease-out infinite;
+      flex-shrink: 0;
+      display: inline-block;
+    }
+
+    @keyframes live-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
+      70%  { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
     }
   </style>
 </head>
@@ -973,6 +1599,7 @@ try {
       <a href="#story" class="hide-mobile" data-es="Historia" data-en="Story">Historia</a>
       <a href="#features" class="hide-mobile" data-es="Caracter&iacute;sticas" data-en="Features">Caracter&iacute;sticas</a>
       <a href="#gallery" class="hide-mobile" data-es="Nuestra App" data-en="Our App">Nuestra App</a>
+      <a href="#hof" class="hide-mobile" data-es="Ranking" data-en="Ranking">Ranking</a>
       <a href="#" data-open-tester-modal data-es="Probar la App" data-en="Try It">Probar la App</a>
       <div class="lang-toggle">
         <button class="active" data-lang="es">ES</button>
@@ -990,11 +1617,11 @@ try {
           <span data-es="Gratis en Google Play y App Store" data-en="Free on Google Play &amp; App Store">Gratis en Google Play y App Store</span>
         </div>
         <h1 class="reveal stagger-1">
-          <span data-es="Descubre Chile" data-en="Discover Chile">Descubre Chile</span><br/>
-          <span class="accent" data-es="pieza a pieza" data-en="piece by piece">pieza a pieza</span>
+          <span data-es="Acomp&aacute;&ntilde;anos" data-en="Come explore">Acomp&aacute;&ntilde;anos</span><br/>
+          <span class="accent" data-es="explorando Chile" data-en="Chile with us">explorando Chile</span>
         </h1>
-        <p class="hero-sub reveal stagger-2" data-es="Fotos reales tomadas durante nuestros viajes. Un puzzle, una historia, un rinc&oacute;n de Chile por descubrir." data-en="Real photos taken during our travels. One puzzle, one story, one corner of Chile to discover.">
-          Fotos reales tomadas durante nuestros viajes. Un puzzle, una historia, un rinc&oacute;n de Chile por descubrir.
+        <p class="hero-sub reveal stagger-2" data-es="Cada puzzle es una foto que tomamos en nuestros viajes. Un rinc&oacute;n, una historia, un pedacito de Chile para descubrir juntos." data-en="Each puzzle is a photo we took on our travels. A corner, a story, a little piece of Chile to discover together.">
+          Cada puzzle es una foto que tomamos en nuestros viajes. Un rinc&oacute;n, una historia, un pedacito de Chile para descubrir juntos.
         </p>
         <div class="hero-actions reveal stagger-3">
           <button class="btn-primary" data-open-tester-modal>
@@ -1003,18 +1630,18 @@ try {
           </button>
         </div>
         <div class="hero-stats reveal stagger-4">
-          <div class="stat-item">
-            <div class="stat-num" data-es="Fotos reales" data-en="Real photos">Fotos reales</div>
-            <div class="stat-label" data-es="Nuevas cada semana" data-en="New every week">Nuevas cada semana</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-num" data-es="5 niveles" data-en="5 levels">5 niveles</div>
-            <div class="stat-label" data-es="De f&aacute;cil a locura" data-en="Easy to insane">De f&aacute;cil a locura</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-num" data-es="Gratis para siempre" data-en="Free forever">Gratis para siempre</div>
-            <div class="stat-label" data-es="Sin costo oculto" data-en="No hidden costs">Sin costo oculto</div>
-          </div>
+          <span class="stat-chip">
+            <i class="ph ph-camera"></i>
+            <span data-es="Fotos reales" data-en="Real photos">Fotos reales</span>
+          </span>
+          <span class="stat-chip" id="locationsChip">
+            <i class="ph ph-map-pin"></i>
+            <span id="locationsText" data-es="Lugares reales" data-en="Real places">Lugares reales</span>
+          </span>
+          <span class="stat-chip">
+            <i class="ph ph-gift"></i>
+            <span data-es="Gratis para siempre" data-en="Free forever">Gratis para siempre</span>
+          </span>
         </div>
       </div>
 
@@ -1033,6 +1660,7 @@ try {
         </div>
       </div>
     </div>
+    <img class="hero-cat" src={`${baseUrl}girl_cat_sit.png`} alt="" width="120" height="106" />
   </section>
 
   <!-- ABOUT + FEATURES (side by side) -->
@@ -1105,6 +1733,9 @@ try {
         </div>
       </div>
     </div>
+    <div class="about-separator reveal">
+      <img src={`${baseUrl}girl_cat_stand.png`} alt="" width="106" height="122" />
+    </div>
   </section>
 
   <!-- GALLERY (app screenshots) -->
@@ -1112,47 +1743,127 @@ try {
     <div class="gallery-header">
       <div class="section-label reveal" data-es="Nuestra App" data-en="Our App">Nuestra App</div>
       <h2 class="section-title reveal stagger-1" data-es="Nuestra App" data-en="Our App">Nuestra App</h2>
-      <p class="gallery-sub reveal stagger-2" data-es="Nuevas ubicaciones y mejoras cada semana." data-en="New locations and improvements every week.">Nuevas ubicaciones y mejoras cada semana.</p>
+      <p class="gallery-sub reveal stagger-2" data-es="Nuevas ubicaciones cada semana." data-en="New locations every week.">Nuevas ubicaciones cada semana.</p>
     </div>
-    <div class="gallery-track-wrapper">
-    <div class="gallery-track">
-      <div class="gallery-phone reveal stagger-1">
-        <div class="gallery-phone-frame">
-          <img src={`${baseUrl}screenshots/main-view.jpg`} alt="Location grid showing Chilean landmarks like Embajada de China, Galeria de la Merced, and Ruinas de la Iglesia Santa Ana with photos, favorites, and progress filters" />
+    <div class="gallery-stage reveal" id="galleryStage">
+      <button class="gallery-nav prev" type="button" aria-label="Anterior" data-gallery-prev>
+        <i class="ph ph-caret-left"></i>
+      </button>
+      <div class="gallery-track" id="galleryTrack">
+        <div class="gallery-phone" data-index="0">
+          <div class="gallery-phone-frame">
+            <img src={`${baseUrl}screenshots/main-view.jpg`} alt="Explorar — grilla de ubicaciones chilenas como Embajada de China, Galería de la Merced y Ruinas de la Iglesia Santa Ana con fotos, favoritos y filtros de progreso" />
+          </div>
         </div>
-        <div class="gallery-phone-label" data-es="Explorar" data-en="Explore">Explorar</div>
+        <div class="gallery-phone" data-index="1">
+          <div class="gallery-phone-frame">
+            <img src={`${baseUrl}screenshots/dialog.jpg`} alt="Detalle — diálogo de ubicación con vista previa de la foto, puntos y opciones de dificultad" />
+          </div>
+        </div>
+        <div class="gallery-phone" data-index="2">
+          <div class="gallery-phone-frame">
+            <img src={`${baseUrl}screenshots/difficulty.jpg`} alt="Dificultad — selección con cuatro niveles: Fácil (3 columnas, 100 pts), Normal (4 columnas), Difícil (5 columnas) y Experto (6 columnas, 350 pts)" />
+          </div>
+        </div>
+        <div class="gallery-phone" data-index="3">
+          <div class="gallery-phone-frame">
+            <img src={`${baseUrl}screenshots/puzzle.jpg`} alt="Puzzle — puzzle activo de Galería de la Merced mostrando un edificio con maceteros de frutilla rojos, cronómetro en 3:07 y 104 movimientos" />
+          </div>
+        </div>
+        <div class="gallery-phone" data-index="4">
+          <div class="gallery-phone-frame">
+            <video
+              src={`${baseUrl}screenshots/help.mp4`}
+              autoplay
+              loop
+              muted
+              playsinline
+              preload="metadata"
+              aria-label="Ayuda — demostración en video del sistema de pistas y ayudas dentro del puzzle"
+            ></video>
+          </div>
+        </div>
+        <div class="gallery-phone" data-index="5">
+          <div class="gallery-phone-frame">
+            <img src={`${baseUrl}screenshots/points_system.jpg`} alt="Puntos — explicación del sistema de puntaje según la dificultad elegida" />
+          </div>
+        </div>
+        <div class="gallery-phone" data-index="6">
+          <div class="gallery-phone-frame">
+            <img src={`${baseUrl}screenshots/ranking.jpg`} alt="Ranking — clasificación por ubicación con los mejores jugadores, iniciales y puntos" />
+          </div>
+        </div>
+        <div class="gallery-phone" data-index="7">
+          <div class="gallery-phone-frame">
+            <img src={`${baseUrl}screenshots/profile.jpg`} alt="Perfil — perfil de explorador con 2630 puntos, 24 puzzles resueltos, mejor tiempo de 21 segundos, 13 de 14 ubicaciones descubiertas y 43% de progreso total" />
+          </div>
+        </div>
+        <div class="gallery-phone" data-index="8">
+          <div class="gallery-phone-frame">
+            <img src={`${baseUrl}screenshots/trophies.jpg`} alt="Trofeos — colección con 16 de 27 desbloqueados, incluyendo Primeros Pasos, En Marcha, Amante de Puzzles y logros bloqueados como Maestro de Puzzles" />
+          </div>
+        </div>
+        <div class="gallery-phone" data-index="9">
+          <div class="gallery-phone-frame">
+            <img src={`${baseUrl}screenshots/restore.jpg`} alt="Respaldo — pantalla de respaldo y restauración de progreso con un código corto para recuperar el avance en otro teléfono" />
+          </div>
+        </div>
       </div>
-      <div class="gallery-phone reveal stagger-2">
-        <div class="gallery-phone-frame">
-          <img src={`${baseUrl}screenshots/difficulty.jpg`} alt="Difficulty selection dialog with four levels: Easy (3 columns, 100 pts), Normal (4 columns), Hard (5 columns), and Expert (6 columns, 350 pts)" />
+      <button class="gallery-nav next" type="button" aria-label="Siguiente" data-gallery-next>
+        <i class="ph ph-caret-right"></i>
+      </button>
+    </div>
+    <div class="gallery-dots" id="galleryDots" role="tablist" aria-label="Gallery navigation"></div>
+  </section>
+
+  <!-- Gallery lightbox -->
+  <div class="gallery-overlay" id="galleryOverlay">
+    <img id="galleryLightbox" src="" alt="" style="display:none;" />
+    <video id="galleryLightboxVideo" src="" autoplay loop muted playsinline style="display:none;"></video>
+  </div>
+
+  <!-- HALL OF FAME -->
+  <section class="hof-section" id="hof">
+    <div class="hof-inner">
+      <div class="section-label reveal" data-es="Ranking Global" data-en="Global Ranking">Ranking Global</div>
+      <h2 class="section-title reveal stagger-1" data-es="Sal&oacute;n de la Fama" data-en="Hall of Fame">Sal&oacute;n de la Fama</h2>
+      <p class="hof-sub reveal stagger-2" data-es="Los 10 mejores puntajes acumulados por todos los jugadores." data-en="Top 10 cumulative scores across all players.">Los 10 mejores puntajes acumulados por todos los jugadores.</p>
+      <div class="hof-card reveal stagger-2" id="hofCard">
+        <div class="hof-loading" id="hofLoading" data-es="Cargando..." data-en="Loading...">Cargando...</div>
+        <div class="hof-podium" id="hofList" style="display:none;"></div>
+        <div class="hof-empty" id="hofEmpty">
+          <i class="ph ph-ranking"></i>
+          <span data-es="Sin puntajes a&uacute;n" data-en="No scores yet">Sin puntajes a&uacute;n</span>
         </div>
-        <div class="gallery-phone-label" data-es="Dificultad" data-en="Difficulty">Dificultad</div>
-      </div>
-      <div class="gallery-phone reveal stagger-3">
-        <div class="gallery-phone-frame">
-          <img src={`${baseUrl}screenshots/puzzle.jpg`} alt="Active puzzle of Galeria de la Merced showing a building with red strawberry planters, timer at 3:07 and 104 moves" />
+        <div class="hof-card-footer" id="hofFooter" style="display:none;">
+          <button type="button" class="hof-view-all" id="hofViewAll">
+            <i class="ph ph-trophy"></i>
+            <span data-es="Ver Top 10" data-en="View Top 10">Ver Top 10</span>
+            <i class="ph ph-arrow-right"></i>
+          </button>
         </div>
-        <div class="gallery-phone-label" data-es="Puzzle" data-en="Puzzle">Puzzle</div>
-      </div>
-      <div class="gallery-phone reveal stagger-4">
-        <div class="gallery-phone-frame">
-          <img src={`${baseUrl}screenshots/completed.jpg`} alt="Puzzle completed screen showing 100 points earned, a tip about the location, Google Maps link, and options to view the photo or continue" />
-        </div>
-        <div class="gallery-phone-label" data-es="Completado" data-en="Completed">Completado</div>
-      </div>
-      <div class="gallery-phone reveal stagger-5">
-        <div class="gallery-phone-frame">
-          <img src={`${baseUrl}screenshots/profile.jpg`} alt="Explorer profile with 2630 points, 24 puzzles solved, 21-second best time, 13 of 14 locations discovered, and 43% total progress" />
-        </div>
-        <div class="gallery-phone-label" data-es="Perfil" data-en="Profile">Perfil</div>
-      </div>
-      <div class="gallery-phone reveal stagger-6">
-        <div class="gallery-phone-frame">
-          <img src={`${baseUrl}screenshots/trophies.jpg`} alt="Trophies collection showing 16 of 27 unlocked, including Primeros Pasos, En Marcha, Amante de Puzzles, and locked achievements like Maestro de Puzzles" />
-        </div>
-        <div class="gallery-phone-label" data-es="Trofeos" data-en="Trophies">Trofeos</div>
       </div>
     </div>
+
+    <!-- Top 10 modal -->
+    <div class="hof-overlay" id="hofModal" role="dialog" aria-modal="true" aria-labelledby="hofModalTitle">
+      <div class="hof-modal">
+        <button type="button" class="hof-modal-close" id="hofModalClose" aria-label="Close">&times;</button>
+        <div class="hof-modal-header">
+          <div
+            class="hof-tease"
+            role="img"
+            aria-label="Zoom-In Chile"
+            style={`background-image: url(${baseUrl}icon.png); background-size: cover; background-position: center;`}
+          ></div>
+          <div class="hof-modal-eyebrow" data-es="Ranking Global" data-en="Global Ranking">Ranking Global</div>
+          <h3 class="hof-modal-title" id="hofModalTitle" data-es="Top 10 Mundial" data-en="Worldwide Top 10">Top 10 Mundial</h3>
+        </div>
+        <div class="hof-modal-body">
+          <div class="hof-modal-loading" id="hofModalLoading" data-es="Cargando..." data-en="Loading...">Cargando...</div>
+          <div class="hof-list" id="hofModalList" style="display:none;"></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1186,6 +1897,7 @@ try {
 
   <!-- CTA -->
   <section class="cta" id="download">
+    <img class="cta-cat" src={`${baseUrl}girl_cat_chill.png`} alt="" width="144" height="91" />
     <div class="cta-box">
       <h2 class="reveal" data-es="Pronto en Google Play y App Store" data-en="Coming soon to Google Play &amp; App Store">Pronto en Google Play y App Store</h2>
       <p class="reveal stagger-1" data-es="Estamos en fase de testing. &Uacute;nete como tester y s&eacute; de los primeros en jugar." data-en="We're in testing phase. Join as a tester and be among the first to play.">Estamos en fase de testing. &Uacute;nete como tester y s&eacute; de los primeros en jugar.</p>
@@ -1234,6 +1946,164 @@ try {
 
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
+    // ── Gallery Coverflow ──
+    (() => {
+      const stage = document.getElementById('galleryStage');
+      const track = document.getElementById('galleryTrack');
+      const dotsContainer = document.getElementById('galleryDots');
+      if (!stage || !track || !dotsContainer) return;
+
+      const phones = Array.from(track.querySelectorAll('.gallery-phone'));
+      if (!phones.length) return;
+
+      const total = phones.length;
+      let active = 0;
+
+      // Build dot indicators
+      phones.forEach((_, i) => {
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'gallery-dot';
+        dot.setAttribute('role', 'tab');
+        dot.setAttribute('aria-label', `Slide ${i + 1}`);
+        dot.addEventListener('click', () => goTo(i));
+        dotsContainer.appendChild(dot);
+      });
+      const dots = Array.from(dotsContainer.children);
+
+      const classFor = (i) => {
+        let d = i - active;
+        if (d > total / 2) d -= total;
+        if (d < -total / 2) d += total;
+        if (d === 0) return 'is-active';
+        if (d === -1) return 'is-near-prev';
+        if (d === 1) return 'is-near-next';
+        if (d === -2) return 'is-far-prev';
+        if (d === 2) return 'is-far-next';
+        return '';
+      };
+
+      const update = () => {
+        phones.forEach((phone, i) => {
+          phone.classList.remove('is-active', 'is-near-prev', 'is-near-next', 'is-far-prev', 'is-far-next');
+          const cls = classFor(i);
+          if (cls) phone.classList.add(cls);
+
+          // Pause/play the video to save CPU when off-center
+          const video = phone.querySelector('video');
+          if (video) {
+            if (i === active) {
+              const p = video.play();
+              if (p && typeof p.catch === 'function') p.catch(() => {});
+            } else {
+              video.pause();
+            }
+          }
+        });
+        dots.forEach((d, i) => d.classList.toggle('is-active', i === active));
+      };
+
+      const goTo = (i) => {
+        active = ((i % total) + total) % total;
+        update();
+      };
+      const next = () => goTo(active + 1);
+      const prev = () => goTo(active - 1);
+
+      // Gallery lightbox
+      const overlay = document.getElementById('galleryOverlay');
+      const lbImg = document.getElementById('galleryLightbox');
+      const lbVideo = document.getElementById('galleryLightboxVideo');
+      const closeLightbox = () => {
+        overlay.classList.remove('open');
+        lbImg.style.display = 'none';
+        lbVideo.style.display = 'none';
+        lbVideo.pause();
+        startAutoplay();
+      };
+      overlay.addEventListener('click', closeLightbox);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && overlay.classList.contains('open')) closeLightbox();
+      });
+
+      // Click-to-focus or open lightbox on active phone
+      phones.forEach((phone, i) => {
+        phone.addEventListener('click', (e) => {
+          if (i !== active) {
+            e.preventDefault();
+            goTo(i);
+            return;
+          }
+          stopAutoplay();
+          const img = phone.querySelector('img');
+          const video = phone.querySelector('video');
+          if (video) {
+            lbVideo.src = video.src;
+            lbVideo.style.display = 'block';
+            const p = lbVideo.play();
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+          } else if (img) {
+            lbImg.src = img.src;
+            lbImg.alt = img.alt;
+            lbImg.style.display = 'block';
+          }
+          overlay.classList.add('open');
+        });
+      });
+
+      // Keyboard: arrows when stage is focused / hovered
+      stage.setAttribute('tabindex', '0');
+      stage.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
+      });
+
+      // Touch swipe (snappy: low threshold, low velocity gate)
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchActive = false;
+      stage.addEventListener('touchstart', (e) => {
+        if (!e.touches[0]) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchActive = true;
+        stopAutoplay();
+      }, { passive: true });
+      stage.addEventListener('touchend', (e) => {
+        if (!touchActive || !e.changedTouches[0]) return;
+        touchActive = false;
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(dx) < 30 || Math.abs(dx) < Math.abs(dy)) {
+          startAutoplay();
+          return;
+        }
+        if (dx < 0) next(); else prev();
+        startAutoplay();
+      }, { passive: true });
+
+      // Autoplay — pause on hover, resume on leave
+      let autoplayId = null;
+      const AUTOPLAY_MS = 4500;
+      const startAutoplay = () => {
+        stopAutoplay();
+        autoplayId = window.setInterval(next, AUTOPLAY_MS);
+      };
+      const stopAutoplay = () => {
+        if (autoplayId) { clearInterval(autoplayId); autoplayId = null; }
+      };
+      stage.addEventListener('mouseenter', stopAutoplay);
+      stage.addEventListener('mouseleave', startAutoplay);
+      // Pause when tab is hidden (saves cycles, avoids surprise jumps on return)
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) stopAutoplay(); else startAutoplay();
+      });
+
+      // Initial paint — first item is the protagonist
+      update();
+      startAutoplay();
+    })();
+
     // ── Bilingual Toggle ──
     function setLang(lang) {
       document.querySelectorAll('.lang-toggle button').forEach(b => b.classList.remove('active'));
@@ -1253,6 +2123,30 @@ try {
     document.querySelectorAll('.lang-toggle button').forEach(btn => {
       btn.addEventListener('click', () => setLang(btn.dataset.lang));
     });
+    // ── Live locations count (reads lightweight stats.json, not the full API) ──
+    (async () => {
+      try {
+        const res = await fetch('https://games.sabino.cl/zoominchile/stats.json');
+        if (!res.ok) return;
+        const stats = await res.json();
+        const count = stats.activeLocations || 0;
+        if (!count) return;
+        const lang = document.documentElement.lang || 'es';
+        const chip = document.getElementById('locationsChip');
+        const text = document.getElementById('locationsText');
+        const esText = `${count} lugares`;
+        const enText = `${count} locations`;
+        text.setAttribute('data-es', esText);
+        text.setAttribute('data-en', enText);
+        text.textContent = lang === 'en' ? enText : esText;
+        chip.classList.add('stat-chip-live');
+        const dot = document.createElement('span');
+        dot.className = 'live-dot';
+        dot.setAttribute('aria-label', 'Live');
+        chip.insertBefore(dot, chip.firstChild);
+      } catch (_) {}
+    })();
+
     // ── Tester Spots ──
     (async () => {
       try {
@@ -1269,6 +2163,102 @@ try {
         el.textContent = lang === 'en' ? `Only ${remaining} spots left` : `Solo ${remaining} cupos disponibles`;
         container.style.display = '';
       } catch (_) {}
+    })();
+
+    // ── Hall of Fame ──
+    (async () => {
+      const loading = document.getElementById('hofLoading');
+      const list = document.getElementById('hofList');
+      const empty = document.getElementById('hofEmpty');
+      const footer = document.getElementById('hofFooter');
+      const modal = document.getElementById('hofModal');
+      const modalClose = document.getElementById('hofModalClose');
+      const modalLoading = document.getElementById('hofModalLoading');
+      const modalList = document.getElementById('hofModalList');
+      const viewAllBtn = document.getElementById('hofViewAll');
+
+      const showEmpty = () => {
+        loading.style.display = 'none';
+        list.style.display = 'none';
+        footer.style.display = 'none';
+        empty.style.display = 'flex';
+      };
+
+      const medalColors = { 1: '#C9A961', 2: '#BFC7CF', 3: '#CD7F32' };
+      const fmtPts = (n) => n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : String(n);
+
+      const rowHtml = (e, i) => {
+        const rank = e.rank ?? i + 1;
+        const pts = e.totalPoints ?? e.points ?? 0;
+        const initials = (e.initials || '---').toString().toUpperCase();
+        const rankEl = rank <= 3
+          ? `<i class="ph-fill ph-medal hof-medal" style="color:${medalColors[rank]}"></i>`
+          : `<span class="hof-rank">#${rank}</span>`;
+        const top1 = rank === 1 ? ' is-top1' : '';
+        return `
+          <div class="hof-row${top1}">
+            <div class="hof-rank-col">${rankEl}</div>
+            <div class="hof-initials">${initials}</div>
+            <div class="hof-points">${fmtPts(pts)}<span class="hof-points-unit">pts</span></div>
+          </div>
+        `;
+      };
+
+      const cardHtml = (e, i) => {
+        const rank = e.rank ?? i + 1;
+        const pts = e.totalPoints ?? e.points ?? 0;
+        const initials = (e.initials || '---').toString().toUpperCase();
+        const medalEl = rank <= 3
+          ? `<i class="ph-fill ph-medal hof-podium-medal" style="color:${medalColors[rank]}"></i>`
+          : `<span class="hof-podium-rank-pill">#${rank}</span>`;
+        const rankNum = rank <= 3
+          ? `<div class="hof-podium-rank">${rank}</div>` : '';
+        const classes = ['hof-podium-card', `is-rank-${rank}`];
+        if (rank === 4) classes.push('is-fourth');
+        return `
+          <div class="${classes.join(' ')}">
+            ${rankNum}
+            ${medalEl}
+            <div class="hof-podium-initials">${initials}</div>
+            <div class="hof-podium-points">${fmtPts(pts)}<span class="hof-podium-points-unit">pts</span></div>
+          </div>
+        `;
+      };
+
+      // Modal open/close wiring (set up regardless of fetch outcome)
+      const openModal = () => modal.classList.add('open');
+      const closeModal = () => modal.classList.remove('open');
+      modalClose.addEventListener('click', closeModal);
+      modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+      });
+      viewAllBtn.addEventListener('click', openModal);
+
+      try {
+        const res = await fetch('https://games.sabino.cl/zoominchile/api/leaderboard?limit=10');
+        if (!res.ok) { showEmpty(); return; }
+        const data = await res.json();
+        const entries = Array.isArray(data) ? data : (data.entries || []);
+        if (!entries.length) { showEmpty(); return; }
+
+        // Inline: top 4 (podium pricing-pack cards)
+        list.innerHTML = entries.slice(0, 4).map(cardHtml).join('');
+        loading.style.display = 'none';
+        list.style.display = 'grid';
+
+        // Footer "View all" only when there are more than 4 entries
+        if (entries.length > 4) {
+          footer.style.display = 'flex';
+        }
+
+        // Modal: full top 10
+        modalList.innerHTML = entries.map(rowHtml).join('');
+        modalLoading.style.display = 'none';
+        modalList.style.display = 'flex';
+      } catch (_) {
+        showEmpty();
+      }
     })();
   </script>
 </body>

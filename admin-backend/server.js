@@ -22,6 +22,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+async function writeStats() {
+  const { n } = db.prepare('SELECT COUNT(*) as n FROM locations WHERE active = 1').get();
+  const stats = { activeLocations: n, updatedAt: new Date().toISOString() };
+  await fs.promises.writeFile(
+    path.join(__dirname, 'public', 'stats.json'),
+    JSON.stringify(stats),
+  );
+}
+
 // ============================================================
 // EMAIL HELPER (Brevo)
 // ============================================================
@@ -179,6 +188,7 @@ app.post('/api/locations', async (req, res) => {
       try { await regenerateAndUpdateImages(obj.id); }
       catch (e) { console.error('renderPerDiffCrops (POST) failed:', e.message); }
     }
+    writeStats().catch(() => {});
     res.json({ success: true, id: obj.id });
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -233,6 +243,7 @@ app.put('/api/locations/:id', async (req, res) => {
       }
     }
   }
+  writeStats().catch(() => {});
   res.json({ success: true, rendered });
 });
 
@@ -288,6 +299,7 @@ app.post('/api/locations/batch-stub', async (req, res) => {
     const rows = db.prepare(
       `SELECT * FROM locations WHERE id IN (${ids.map((_, i) => `@id${i}`).join(',')})`
     ).all(Object.fromEntries(ids.map((id, i) => [`id${i}`, id])));
+    writeStats().catch(() => {});
     res.json({ ids, rows: rows.map(rowToLocation) });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -298,6 +310,7 @@ app.post('/api/locations/batch-stub', async (req, res) => {
 app.delete('/api/locations/:id', (req, res) => {
   const result = db.prepare('DELETE FROM locations WHERE id = @id').run({ id: req.params.id });
   if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
+  writeStats().catch(() => {});
   res.json({ success: true });
 });
 
@@ -1528,4 +1541,5 @@ app.post('/api/progress/backup/email', async (req, res) => {
 // ============================================================
 app.listen(PORT, BIND, () => {
   console.log(`✨ Admin server running at http://${BIND}:${PORT}${URL_PREFIX}`);
+  writeStats().catch(() => {});
 });
