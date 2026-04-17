@@ -735,10 +735,18 @@ async function renderPerDiffCrops(loc) {
   for (const diff of ['3', '4', '5', '6']) {
     const c = loc.cropsByDifficulty?.[diff];
     if (!c) continue;
-    const left   = Math.max(0, Math.min(bbW - 1, Math.round(c.x * bbW)));
-    const top    = Math.max(0, Math.min(bbH - 1, Math.round(c.y * bbH)));
-    const width  = Math.max(1, Math.min(bbW - left, Math.round(c.w * bbW)));
-    const height = Math.max(1, Math.min(bbH - top,  Math.round(c.h * bbH)));
+    let left   = Math.max(0, Math.min(bbW - 1, Math.round(c.x * bbW)));
+    let top    = Math.max(0, Math.min(bbH - 1, Math.round(c.y * bbH)));
+    let width  = Math.max(1, Math.min(bbW - left, Math.round(c.w * bbW)));
+    let height = Math.max(1, Math.min(bbH - top,  Math.round(c.h * bbH)));
+    // _d3 is the photo-viewer image and must always be portrait. If the crop
+    // would produce landscape (e.g. default full-image crop on a landscape photo),
+    // auto-correct by center-cropping to 9:16 within the selected region.
+    if (diff === '3' && width > height) {
+      const portraitW = Math.round(height * 9 / 16);
+      left  = left + Math.round((width - portraitW) / 2);
+      width = portraitW;
+    }
     const outName = `${baseName}_d${diff}.jpg`;
     const outPath = path.join(uploadsDir, outName);
     let pipeline = sharp(sourcePath).rotate();           // honor EXIF orientation
