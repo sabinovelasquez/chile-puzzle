@@ -1738,6 +1738,7 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
   late final PageController _pageController;
   late final List<_TipSlide> _slides;
   int _currentPage = 0;
+  double _tipFontSize = SettingsService.tipFontSize;
 
   @override
   void initState() {
@@ -1952,6 +1953,11 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
                                     setState(() => _currentPage = i),
                                 onClose: () =>
                                     setState(() => _tipsVisible = false),
+                                fontSize: _tipFontSize,
+                                onFontSizeChanged: (v) {
+                                  setState(() => _tipFontSize = v);
+                                  SettingsService.setTipFontSize(v);
+                                },
                               ),
                             ),
                           )
@@ -2001,6 +2007,8 @@ class _TipCarousel extends StatelessWidget {
   final PageController controller;
   final ValueChanged<int> onPageChanged;
   final VoidCallback? onClose;
+  final double fontSize;
+  final ValueChanged<double> onFontSizeChanged;
 
   const _TipCarousel({
     super.key,
@@ -2009,6 +2017,8 @@ class _TipCarousel extends StatelessWidget {
     required this.controller,
     required this.onPageChanged,
     this.onClose,
+    required this.fontSize,
+    required this.onFontSizeChanged,
   });
 
   @override
@@ -2028,7 +2038,7 @@ class _TipCarousel extends StatelessWidget {
             // makes the carousel auto-fit the longest tip — no scrolling,
             // no clipping — while every shorter tip gets the same card size.
             final tipStyle = GoogleFonts.plusJakartaSans(
-              fontSize: 13,
+              fontSize: fontSize,
               color: Colors.grey.shade900,
               height: 1.4,
             );
@@ -2053,7 +2063,8 @@ class _TipCarousel extends StatelessWidget {
             final pillH = 22.0 * scaleFactor;
             const xIconH = 16.0 + 4.0 + 4.0; // icon + padding top/bottom
             final labelBlock = (pillH > xIconH ? pillH : xIconH) + 8.0;
-            final pageH = (tallestTip + labelBlock + verticalPad).ceilToDouble() + 2;
+            const sliderRowH = 32.0; // SizedBox(28) + SizedBox gap(4)
+            final pageH = (tallestTip + labelBlock + verticalPad + sliderRowH).ceilToDouble() + 20;
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -2096,6 +2107,55 @@ class _TipCarousel extends StatelessWidget {
                             Text(
                               slide.text,
                               style: tipStyle,
+                            ),
+                            const SizedBox(height: 4),
+                            SizedBox(
+                              height: 28,
+                              child: Row(
+                                children: [
+                                  Text(
+                                    'A',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade400,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: SliderTheme(
+                                      data: SliderThemeData(
+                                        trackHeight: 2,
+                                        thumbShape: const RoundSliderThumbShape(
+                                            enabledThumbRadius: 6),
+                                        overlayShape:
+                                            const RoundSliderOverlayShape(
+                                                overlayRadius: 12),
+                                        activeTrackColor: Colors.grey.shade400,
+                                        inactiveTrackColor:
+                                            Colors.grey.shade200,
+                                        thumbColor: Colors.grey.shade500,
+                                        overlayColor: Colors.grey.shade300
+                                            .withValues(alpha: 0.4),
+                                      ),
+                                      child: Slider(
+                                        value: fontSize,
+                                        min: 12.0,
+                                        max: 22.0,
+                                        divisions: 10,
+                                        onChanged: onFontSizeChanged,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    'A',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 17,
+                                      color: Colors.grey.shade400,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),

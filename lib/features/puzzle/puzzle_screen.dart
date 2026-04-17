@@ -114,6 +114,7 @@ class _PuzzleScreenState extends State<PuzzleScreen>
   int _referenceUsesLeft = _referenceStartUses;
   bool _tipsVisible = true;
   bool _silFadingOut = false;
+  double _tipFontSize = SettingsService.tipFontSize;
 
   final Stopwatch _stopwatch = Stopwatch();
   final ValueNotifier<int> _moveCount = ValueNotifier(0);
@@ -853,12 +854,81 @@ class _PuzzleScreenState extends State<PuzzleScreen>
                                                       ),
                                                       style: GoogleFonts
                                                           .plusJakartaSans(
-                                                        fontSize: 13,
+                                                        fontSize: _tipFontSize,
                                                         color: Colors
                                                             .grey.shade900,
                                                         height: 1.4,
                                                       ),
                                                     ),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                SizedBox(
+                                                  height: 28,
+                                                  child: Row(
+                                                    children: [
+                                                      Text(
+                                                        'A',
+                                                        style: GoogleFonts
+                                                            .plusJakartaSans(
+                                                          fontSize: 11,
+                                                          color: Colors
+                                                              .grey.shade400,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                      Expanded(
+                                                        child: SliderTheme(
+                                                          data: SliderThemeData(
+                                                            trackHeight: 2,
+                                                            thumbShape: const RoundSliderThumbShape(
+                                                                enabledThumbRadius:
+                                                                    6),
+                                                            overlayShape: const RoundSliderOverlayShape(
+                                                                overlayRadius:
+                                                                    12),
+                                                            activeTrackColor:
+                                                                Colors.grey
+                                                                    .shade400,
+                                                            inactiveTrackColor:
+                                                                Colors.grey
+                                                                    .shade200,
+                                                            thumbColor: Colors
+                                                                .grey.shade500,
+                                                            overlayColor: Colors
+                                                                .grey.shade300
+                                                                .withValues(
+                                                                    alpha: 0.4),
+                                                          ),
+                                                          child: Slider(
+                                                            value: _tipFontSize,
+                                                            min: 12.0,
+                                                            max: 22.0,
+                                                            divisions: 10,
+                                                            onChanged: (v) {
+                                                              setState(() =>
+                                                                  _tipFontSize =
+                                                                      v);
+                                                              SettingsService
+                                                                  .setTipFontSize(
+                                                                      v);
+                                                            },
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        'A',
+                                                        style: GoogleFonts
+                                                            .plusJakartaSans(
+                                                          fontSize: 17,
+                                                          color: Colors
+                                                              .grey.shade400,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
                                               ],

@@ -10,6 +10,7 @@ class SettingsService {
   static const _hintMultiKey = 'hint_multi_last';
   static const _hintReferenceKey = 'hint_reference_last';
   static const _autoSubmitRankingKey = 'setting_auto_submit_ranking';
+  static const _tipFontSizeKey = 'setting_tip_font_size';
 
   static ShimmerMode _shimmerMode = ShimmerMode.flash;
   // Last-picked per-session hints — pre-fill the difficulty modal so the
@@ -21,12 +22,14 @@ class SettingsService {
   // total to the global leaderboard (requires stored initials). Default off
   // so players choose explicitly before anything leaves the device.
   static bool _autoSubmitRanking = false;
+  static double _tipFontSize = 13.0;
 
   static ShimmerMode get shimmerMode => _shimmerMode;
   static bool get lastHintLock => _hintLock;
   static bool get lastHintMulti => _hintMulti;
   static bool get lastHintReference => _hintReference;
   static bool get autoSubmitRanking => _autoSubmitRanking;
+  static double get tipFontSize => _tipFontSize;
 
   static Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
@@ -51,6 +54,7 @@ class SettingsService {
     _hintMulti = _prefs.getBool(_hintMultiKey) ?? false;
     _hintReference = _prefs.getBool(_hintReferenceKey) ?? false;
     _autoSubmitRanking = _prefs.getBool(_autoSubmitRankingKey) ?? false;
+    _tipFontSize = _prefs.getDouble(_tipFontSizeKey) ?? 13.0;
 
     // Clean up legacy session-toggle keys (superseded by the difficulty modal).
     await _prefs.remove('setting_edge_shine');
@@ -62,6 +66,11 @@ class SettingsService {
   static Future<void> setShimmerMode(ShimmerMode mode) async {
     _shimmerMode = mode;
     await _prefs.setString(_shimmerModeKey, mode.name);
+  }
+
+  static Future<void> setTipFontSize(double value) async {
+    _tipFontSize = value;
+    await _prefs.setDouble(_tipFontSizeKey, value);
   }
 
   static Future<void> setAutoSubmitRanking(bool value) async {

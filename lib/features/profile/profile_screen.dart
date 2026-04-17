@@ -569,9 +569,12 @@ class _SettingsDialogState extends State<_SettingsDialog>
                 current: mode,
                 selectedBg: Colors.indigo.shade500,
                 onTap: () async {
-                  await SettingsService.setShimmerMode(ShimmerMode.flash);
+                  final next = mode == ShimmerMode.flash
+                      ? ShimmerMode.off
+                      : ShimmerMode.flash;
+                  await SettingsService.setShimmerMode(next);
                   setState(() {});
-                  _previewShimmer();
+                  if (next != ShimmerMode.off) _previewShimmer();
                 },
               ),
               const SizedBox(width: 14),
@@ -581,20 +584,12 @@ class _SettingsDialogState extends State<_SettingsDialog>
                 current: mode,
                 selectedBg: Colors.indigo.shade500,
                 onTap: () async {
-                  await SettingsService.setShimmerMode(ShimmerMode.shimmer);
+                  final next = mode == ShimmerMode.shimmer
+                      ? ShimmerMode.off
+                      : ShimmerMode.shimmer;
+                  await SettingsService.setShimmerMode(next);
                   setState(() {});
-                  _previewShimmer();
-                },
-              ),
-              const SizedBox(width: 14),
-              _shimmerAvatar(
-                icon: PhosphorIconsBold.prohibit,
-                mode: ShimmerMode.off,
-                current: mode,
-                selectedBg: Colors.grey.shade600,
-                onTap: () async {
-                  await SettingsService.setShimmerMode(ShimmerMode.off);
-                  setState(() {});
+                  if (next != ShimmerMode.off) _previewShimmer();
                 },
               ),
             ],
