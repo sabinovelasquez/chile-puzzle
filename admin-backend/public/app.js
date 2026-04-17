@@ -1007,8 +1007,8 @@ let cropDrag = null;
 let rotationDeg = 0;
 let showDeviceGuides = localStorage.getItem('deviceGuides') !== 'false';
 
-// Phone aspect ratio for crop region (9:16 portrait)
-const PHONE_RATIO = 16 / 9; // h/w in normalized coords relative to image
+// Phone aspect ratio for crop region — 20:9 matches modern tall phones
+const PHONE_RATIO = 20 / 9; // h/w in normalized coords relative to image
 
 function getActiveCrop() { return cropsByDifficulty[activeDifficulty]; }
 function setActiveCrop(x, y, w, h) {

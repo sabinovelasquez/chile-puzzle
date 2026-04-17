@@ -1816,14 +1816,14 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
             child: Center(
               child: CachedNetworkImage(
                 imageUrl: loc.getImageForDifficulty(3),
-                fit: BoxFit.contain,
+                fit: BoxFit.cover,
                 imageBuilder: (ctx, imageProvider) {
                   if (!_imageReady) {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       if (mounted) setState(() => _imageReady = true);
                     });
                   }
-                  return Image(image: imageProvider, fit: BoxFit.contain);
+                  return Image(image: imageProvider, fit: BoxFit.cover);
                 },
                 placeholder: (_, __) => const Center(
                   child: ClipOval(
