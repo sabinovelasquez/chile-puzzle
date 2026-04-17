@@ -803,10 +803,14 @@ class _MapScreenState extends State<MapScreen>
                       _showFullPhoto(loc, langCode, topDiff);
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.seedColor,
-                      side: const BorderSide(color: AppTheme.seedColor),
+                      foregroundColor: const Color(0xFF7396A4),
+                      side: const BorderSide(color: Color(0xFFB8CDD4)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      textStyle: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w500),
                     ),
-                    icon: const Icon(PhosphorIconsBold.image, size: 18),
+                    icon: const Icon(PhosphorIconsBold.image, size: 15),
                     label: Text(langCode == 'es' ? 'Ver completados' : 'View completed'),
                   ),
                 ),

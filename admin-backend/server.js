@@ -373,11 +373,22 @@ app.delete('/api/locations/:id/original', (req, res) => {
   res.json({ success: true });
 });
 
-// Bulk regenerate per-difficulty crops for every location whose original
-// file is still on disk. Idempotent — safe to rerun. Legacy locations
-// without an _orig file are skipped (need a fresh upload).
+// Force-regenerate per-difficulty crops for a single location, regardless of
+// whether crops have changed. Useful to apply new server-side render fixes.
+app.post('/api/locations/:id/regenerate', async (req, res) => {
+  try {
+    const out = await regenerateAndUpdateImages(req.params.id);
+    if (!out) return res.status(404).json({ error: 'No source file found or location missing' });
+    res.json({ success: true, ...out });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Bulk regenerate per-difficulty crops for all locations. Idempotent — safe
+// to rerun. Uses _orig when available, falls back to loc.image for legacy.
 app.post('/api/regenerate-crops', async (req, res) => {
-  const rows = db.prepare("SELECT id FROM locations WHERE original_image != ''").all();
+  const rows = db.prepare("SELECT id FROM locations WHERE image != ''").all();
   const results = { total: rows.length, rendered: [], skipped: [], errors: [] };
   for (const row of rows) {
     try {

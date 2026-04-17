@@ -704,6 +704,20 @@ function openLocEditor(id) {
   document.body.classList.remove('drawer-open');
 }
 
+document.getElementById('regenCropsBtn').onclick = async () => {
+  const btn = document.getElementById('regenCropsBtn');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Regenerating…';
+  try {
+    await postJSON(API_BASE + '/api/locations/' + currentEditId + '/regenerate', {});
+    showToast('Crops regenerated');
+  } catch (e) {
+    showToast('Regen failed: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+};
+
 document.getElementById('deleteLocationBtn').onclick = async () => {
   if (!confirm('Delete this location?')) return;
   await deleteJSON(API_BASE + '/api/locations/' + currentEditId);
