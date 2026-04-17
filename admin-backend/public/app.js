@@ -1415,12 +1415,14 @@ function cropMoveDrag(e) {
 
   let nx = o.x, ny = o.y, nw = o.w;
   const t = cropDrag.type;
+  // Scale vertical drag to width units using the portrait AR and bb dimensions.
+  const arScale = PHONE_RATIO * (p.bbW / p.bbH);
   if (t === 'move') { nx = o.x + dx; ny = o.y + dy; }
   else {
-    // All resize handles → uniform scale via width delta
     if (t.includes('w')) { nx = o.x + dx; nw = o.w - dx; }
     else if (t.includes('e')) { nw = o.w + dx; }
-    else if (t.includes('n') || t.includes('s')) { nw = o.w - dy; } // vertical drag also scales width
+    else if (t === 'n') { ny = o.y + dy; nw = o.w - dy / arScale; } // drag up (dy<0) → crop grows
+    else if (t === 's') { nw = o.w + dy / arScale; }                 // drag down (dy>0) → crop grows
   }
   cropSetValues(nx, ny, nw, 0); // h is auto from aspect ratio
 }
