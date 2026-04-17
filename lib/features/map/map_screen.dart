@@ -1813,29 +1813,55 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
             // static so zooming isn't a freebie after Easy.
             panEnabled: silhouetteEarned,
             scaleEnabled: silhouetteEarned,
-            child: Center(
-              child: CachedNetworkImage(
-                imageUrl: loc.getImageForDifficulty(3),
-                fit: BoxFit.cover,
-                imageBuilder: (ctx, imageProvider) {
-                  if (!_imageReady) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) setState(() => _imageReady = true);
-                    });
-                  }
-                  return Image(image: imageProvider, fit: BoxFit.cover);
-                },
-                placeholder: (_, __) => const Center(
-                  child: ClipOval(
-                    child: SizedBox(width: 95, height: 95, child: _LoaderGif()),
+            child: LayoutBuilder(
+              builder: (ctx, box) {
+                final imageUrl = loc.getImageForDifficulty(3);
+                final crop = loc.hasPreRenderedCrop(3)
+                    ? const [0.0, 0.0, 1.0, 1.0]
+                    : loc.getCropForDifficulty(3);
+                final cX = crop[0], cY = crop[1], cW = crop[2], cH = crop[3];
+                final imgW = box.maxWidth / cW;
+                final imgH = box.maxHeight / cH;
+                return ClipRect(
+                  child: OverflowBox(
+                    maxWidth: imgW,
+                    maxHeight: imgH,
+                    alignment: Alignment(
+                      cW >= 1 ? 0 : (2 * cX / (1 - cW) - 1),
+                      cH >= 1 ? 0 : (2 * cY / (1 - cH) - 1),
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      width: imgW,
+                      height: imgH,
+                      fit: BoxFit.cover,
+                      imageBuilder: (ctx, imageProvider) {
+                        if (!_imageReady) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) setState(() => _imageReady = true);
+                          });
+                        }
+                        return Image(
+                          image: imageProvider,
+                          fit: BoxFit.cover,
+                          width: imgW,
+                          height: imgH,
+                        );
+                      },
+                      placeholder: (_, __) => const Center(
+                        child: ClipOval(
+                          child: SizedBox(width: 95, height: 95, child: _LoaderGif()),
+                        ),
+                      ),
+                      errorWidget: (_, __, ___) => const Icon(
+                        PhosphorIconsBold.imageSquare,
+                        size: 48,
+                        color: Colors.white38,
+                      ),
+                    ),
                   ),
-                ),
-                errorWidget: (_, __, ___) => const Icon(
-                  PhosphorIconsBold.imageSquare,
-                  size: 48,
-                  color: Colors.white38,
-                ),
-              ),
+                );
+              },
             ),
           ),
           // Close button — top-right
