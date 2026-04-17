@@ -258,19 +258,17 @@ app.put('/api/locations/:id', async (req, res) => {
 
   if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
 
-  // Re-render per-difficulty images when:
-  //   1. The original file still exists on this record, AND
-  //   2. Either the crops changed OR there are no pre-rendered images yet.
+  // Re-render per-difficulty images when crops/rotation changed or none exist yet.
+  // renderPerDiffCrops handles source selection (_orig → loc.image fallback),
+  // so we don't gate on params.original_image here anymore.
   let rendered = false;
-  if (params.original_image) {
-    const noneYet = !before?.image_d3 && !before?.image_d4 && !before?.image_d5 && !before?.image_d6;
-    if (cropsDiffer(before, params) || noneYet) {
-      try {
-        await regenerateAndUpdateImages(req.params.id);
-        rendered = true;
-      } catch (e) {
-        console.error('renderPerDiffCrops (PUT) failed:', e.message);
-      }
+  const noneYet = !before?.image_d3 && !before?.image_d4 && !before?.image_d5 && !before?.image_d6;
+  if (cropsDiffer(before, params) || noneYet) {
+    try {
+      await regenerateAndUpdateImages(req.params.id);
+      rendered = true;
+    } catch (e) {
+      console.error('renderPerDiffCrops (PUT) failed:', e.message);
     }
   }
   writeStats().catch(() => {});
