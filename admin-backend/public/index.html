@@ -101,6 +101,18 @@
 
                     <h3 class="section-heading">Per-difficulty crops & tips</h3>
                     <p class="crop-help">Click a difficulty below to edit its crop + tip. Drag inside the canvas to move/resize the focus area.</p>
+                    <div id="rotationControl" style="display:none; margin-bottom:10px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <label style="font-size:0.8rem; color:var(--text-secondary);">Rotation <span id="rotLabel">0°</span></label>
+                            <label style="font-size:0.8rem; color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; gap:5px;">
+                                <input type="checkbox" id="deviceGuidesToggle"> Device guides
+                            </label>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input type="range" id="rotSlider" min="-45" max="45" step="0.5" value="0" style="flex:1;">
+                            <input type="number" id="rotInput" min="-45" max="45" step="0.5" value="0" style="width:58px;">
+                        </div>
+                    </div>
                     <div id="cropToolContainer" class="crop-tool" style="display:none;">
                         <canvas id="cropCanvas"></canvas>
                     </div>

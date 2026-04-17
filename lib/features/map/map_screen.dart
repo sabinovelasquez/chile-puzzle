@@ -1800,7 +1800,7 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
             scaleEnabled: silhouetteEarned,
             child: Center(
               child: CachedNetworkImage(
-                imageUrl: loc.image,
+                imageUrl: loc.getImageForDifficulty(3),
                 fit: BoxFit.contain,
                 imageBuilder: (ctx, imageProvider) {
                   if (!_imageReady) {

@@ -282,7 +282,7 @@ document.getElementById('translateExpertBtn').addEventListener('click', async fu
 
 // Per-difficulty editor state
 const DEFAULT_CROPS = {
-  '3': { x: 0,    y: 0,    w: 1,    h: 1    }, // Easy: always full image
+  '3': { x: 0.1,  y: 0,    w: 0.8,  h: 1    }, // Easy: centered approx, editable
   '4': { x: 0.05, y: 0.05, w: 0.9,  h: 0.9  }, // Normal: auto-interpolated
   '5': { x: 0.1,  y: 0.1,  w: 0.8,  h: 0.8  }, // Hard: auto-interpolated
   '6': { x: 0.15, y: 0.15, w: 0.7,  h: 0.7  }, // Expert: user-defined
@@ -514,6 +514,8 @@ fReplaceUpload.addEventListener('change', async (e) => {
     fOriginal.value = d.original || '';
     fOriginalW.value = d.width || 0;
     fOriginalH.value = d.height || 0;
+    rotationDeg = 0;
+    if (rotSlider) { rotSlider.value = 0; rotInput.value = 0; rotLabel.textContent = '0°'; }
     cropToolLoad(fImage.value);
     refreshDeleteOrigBtn();
     if (d.gps) {
@@ -676,14 +678,16 @@ function openLocEditor(id) {
   fTipNormalEn.value = tbd['4']?.en || ''; fTipNormalEs.value = tbd['4']?.es || '';
   fTipHardEn.value   = tbd['5']?.en || ''; fTipHardEs.value   = tbd['5']?.es || '';
   fTipExpertEn.value = tbd['6']?.en || ''; fTipExpertEs.value = tbd['6']?.es || '';
-  // Load per-difficulty crops — Easy is always full image
+  // Load per-difficulty crops
   const src = loc.cropsByDifficulty || {};
   cropsByDifficulty = {
-    '3': { x: 0, y: 0, w: 1, h: 1 },
+    '3': { ...DEFAULT_CROPS['3'], ...(src['3'] || {}) },
     '4': { ...DEFAULT_CROPS['4'], ...(src['4'] || {}) },
     '5': { ...DEFAULT_CROPS['5'], ...(src['5'] || {}) },
     '6': { ...DEFAULT_CROPS['6'], ...(src['6'] || loc.crop || {}) },
   };
+  rotationDeg = loc.rotationDeg || 0;
+  if (rotSlider) { rotSlider.value = rotationDeg; rotInput.value = rotationDeg; rotLabel.textContent = rotationDeg + '°'; }
   setActiveLang('es');
   setActiveDifficulty('6');
   refreshCharCounts();
@@ -747,20 +751,21 @@ locForm.onsubmit = async (e) => {
     },
     cropsByDifficulty,
     crop: cropsByDifficulty['6'], // legacy mirror (server also enforces this)
+    rotationDeg,
     difficulty: [3, 4, 5, 6],
   };
-  // If the original file is still on disk AND the crops changed from what's stored,
-  // the backend will re-render the 4 per-difficulty JPEGs — warn the user via the label.
+  // If the original file is still on disk AND crops/rotation changed, backend re-renders.
   const stored = locations.find(l => l.id === id);
   const storedCrops = stored?.cropsByDifficulty || {};
-  const cropsChanged = !stored || ['3','4','5','6'].some(d => {
-    const a = cropsByDifficulty[d] || {};
-    const b = storedCrops[d] || {};
-    return Math.abs((a.x || 0) - (b.x || 0)) > 1e-9
-        || Math.abs((a.y || 0) - (b.y || 0)) > 1e-9
-        || Math.abs((a.w || 0) - (b.w || 0)) > 1e-9
-        || Math.abs((a.h || 0) - (b.h || 0)) > 1e-9;
-  });
+  const cropsChanged = !stored || Math.abs((stored.rotationDeg || 0) - rotationDeg) > 1e-9
+    || ['3','4','5','6'].some(d => {
+      const a = cropsByDifficulty[d] || {};
+      const b = storedCrops[d] || {};
+      return Math.abs((a.x || 0) - (b.x || 0)) > 1e-9
+          || Math.abs((a.y || 0) - (b.y || 0)) > 1e-9
+          || Math.abs((a.w || 0) - (b.w || 0)) > 1e-9
+          || Math.abs((a.h || 0) - (b.h || 0)) > 1e-9;
+    });
   const willRegen = !!fOriginal.value && cropsChanged;
   startBtnSpinner(saveBtn, willRegen ? 'Regenerating images…' : 'Saving…');
   try {
@@ -977,9 +982,16 @@ const cropCtx = cropCanvas.getContext('2d');
 const cropContainer = document.getElementById('cropToolContainer');
 const cropNoImage = document.getElementById('cropNoImage');
 const cropPreviews = document.getElementById('cropPreviews');
+const rotationControl = document.getElementById('rotationControl');
+const rotSlider = document.getElementById('rotSlider');
+const rotInput = document.getElementById('rotInput');
+const rotLabel = document.getElementById('rotLabel');
+const deviceGuidesToggle = document.getElementById('deviceGuidesToggle');
 let cropImg = null;
 let cropScale = 1;
 let cropDrag = null;
+let rotationDeg = 0;
+let showDeviceGuides = localStorage.getItem('deviceGuides') !== 'false';
 
 // Phone aspect ratio for crop region (9:16 portrait)
 const PHONE_RATIO = 16 / 9; // h/w in normalized coords relative to image
@@ -987,12 +999,12 @@ const PHONE_RATIO = 16 / 9; // h/w in normalized coords relative to image
 function getActiveCrop() { return cropsByDifficulty[activeDifficulty]; }
 function setActiveCrop(x, y, w, h) {
   cropsByDifficulty[activeDifficulty] = { x, y, w, h };
-  // When Expert changes, auto-interpolate Normal and Hard
-  if (activeDifficulty === '6') interpolateMiddleCrops();
+  // When Easy or Expert changes, re-interpolate Normal and Hard
+  if (activeDifficulty === '3' || activeDifficulty === '6') interpolateMiddleCrops();
 }
 
 function interpolateMiddleCrops() {
-  const easy = cropsByDifficulty['3']; // always {0,0,1,1}
+  const easy = cropsByDifficulty['3'];
   const expert = cropsByDifficulty['6'];
   const lerp = (a, b, t) => parseFloat((a + (b - a) * t).toFixed(4));
   cropsByDifficulty['4'] = {
@@ -1012,6 +1024,7 @@ function interpolateMiddleCrops() {
 function cropToolHide() {
   cropContainer.style.display = 'none';
   cropPreviews.style.display = 'none';
+  rotationControl.style.display = 'none';
   cropNoImage.style.display = 'block';
   pixelationWarningEl.hidden = true;
   cropImg = null;
@@ -1025,6 +1038,7 @@ function cropToolLoad(url) {
     cropNoImage.style.display = 'none';
     cropContainer.style.display = 'block';
     cropPreviews.style.display = 'block';
+    rotationControl.style.display = 'block';
     // If this is a freshly uploaded image and original dimensions are unknown,
     // fall back to natural size so the pixelation warning still works.
     if (!parseInt(fOriginalW.value)) fOriginalW.value = img.naturalWidth || 0;
@@ -1055,11 +1069,35 @@ function cropToolResize() {
   cropCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
+// Returns bounding-box params for the rotated image letterboxed into the canvas.
+// When rotationDeg === 0, bbW/bbH equal the natural image size, offX/offY are 0,
+// and cs matches the old cw/ch ratio — fully backwards-compatible.
+function getRotatedParams(cw, ch) {
+  const θ = rotationDeg * Math.PI / 180;
+  const iw = cropImg.naturalWidth, ih = cropImg.naturalHeight;
+  const cosA = Math.abs(Math.cos(θ)), sinA = Math.abs(Math.sin(θ));
+  const bbW = iw * cosA + ih * sinA;
+  const bbH = iw * sinA + ih * cosA;
+  const cs = Math.min(cw / bbW, ch / bbH);
+  return { bbW, bbH, cs, offX: (cw - bbW * cs) / 2, offY: (ch - bbH * cs) / 2 };
+}
+
 function cropGetRect() {
   const cw = cropCanvas.width / cropScale;
   const ch = cropCanvas.height / cropScale;
   const c = getActiveCrop();
-  return { px: c.x * cw, py: c.y * ch, pw: c.w * cw, ph: c.h * ch, cw, ch };
+  if (!cropImg || rotationDeg === 0) {
+    return { px: c.x * cw, py: c.y * ch, pw: c.w * cw, ph: c.h * ch, cw, ch,
+             bbW: cw, bbH: ch, cs: 1, offX: 0, offY: 0 };
+  }
+  const p = getRotatedParams(cw, ch);
+  return {
+    px: p.offX + c.x * p.bbW * p.cs,
+    py: p.offY + c.y * p.bbH * p.cs,
+    pw: c.w * p.bbW * p.cs,
+    ph: c.h * p.bbH * p.cs,
+    cw, ch, ...p,
+  };
 }
 
 function cropToolDraw() {
@@ -1067,10 +1105,26 @@ function cropToolDraw() {
   const cw = cropCanvas.width / cropScale;
   const ch = cropCanvas.height / cropScale;
   cropCtx.clearRect(0, 0, cw, ch);
-  cropCtx.drawImage(cropImg, 0, 0, cw, ch);
+
+  // Draw image — rotated and letterboxed if needed
+  cropCtx.fillStyle = '#111';
+  cropCtx.fillRect(0, 0, cw, ch);
+  if (rotationDeg === 0) {
+    cropCtx.drawImage(cropImg, 0, 0, cw, ch);
+  } else {
+    const p = getRotatedParams(cw, ch);
+    const θ = rotationDeg * Math.PI / 180;
+    const dw = cropImg.naturalWidth * p.cs;
+    const dh = cropImg.naturalHeight * p.cs;
+    cropCtx.save();
+    cropCtx.translate(cw / 2, ch / 2);
+    cropCtx.rotate(θ);
+    cropCtx.drawImage(cropImg, -dw / 2, -dh / 2, dw, dh);
+    cropCtx.restore();
+  }
 
   const r = cropGetRect();
-  // Dim outside
+  // Dim outside crop rect
   cropCtx.fillStyle = 'rgba(0,0,0,0.55)';
   cropCtx.fillRect(0, 0, cw, r.py);
   cropCtx.fillRect(0, r.py + r.ph, cw, ch - r.py - r.ph);
@@ -1105,11 +1159,25 @@ function cropToolDraw() {
     cropCtx.stroke();
   }
 
+  // Device guides: show safe zone for 20:9 tall phones (BoxFit.cover crops ~12.5% each side)
+  if (showDeviceGuides) {
+    const insetX = r.pw * 0.125;
+    cropCtx.save();
+    cropCtx.strokeStyle = 'rgba(80,200,255,0.65)';
+    cropCtx.lineWidth = 1;
+    cropCtx.setLineDash([4, 4]);
+    cropCtx.strokeRect(r.px + insetX, r.py, r.pw - 2 * insetX, r.ph);
+    cropCtx.setLineDash([]);
+    cropCtx.fillStyle = 'rgba(80,200,255,0.75)';
+    cropCtx.font = '10px Outfit, sans-serif';
+    cropCtx.fillText('20:9', r.px + insetX + 4, r.py + r.ph - 5);
+    cropCtx.restore();
+  }
+
   // Active difficulty label
   cropCtx.fillStyle = meta.color;
   cropCtx.font = 'bold 11px Outfit, sans-serif';
-  const label = activeDifficulty === '3' ? meta.label + ' (full image)' : meta.label;
-  cropCtx.fillText(label, r.px + 6, r.py + 16);
+  cropCtx.fillText(meta.label, r.px + 6, r.py + 16);
 
   // Draw difficulty preview thumbnails
   drawCropPreviews();
@@ -1129,14 +1197,26 @@ function drawCropPreviews() {
   const prevH = Math.round(prevW * PHONE_RATIO);
   const dpr = window.devicePixelRatio || 1;
 
+  // When rotation is set, render into a temporary canvas first so we can
+  // drawImage-extract the crop region just like the zero-rotation path.
+  let srcCanvas = null;
+  let bbW = natW, bbH = natH;
+  if (rotationDeg !== 0) {
+    const θ = rotationDeg * Math.PI / 180;
+    const cosA = Math.abs(Math.cos(θ)), sinA = Math.abs(Math.sin(θ));
+    bbW = natW * cosA + natH * sinA;
+    bbH = natW * sinA + natH * cosA;
+    srcCanvas = new OffscreenCanvas(Math.ceil(bbW), Math.ceil(bbH));
+    const tc = srcCanvas.getContext('2d');
+    tc.translate(bbW / 2, bbH / 2);
+    tc.rotate(θ);
+    tc.drawImage(cropImg, -natW / 2, -natH / 2, natW, natH);
+  }
+
   for (const d of diffs) {
     const canvas = document.getElementById(d.id);
     if (!canvas) continue;
     const crop = cropsByDifficulty[d.diff] || DEFAULT_CROPS[d.diff];
-    const sx = crop.x * natW;
-    const sy = crop.y * natH;
-    const sw = crop.w * natW;
-    const sh = crop.h * natH;
     canvas.style.width = prevW + 'px';
     canvas.style.height = prevH + 'px';
     canvas.width = prevW * dpr;
@@ -1145,7 +1225,9 @@ function drawCropPreviews() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#111';
     ctx.fillRect(0, 0, prevW, prevH);
-    ctx.drawImage(cropImg, sx, sy, sw, sh, 0, 0, prevW, prevH);
+    const sx = crop.x * bbW, sy = crop.y * bbH;
+    const sw = crop.w * bbW, sh = crop.h * bbH;
+    ctx.drawImage(srcCanvas || cropImg, sx, sy, sw, sh, 0, 0, prevW, prevH);
     ctx.strokeStyle = DIFF_META[d.diff].color;
     ctx.lineWidth = d.diff === activeDifficulty ? 3 : 1.5;
     ctx.strokeRect(1, 1, prevW - 2, prevH - 2);
@@ -1236,15 +1318,28 @@ function cropCanvasXY(e) {
 
 function cropSetValues(x, y, w, h) {
   w = Math.max(0.08, Math.min(1, w));
-  // Enforce phone aspect ratio: h = w * PHONE_RATIO * (imgW / imgH)
+  // Enforce phone aspect ratio using bounding-box dims (accounts for rotation)
   if (cropImg) {
-    h = w * PHONE_RATIO * (cropImg.naturalWidth / cropImg.naturalHeight);
+    let imgW = cropImg.naturalWidth, imgH = cropImg.naturalHeight;
+    if (rotationDeg !== 0) {
+      const θ = rotationDeg * Math.PI / 180;
+      const cosA = Math.abs(Math.cos(θ)), sinA = Math.abs(Math.sin(θ));
+      imgW = cropImg.naturalWidth * cosA + cropImg.naturalHeight * sinA;
+      imgH = cropImg.naturalWidth * sinA + cropImg.naturalHeight * cosA;
+    }
+    h = w * PHONE_RATIO * (imgW / imgH);
   }
   h = Math.max(0.08, Math.min(1, h));
-  // If h was clamped to 1, recalculate w from h
   if (cropImg && h >= 1) {
+    let imgW = cropImg.naturalWidth, imgH = cropImg.naturalHeight;
+    if (rotationDeg !== 0) {
+      const θ = rotationDeg * Math.PI / 180;
+      const cosA = Math.abs(Math.cos(θ)), sinA = Math.abs(Math.sin(θ));
+      imgW = cropImg.naturalWidth * cosA + cropImg.naturalHeight * sinA;
+      imgH = cropImg.naturalWidth * sinA + cropImg.naturalHeight * cosA;
+    }
     h = 1;
-    w = h / (PHONE_RATIO * (cropImg.naturalWidth / cropImg.naturalHeight));
+    w = h / (PHONE_RATIO * (imgW / imgH));
   }
   x = Math.max(0, Math.min(1 - w, x));
   y = Math.max(0, Math.min(1 - h, y));
@@ -1260,15 +1355,15 @@ function cropSetValues(x, y, w, h) {
 
 function cropStartDrag(e) {
   e.preventDefault();
-  if (activeDifficulty === '3') return; // Easy is always full image
   const { x, y } = cropCanvasXY(e);
   const hit = cropHitTest(x, y);
   if (!hit) {
-    // Click outside = new crop centered here
+    // Click outside = new crop centered here; normalize relative to bb area
     const cw = cropCanvas.width / cropScale;
     const ch = cropCanvas.height / cropScale;
-    const nx = x / cw;
-    const ny = y / ch;
+    const p = rotationDeg === 0 ? { bbW: cw, bbH: ch, cs: 1, offX: 0, offY: 0 } : getRotatedParams(cw, ch);
+    const nx = (x - p.offX) / (p.bbW * p.cs);
+    const ny = (y - p.offY) / (p.bbH * p.cs);
     cropDrag = {
       type: 'se', startX: x, startY: y,
       origCrop: { x: nx, y: ny, w: 0.08, h: 0.08 }
@@ -1287,14 +1382,21 @@ function cropMoveDrag(e) {
   if (!cropImg) return;
   const { x, y } = cropCanvasXY(e);
   if (!cropDrag) {
-    cropCanvas.style.cursor = activeDifficulty === '3' ? 'default' : cropCursorFor(cropHitTest(x, y));
+    cropCanvas.style.cursor = cropCursorFor(cropHitTest(x, y));
     return;
   }
   e.preventDefault();
   const cw = cropCanvas.width / cropScale;
   const ch = cropCanvas.height / cropScale;
-  const dx = (x - cropDrag.startX) / cw;
-  const dy = (y - cropDrag.startY) / ch;
+  // Normalize deltas against the active image area (bounding box * canvas scale),
+  // not the full canvas, so drags map correctly when the image is letterboxed.
+  const p = rotationDeg === 0
+    ? { bbW: cw, bbH: ch, cs: 1 }
+    : getRotatedParams(cw, ch);
+  const activeW = p.bbW * p.cs;
+  const activeH = p.bbH * p.cs;
+  const dx = (x - cropDrag.startX) / activeW;
+  const dy = (y - cropDrag.startY) / activeH;
   const o = cropDrag.origCrop;
 
   let nx = o.x, ny = o.y, nw = o.w;
@@ -1320,6 +1422,30 @@ window.addEventListener('mouseup', cropEndDrag);
 cropCanvas.addEventListener('touchstart', cropStartDrag, { passive: false });
 window.addEventListener('touchmove', cropMoveDrag, { passive: false });
 window.addEventListener('touchend', cropEndDrag);
+
+// Rotation slider ↔ number input sync
+function applyRotation(deg) {
+  rotationDeg = Math.max(-45, Math.min(45, parseFloat(deg) || 0));
+  if (rotSlider) rotSlider.value = rotationDeg;
+  if (rotInput) rotInput.value = rotationDeg;
+  if (rotLabel) rotLabel.textContent = rotationDeg + '°';
+  cropToolDraw();
+}
+if (rotSlider) {
+  rotSlider.addEventListener('input', () => applyRotation(rotSlider.value));
+  rotInput.addEventListener('input', () => applyRotation(rotInput.value));
+  rotInput.addEventListener('change', () => applyRotation(rotInput.value));
+}
+
+// Device guides toggle
+if (deviceGuidesToggle) {
+  deviceGuidesToggle.checked = showDeviceGuides;
+  deviceGuidesToggle.addEventListener('change', () => {
+    showDeviceGuides = deviceGuidesToggle.checked;
+    localStorage.setItem('deviceGuides', showDeviceGuides);
+    cropToolDraw();
+  });
+}
 
 // ============================================================
 // TESTERS

@@ -130,7 +130,7 @@ app.get('/api/locations', (req, res) => {
 
 const LOCATION_INSERT_COLS = `
   id, name_en, name_es, region, required_points, latitude, longitude,
-  image, thumbnail, original_image, original_width, original_height, active,
+  image, thumbnail, original_image, original_width, original_height, rotation_deg, active,
   show_silhouette_d3, show_silhouette_d4, show_silhouette_d5, show_silhouette_d6,
   tip_en, tip_es,
   tip_normal_en, tip_normal_es, tip_hard_en, tip_hard_es, tip_expert_en, tip_expert_es,
@@ -144,7 +144,7 @@ const LOCATION_INSERT_COLS = `
 `;
 const LOCATION_INSERT_VALS = `
   @id, @name_en, @name_es, @region, @required_points, @latitude, @longitude,
-  @image, @thumbnail, @original_image, @original_width, @original_height, @active,
+  @image, @thumbnail, @original_image, @original_width, @original_height, @rotation_deg, @active,
   @show_silhouette_d3, @show_silhouette_d4, @show_silhouette_d5, @show_silhouette_d6,
   @tip_en, @tip_es,
   @tip_normal_en, @tip_normal_es, @tip_hard_en, @tip_hard_es, @tip_expert_en, @tip_expert_es,
@@ -158,7 +158,7 @@ const LOCATION_INSERT_VALS = `
 `;
 const insertLocationStmt = db.prepare(`INSERT INTO locations (${LOCATION_INSERT_COLS}) VALUES (${LOCATION_INSERT_VALS})`);
 
-// Helpers for detecting crop changes (triggers per-diff re-render on save).
+// Helpers for detecting crop/rotation changes (triggers per-diff re-render on save).
 const CROP_COLS = [
   'crop_easy_x','crop_easy_y','crop_easy_w','crop_easy_h',
   'crop_normal_x','crop_normal_y','crop_normal_w','crop_normal_h',
@@ -167,6 +167,7 @@ const CROP_COLS = [
 ];
 function cropsDiffer(rowA, rowB) {
   if (!rowA || !rowB) return true;
+  if (Math.abs((rowA.rotation_deg || 0) - (rowB.rotation_deg || 0)) > 1e-9) return true;
   return CROP_COLS.some(c => Math.abs((rowA[c] || 0) - (rowB[c] || 0)) > 1e-9);
 }
 async function regenerateAndUpdateImages(id) {
@@ -218,6 +219,7 @@ app.put('/api/locations/:id', async (req, res) => {
       required_points = @required_points, latitude = @latitude, longitude = @longitude,
       image = @image, thumbnail = @thumbnail,
       original_image = @original_image, original_width = @original_width, original_height = @original_height,
+      rotation_deg = @rotation_deg,
       active = @active,
       show_silhouette_d3 = @show_silhouette_d3, show_silhouette_d4 = @show_silhouette_d4,
       show_silhouette_d5 = @show_silhouette_d5, show_silhouette_d6 = @show_silhouette_d6,
@@ -314,10 +316,25 @@ app.post('/api/locations/batch-stub', async (req, res) => {
   }
 });
 
-// DELETE location
+// DELETE location — also removes all associated image files from disk.
 app.delete('/api/locations/:id', (req, res) => {
+  const row = db.prepare(
+    'SELECT image, thumbnail, original_image, image_d3, image_d4, image_d5, image_d6 FROM locations WHERE id = ?'
+  ).get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+
   const result = db.prepare('DELETE FROM locations WHERE id = @id').run({ id: req.params.id });
   if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
+
+  // Delete every file associated with this location. Deduplicate in case image === thumbnail.
+  const seen = new Set();
+  for (const url of [row.image, row.thumbnail, row.original_image, row.image_d3, row.image_d4, row.image_d5, row.image_d6]) {
+    if (!url) continue;
+    const fname = url.split('/').pop();
+    if (seen.has(fname)) continue;
+    seen.add(fname);
+    try { fs.unlinkSync(path.join(uploadsDir, fname)); } catch (_) {}
+  }
   writeStats().catch(() => {});
   res.json({ success: true });
 });
@@ -672,28 +689,34 @@ async function renderPerDiffCrops(loc) {
     : null;
   if (!origPath || !fs.existsSync(origPath)) return null;
 
-  // Read post-rotate dimensions so crop coords (normalized 0-1 against the
-  // rotated image the admin sees in the cropper) map correctly.
+  // Read EXIF-corrected dimensions (swap W/H for orientations 5-8).
   const rawMeta = await sharp(origPath).metadata();
   const o = rawMeta.orientation || 1;
-  const rotated = (o >= 5 && o <= 8)
-    ? { w: rawMeta.height || 0, h: rawMeta.width || 0 }
-    : { w: rawMeta.width || 0,  h: rawMeta.height || 0 };
-  if (!rotated.w || !rotated.h) return null;
+  const exifW = (o >= 5 && o <= 8) ? (rawMeta.height || 0) : (rawMeta.width || 0);
+  const exifH = (o >= 5 && o <= 8) ? (rawMeta.width || 0)  : (rawMeta.height || 0);
+  if (!exifW || !exifH) return null;
+
+  // If a user rotation is set, crop coords are relative to the rotated bounding box.
+  const rotDeg = loc.rotationDeg || 0;
+  const θ = rotDeg * Math.PI / 180;
+  const cosA = Math.abs(Math.cos(θ)), sinA = Math.abs(Math.sin(θ));
+  const bbW = exifW * cosA + exifH * sinA;
+  const bbH = exifW * sinA + exifH * cosA;
 
   const baseName = path.basename(loc.image || origPath).replace(/\.[^.]+$/, '');
   const results = {};
   for (const diff of ['3', '4', '5', '6']) {
     const c = loc.cropsByDifficulty?.[diff];
     if (!c) continue;
-    const left   = Math.max(0, Math.min(rotated.w - 1, Math.round(c.x * rotated.w)));
-    const top    = Math.max(0, Math.min(rotated.h - 1, Math.round(c.y * rotated.h)));
-    const width  = Math.max(1, Math.min(rotated.w - left, Math.round(c.w * rotated.w)));
-    const height = Math.max(1, Math.min(rotated.h - top,  Math.round(c.h * rotated.h)));
+    const left   = Math.max(0, Math.min(bbW - 1, Math.round(c.x * bbW)));
+    const top    = Math.max(0, Math.min(bbH - 1, Math.round(c.y * bbH)));
+    const width  = Math.max(1, Math.min(bbW - left, Math.round(c.w * bbW)));
+    const height = Math.max(1, Math.min(bbH - top,  Math.round(c.h * bbH)));
     const outName = `${baseName}_d${diff}.jpg`;
     const outPath = path.join(uploadsDir, outName);
-    await sharp(origPath)
-      .rotate()                                       // honor EXIF orientation
+    let pipeline = sharp(origPath).rotate();           // honor EXIF orientation
+    if (rotDeg) pipeline = pipeline.rotate(rotDeg, { background: { r: 0, g: 0, b: 0 } });
+    await pipeline
       .extract({ left, top, width, height })
       .resize(3000, 3000, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 95 })
@@ -739,9 +762,17 @@ app.post('/api/generate-thumbnails', async (req, res) => {
   res.json({ processed: results.length, results });
 });
 
-// Optimize all existing images in-place
+// Optimize all existing images in-place.
+// Only touches the main full-size JPEG (2000px source) — skips thumbnails,
+// per-difficulty crops (_d3-_d6), and originals (_orig.*) to avoid degrading
+// the files the app shows users or the source used for re-rendering.
 app.post('/api/optimize-images', async (req, res) => {
-  const files = fs.readdirSync(uploadsDir).filter(f => /\.(jpg|jpeg|png)$/i.test(f));
+  const files = fs.readdirSync(uploadsDir).filter(f =>
+    /\.(jpg|jpeg|png)$/i.test(f) &&
+    !/_thumb\./i.test(f) &&
+    !/_d[3-6]\.jpg$/i.test(f) &&
+    !/_orig\./i.test(f)
+  );
   const results = [];
   for (const file of files) {
     const filePath = path.join(uploadsDir, file);
@@ -763,14 +794,15 @@ app.post('/api/optimize-images', async (req, res) => {
   res.json({ optimized: results.length, results });
 });
 
-// Clean up unused uploads
+// Clean up uploads not referenced by any location (all 7 file columns).
 app.post('/api/cleanup-uploads', (req, res) => {
-  const rows = db.prepare('SELECT image, thumbnail FROM locations').all();
+  const rows = db.prepare(
+    'SELECT image, thumbnail, original_image, image_d3, image_d4, image_d5, image_d6 FROM locations'
+  ).all();
   const usedFiles = new Set();
   rows.forEach(row => {
-    [row.image, row.thumbnail].forEach(url => {
-      if (url) usedFiles.add(url.split('/').pop());
-    });
+    [row.image, row.thumbnail, row.original_image, row.image_d3, row.image_d4, row.image_d5, row.image_d6]
+      .forEach(url => { if (url) usedFiles.add(url.split('/').pop()); });
   });
   const allFiles = fs.readdirSync(uploadsDir).filter(f => /\.(jpg|jpeg|png|heic|heif)$/i.test(f));
   const unused = allFiles.filter(f => !usedFiles.has(f));

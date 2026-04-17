@@ -258,6 +258,13 @@ try {
   catch (_) { /* column absent — fresh install or already dropped */ }
 }
 
+// Migrate: user-defined rotation angle (0–45°) applied before crop rendering.
+try {
+  db.prepare('SELECT rotation_deg FROM locations LIMIT 0').get();
+} catch (_) {
+  db.exec("ALTER TABLE locations ADD COLUMN rotation_deg REAL NOT NULL DEFAULT 0");
+}
+
 // Ensure scoring has a default row
 const scoringRow = db.prepare('SELECT id FROM scoring WHERE id = 1').get();
 if (!scoringRow) {
@@ -279,6 +286,7 @@ function rowToLocation(row) {
     originalImage: row.original_image || '',
     originalWidth: row.original_width || 0,
     originalHeight: row.original_height || 0,
+    rotationDeg: row.rotation_deg || 0,
     active: row.active !== 0,
     silhouetteByDifficulty: {
       '3': row.show_silhouette_d3 === 1,
@@ -335,6 +343,7 @@ function locationToParams(obj) {
     original_image: obj.originalImage || '',
     original_width: obj.originalWidth || 0,
     original_height: obj.originalHeight || 0,
+    rotation_deg: obj.rotationDeg || 0,
     active: obj.active === false ? 0 : 1,
     show_silhouette_d3: s['3'] === true ? 1 : 0,
     show_silhouette_d4: s['4'] === true ? 1 : 0,
