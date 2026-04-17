@@ -760,8 +760,11 @@ async function renderPerDiffCrops(loc) {
     const outPath = path.join(uploadsDir, outName);
     let pipeline = sharp(sourcePath).rotate();           // honor EXIF orientation
     if (rotDeg) pipeline = pipeline.rotate(rotDeg, { background: { r: 0, g: 0, b: 0 } });
+    pipeline = pipeline.extract({ left, top, width, height });
+    // For the photo-viewer crop, trim black corners introduced by rotation so
+    // the image fills the device screen without letterboxing.
+    if (diff === '3' && rotDeg) pipeline = pipeline.trim({ background: { r: 0, g: 0, b: 0 }, threshold: 30 });
     await pipeline
-      .extract({ left, top, width, height })
       .resize(3000, 3000, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 95 })
       .toFile(outPath);

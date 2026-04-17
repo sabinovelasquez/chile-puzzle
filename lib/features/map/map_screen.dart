@@ -794,7 +794,7 @@ class _MapScreenState extends State<MapScreen>
             // Ver completados — available as soon as at least one level is done.
             if (anyCompleted)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -806,7 +806,7 @@ class _MapScreenState extends State<MapScreen>
                       foregroundColor: const Color(0xFF7396A4),
                       side: const BorderSide(color: Color(0xFFB8CDD4)),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                          horizontal: 16, vertical: 5),
                       textStyle: const TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w500),
                     ),
@@ -819,16 +819,20 @@ class _MapScreenState extends State<MapScreen>
             // Ver en Google Maps — same unlock rule as Ver foto.
             if (anyCompleted)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                 child: SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: () => _openInGoogleMaps(loc),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.seedColor,
-                      side: const BorderSide(color: AppTheme.seedColor),
+                      foregroundColor: const Color(0xFF7396A4),
+                      side: const BorderSide(color: Color(0xFFB8CDD4)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 5),
+                      textStyle: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w500),
                     ),
-                    icon: const Icon(PhosphorIconsBold.mapPin, size: 18),
+                    icon: const Icon(PhosphorIconsBold.mapPin, size: 15),
                     label: Text(langCode == 'es' ? 'Ver en Google Maps' : 'See on Google Maps'),
                   ),
                 ),
@@ -839,7 +843,7 @@ class _MapScreenState extends State<MapScreen>
             // fallback if none).
             if (anyCompleted)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                 child: SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -861,10 +865,14 @@ class _MapScreenState extends State<MapScreen>
                       );
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.seedColor,
-                      side: const BorderSide(color: AppTheme.seedColor),
+                      foregroundColor: const Color(0xFF7396A4),
+                      side: const BorderSide(color: Color(0xFFB8CDD4)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 5),
+                      textStyle: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w500),
                     ),
-                    icon: const Icon(PhosphorIconsBold.ranking, size: 18),
+                    icon: const Icon(PhosphorIconsBold.ranking, size: 15),
                     label: Text(langCode == 'es' ? 'Ver ranking' : 'View ranking'),
                   ),
                 ),
@@ -872,15 +880,18 @@ class _MapScreenState extends State<MapScreen>
 
             // Cancel
             Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + MediaQuery.of(ctx).padding.bottom.clamp(0, 16)),
+              padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.of(ctx).padding.bottom.clamp(0, 16)),
               child: SizedBox(
                 width: double.infinity,
-                child: TextButton(
+                child: OutlinedButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: Text(
-                    langCode == 'es' ? 'Cerrar' : 'Close',
-                    style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade600),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF7396A4),
+                    side: const BorderSide(color: Color(0xFFB8CDD4)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                    textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                   ),
+                  child: Text(langCode == 'es' ? 'Cerrar' : 'Close'),
                 ),
               ),
             ),
