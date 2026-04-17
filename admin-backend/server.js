@@ -173,11 +173,31 @@ function cropsDiffer(rowA, rowB) {
 async function regenerateAndUpdateImages(id) {
   const row = db.prepare('SELECT * FROM locations WHERE id = ?').get(id);
   if (!row) return null;
-  const results = await renderPerDiffCrops(rowToLocation(row));
+  const loc = rowToLocation(row);
+  const results = await renderPerDiffCrops(loc);
   if (!results) return null;
+
+  // Regenerate thumbnail with the same rotation so the card cover matches.
+  const origPath = loc.originalImage ? path.join(uploadsDir, path.basename(loc.originalImage)) : null;
+  const fallbackPath = loc.image ? path.join(uploadsDir, path.basename(loc.image)) : null;
+  const sourcePath = (origPath && fs.existsSync(origPath)) ? origPath
+    : (fallbackPath && fs.existsSync(fallbackPath) ? fallbackPath : null);
+  if (sourcePath) {
+    try {
+      const baseName = path.basename(loc.image || sourcePath).replace(/\.[^.]+$/, '');
+      const thumbName = `${baseName}_thumb.jpg`;
+      const thumbPath = path.join(uploadsDir, thumbName);
+      let pipeline = sharp(sourcePath).rotate();
+      if (loc.rotationDeg) pipeline = pipeline.rotate(loc.rotationDeg, { background: { r: 0, g: 0, b: 0 } });
+      await pipeline.resize(400, null, { withoutEnlargement: true }).jpeg({ quality: 70 }).toFile(thumbPath);
+      results.thumbnail = `${URL_PREFIX}/uploads/${thumbName}`;
+    } catch (_) {}
+  }
+
   db.prepare(`
     UPDATE locations
     SET image_d3 = @image_d3, image_d4 = @image_d4, image_d5 = @image_d5, image_d6 = @image_d6
+      ${results.thumbnail ? ', thumbnail = @thumbnail' : ''}
     WHERE id = @id
   `).run({ id, ...results });
   return results;
