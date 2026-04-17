@@ -681,16 +681,23 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
 });
 
 // Renders 4 per-difficulty cropped JPEGs from the raw original file on disk.
-// Returns { image_d3, image_d4, image_d5, image_d6 } URL paths, or null if the
-// original file is missing (legacy locations fall back to the single `image`).
+// Returns { image_d3, image_d4, image_d5, image_d6 } URL paths, or null if no
+// usable source file exists. Prefers _orig; falls back to loc.image for legacy
+// locations that were uploaded before _orig tracking was added.
 async function renderPerDiffCrops(loc) {
   const origPath = loc.originalImage
     ? path.join(uploadsDir, path.basename(loc.originalImage))
     : null;
-  if (!origPath || !fs.existsSync(origPath)) return null;
+  const fallbackPath = loc.image
+    ? path.join(uploadsDir, path.basename(loc.image))
+    : null;
+  const sourcePath = (origPath && fs.existsSync(origPath))
+    ? origPath
+    : (fallbackPath && fs.existsSync(fallbackPath) ? fallbackPath : null);
+  if (!sourcePath) return null;
 
   // Read EXIF-corrected dimensions (swap W/H for orientations 5-8).
-  const rawMeta = await sharp(origPath).metadata();
+  const rawMeta = await sharp(sourcePath).metadata();
   const o = rawMeta.orientation || 1;
   const exifW = (o >= 5 && o <= 8) ? (rawMeta.height || 0) : (rawMeta.width || 0);
   const exifH = (o >= 5 && o <= 8) ? (rawMeta.width || 0)  : (rawMeta.height || 0);
@@ -703,7 +710,7 @@ async function renderPerDiffCrops(loc) {
   const bbW = exifW * cosA + exifH * sinA;
   const bbH = exifW * sinA + exifH * cosA;
 
-  const baseName = path.basename(loc.image || origPath).replace(/\.[^.]+$/, '');
+  const baseName = path.basename(loc.image || sourcePath).replace(/\.[^.]+$/, '');
   const results = {};
   for (const diff of ['3', '4', '5', '6']) {
     const c = loc.cropsByDifficulty?.[diff];
@@ -714,7 +721,7 @@ async function renderPerDiffCrops(loc) {
     const height = Math.max(1, Math.min(bbH - top,  Math.round(c.h * bbH)));
     const outName = `${baseName}_d${diff}.jpg`;
     const outPath = path.join(uploadsDir, outName);
-    let pipeline = sharp(origPath).rotate();           // honor EXIF orientation
+    let pipeline = sharp(sourcePath).rotate();           // honor EXIF orientation
     if (rotDeg) pipeline = pipeline.rotate(rotDeg, { background: { r: 0, g: 0, b: 0 } });
     await pipeline
       .extract({ left, top, width, height })
