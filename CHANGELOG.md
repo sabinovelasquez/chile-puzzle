@@ -8,6 +8,22 @@ emails to testers.
 New releases go on top. Each entry has an `**ES**` and `**EN**`
 sub-block with one bullet per line.
 
+## 1.11.1+18 — 2026-04-18
+
+**ES**
+- Foto de referencia y foto final ahora llenan la pantalla de borde a borde, sin franjas negras en teléfonos altos.
+- Nuevo control en el tip: desliza para ajustar el tamaño del texto a tu gusto; la preferencia se recuerda.
+- Toggle de brillo del tip movido al mismo panel del tamaño de texto.
+- Botones del puzzle completado rediseñados: contornos suaves en pastel y menos espacio vertical.
+- Pequeño ajuste de copy en "Acerca de" ("viajes" → "aventuras").
+
+**EN**
+- Reference and completion photos now fill the screen edge-to-edge, no black bars on tall phones.
+- New tip control: slide to adjust text size to your liking; your preference is remembered.
+- Tip shine toggle moved into the same panel as the text-size slider.
+- Completion buttons redesigned: soft pastel outlines with tighter vertical spacing.
+- Small "About" copy tweak ("travels" → "adventures").
+
 ## 1.11.0+17 — 2026-04-15
 
 **ES**
