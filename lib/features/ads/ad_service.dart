@@ -6,19 +6,17 @@ class AdService {
   static bool _isAdLoaded = false;
 
   static void initialize() {
-    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) return;
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     MobileAds.instance.initialize();
   }
 
-  static void loadInterstitial() {
-    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) return;
+  static const String _interstitialAdUnitId = 'ca-app-pub-1612904750122173/3891326939';
 
-    String adUnitId = (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
-        ? 'ca-app-pub-3940256099942544/1033173712' 
-        : 'ca-app-pub-3940256099942544/4411468910'; 
+  static void loadInterstitial() {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
 
     InterstitialAd.load(
-      adUnitId: adUnitId,
+      adUnitId: _interstitialAdUnitId,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
@@ -36,7 +34,7 @@ class AdService {
   }
 
   static void showInterstitial({required Function onAdDismissed}) {
-    if (kIsWeb || (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)) {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       onAdDismissed();
       return;
     }
