@@ -8,6 +8,28 @@ emails to testers.
 New releases go on top. Each entry has an `**ES**` and `**EN**`
 sub-block with one bullet per line.
 
+## 1.12.0+20 — 2026-04-22
+
+**ES**
+- Ahora podés compartir tus puzzles: al terminar un puzzle o al abrir "Ver completados" aparece un botón Compartir. Encuadra tu foto en 1:1, escuchá el clic de la cámara, y mirá tu polaroid deslizarse al centro — con la silueta de Xime y gato en la esquina y el tip del nivel debajo.
+- La vista para encuadrar trae un tono sepia y una viñeta suaves; la foto que compartís sale en color completo y nítida.
+- Pellizcá para acercarte (hasta 10x) y arrastrá para encuadrar. La foto queda pegada a los bordes — no se sale del marco.
+- Se comparte el dato del nivel actual (si abrís la foto desde un nivel Fácil, va el tip de Fácil; no siempre el de Experto).
+
+**EN**
+- You can now share your puzzles: when you finish one or open "Ver completados", a Share button shows up. Frame your photo in 1:1, hear the shutter, and watch your polaroid slide into place — Xime-and-cat silhouette in the corner, level tip underneath.
+- The framing view has a soft sepia tint and a gentle vignette; the image you share comes out full-colour and sharp.
+- Pinch to zoom in (up to 10×) and drag to frame. The photo stays locked to its edges — it can't drift past the frame.
+- The shared tip matches the level you're viewing (open an Easy photo, you share the Easy tip; no more defaulting to Expert).
+
+## 1.11.2+19 — 2026-04-22
+
+**ES**
+- Integración real de AdMob: los anuncios ya no son de prueba.
+
+**EN**
+- Real AdMob integration: ads are no longer test placeholders.
+
 ## 1.11.1+18 — 2026-04-18
 
 **ES**

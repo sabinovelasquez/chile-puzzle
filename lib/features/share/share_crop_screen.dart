@@ -31,7 +31,8 @@ class ShareCropScreen extends StatefulWidget {
   State<ShareCropScreen> createState() => _ShareCropScreenState();
 }
 
-class _ShareCropScreenState extends State<ShareCropScreen> {
+class _ShareCropScreenState extends State<ShareCropScreen>
+    with SingleTickerProviderStateMixin {
   final GlobalKey _boundaryKey = GlobalKey();
   final TransformationController _controller = TransformationController();
 
@@ -39,31 +40,67 @@ class _ShareCropScreenState extends State<ShareCropScreen> {
   bool _capturing = false;
   double? _cropSide;
   bool _initialTransformApplied = false;
-  bool _clamping = false;
+
+  /// Elastic settle: on gesture end, if the matrix is out of bounds, tween
+  /// from the user's drop position back to the clamped target over ~260 ms
+  /// with easeOutCubic. During the gesture we let InteractiveViewer run
+  /// free (boundaryMargin: infinity) so drags stay 1:1 with the finger —
+  /// no listener-clamp fighting the gesture stream.
+  static const double _maxZoom = 10.0;
+  late final AnimationController _settle;
+  Matrix4? _settleFrom;
+  Matrix4? _settleTo;
 
   @override
   void initState() {
     super.initState();
-    _controller.addListener(_clampTransform);
+    _settle = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    )..addListener(_onSettleTick);
     _loadSourceImage();
   }
 
   @override
   void dispose() {
-    _controller.removeListener(_clampTransform);
+    _settle.removeListener(_onSettleTick);
+    _settle.dispose();
     _controller.dispose();
     super.dispose();
   }
 
-  /// Keeps the image covering the square viewport. Clamps scale to
-  /// [coverScale, coverScale * maxZoom] and translation so the image's
-  /// edges never cross inside the viewport. [InteractiveViewer.minScale]
-  /// alone isn't reliable during active gestures, so we enforce it here
-  /// too and snap back any out-of-range matrix the controller publishes.
-  static const double _maxZoom = 10.0;
+  void _onSettleTick() {
+    final from = _settleFrom;
+    final to = _settleTo;
+    if (from == null || to == null) return;
+    final t = Curves.easeOutCubic.transform(_settle.value);
+    final sa = from.entry(0, 0);
+    final sb = to.entry(0, 0);
+    final txa = from.entry(0, 3);
+    final txb = to.entry(0, 3);
+    final tya = from.entry(1, 3);
+    final tyb = to.entry(1, 3);
+    final s = sa + (sb - sa) * t;
+    final tx = txa + (txb - txa) * t;
+    final ty = tya + (tyb - tya) * t;
+    _controller.value = Matrix4.identity()
+      ..setEntry(0, 0, s)
+      ..setEntry(1, 1, s)
+      ..setEntry(0, 3, tx)
+      ..setEntry(1, 3, ty);
+  }
 
-  void _clampTransform() {
-    if (_clamping) return;
+  void _onInteractionStart(_) {
+    // User starts a new gesture mid-animation — stop the settle so their
+    // drag picks up from the current interpolated position.
+    if (_settle.isAnimating) {
+      _settle.stop();
+      _settleFrom = null;
+      _settleTo = null;
+    }
+  }
+
+  void _onInteractionEnd(_) {
     final image = _sourceImage;
     final side = _cropSide;
     if (image == null || side == null) return;
@@ -81,15 +118,14 @@ class _ShareCropScreenState extends State<ShareCropScreen> {
     const maxTy = 0.0;
     final cx = tx.clamp(minTx, maxTx);
     final cy = ty.clamp(minTy, maxTy);
-    if (scale != rawScale || cx != tx || cy != ty) {
-      _clamping = true;
-      _controller.value = Matrix4.identity()
-        ..setEntry(0, 0, scale)
-        ..setEntry(1, 1, scale)
-        ..setEntry(0, 3, cx)
-        ..setEntry(1, 3, cy);
-      _clamping = false;
-    }
+    if (scale == rawScale && cx == tx && cy == ty) return; // already valid
+    _settleFrom = m.clone();
+    _settleTo = Matrix4.identity()
+      ..setEntry(0, 0, scale)
+      ..setEntry(1, 1, scale)
+      ..setEntry(0, 3, cx)
+      ..setEntry(1, 3, cy);
+    _settle.forward(from: 0);
   }
 
   Future<void> _loadSourceImage() async {
@@ -250,11 +286,20 @@ class _ShareCropScreenState extends State<ShareCropScreen> {
                                                   minScale: coverScale,
                                                   maxScale:
                                                       coverScale * _maxZoom,
+                                                  // Hard-clamp pan at the
+                                                  // image edges. No rubber-
+                                                  // band past the photo:
+                                                  // drags stop cleanly when
+                                                  // the image edge hits the
+                                                  // viewport edge, regardless
+                                                  // of portrait / landscape.
                                                   boundaryMargin:
-                                                      const EdgeInsets.all(
-                                                    double.infinity,
-                                                  ),
+                                                      EdgeInsets.zero,
                                                   clipBehavior: Clip.hardEdge,
+                                                  onInteractionStart:
+                                                      _onInteractionStart,
+                                                  onInteractionEnd:
+                                                      _onInteractionEnd,
                                                   child: RawImage(
                                                     image: _sourceImage,
                                                     width: _sourceImage!
