@@ -9,6 +9,7 @@ class AudioService {
   static late SoLoud _soloud;
   static AudioSource? _pieceSound;
   static AudioSource? _victorySound;
+  static AudioSource? _polaroidSound;
 
   static bool get isMuted => _muted;
 
@@ -28,6 +29,11 @@ class AudioService {
       'victory.wav',
       victoryData.buffer.asUint8List(),
     );
+    final polaroidData = await rootBundle.load('assets/sounds/polaroid.wav');
+    _polaroidSound = await _soloud.loadMem(
+      'polaroid.wav',
+      polaroidData.buffer.asUint8List(),
+    );
   }
 
   static Future<void> toggleMute() async {
@@ -45,5 +51,11 @@ class AudioService {
   static void playVictory() {
     if (_muted || _victorySound == null) return;
     _soloud.play(_victorySound!);
+  }
+
+  /// Shutter sound — played when the user commits a crop for sharing.
+  static void playPolaroid() {
+    if (_muted || _polaroidSound == null) return;
+    _soloud.play(_polaroidSound!);
   }
 }

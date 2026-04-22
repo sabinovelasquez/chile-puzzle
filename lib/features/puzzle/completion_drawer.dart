@@ -8,6 +8,7 @@ import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/features/ads/ad_service.dart';
 import 'package:chile_puzzle/core/services/mock_backend.dart';
+import 'package:chile_puzzle/core/services/share_service.dart';
 import 'package:chile_puzzle/core/services/settings_service.dart';
 import 'package:chile_puzzle/features/leaderboard/initials_input.dart';
 import 'package:chile_puzzle/features/leaderboard/leaderboard_screen.dart';
@@ -188,6 +189,66 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                         },
                         icon: const Icon(PhosphorIconsBold.arrowRight, size: 18),
                         label: Text(l10n?.unlockNext ?? 'Continue'),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Share card
+                    GestureDetector(
+                      onTap: _navigating
+                          ? null
+                          : () {
+                              final diff = result?.difficulty ?? widget.location.difficultyLevels.first;
+                              ShareService.shareLocation(
+                                context: context,
+                                location: loc,
+                                difficulty: diff,
+                                langCode: langCode,
+                              );
+                            },
+                      child: Opacity(
+                        opacity: _navigating ? 0.4 : 1.0,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 36, height: 36,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.accentOrange.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(PhosphorIconsBold.shareNetwork, size: 18, color: AppTheme.accentOrange),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      langCode == 'es' ? 'Compartir' : 'Share',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13, fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Text(
+                                      langCode == 'es' ? 'Muestra tu puzzle' : 'Show your puzzle',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11, color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(PhosphorIconsBold.arrowRight, size: 16, color: Colors.grey.shade400),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),

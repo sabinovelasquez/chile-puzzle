@@ -11,6 +11,7 @@ import 'package:chile_puzzle/core/services/mock_backend.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'package:chile_puzzle/core/services/settings_service.dart';
 import 'package:chile_puzzle/core/services/loading_overlay_service.dart';
+import 'package:chile_puzzle/core/services/share_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/features/puzzle/puzzle_screen.dart';
 import 'package:chile_puzzle/features/profile/profile_screen.dart';
@@ -1916,6 +1917,43 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
                               color: Colors.white,
                             ),
                           ),
+                  ),
+                ),
+              ),
+            ),
+          // Share button — third in the top-right stack, below tip-toggle.
+          // Only visible once the photo has finished loading.
+          if (_imageReady)
+            Positioned(
+              top: 116,
+              right: 12,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  // Share the tip for the currently-visible slide, not the
+                  // difficulty the view was opened at — the user may have
+                  // swiped the carousel to another level.
+                  final diff = _slides.isNotEmpty
+                      ? _slides[_currentPage].difficulty
+                      : widget.difficulty;
+                  ShareService.shareLocation(
+                    context: context,
+                    location: loc,
+                    difficulty: diff,
+                    langCode: widget.langCode,
+                  );
+                },
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    PhosphorIconsBold.shareNetwork,
+                    size: 22,
+                    color: Colors.white,
                   ),
                 ),
               ),
