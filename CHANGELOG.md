@@ -11,10 +11,10 @@ sub-block with one bullet per line.
 ## 1.12.0+20 — 2026-04-22
 
 **ES**
-- Ahora podés compartir tus puzzles: al terminar un puzzle o al abrir "Ver completados" aparece un botón Compartir. Encuadra tu foto en 1:1, escuchá el clic de la cámara, y mirá tu polaroid deslizarse al centro — con la silueta de Xime y gato en la esquina y el tip del nivel debajo.
-- La vista para encuadrar trae un tono sepia y una viñeta suaves; la foto que compartís sale en color completo y nítida.
-- Pellizcá para acercarte (hasta 10x) y arrastrá para encuadrar. La foto queda pegada a los bordes — no se sale del marco.
-- Se comparte el dato del nivel actual (si abrís la foto desde un nivel Fácil, va el tip de Fácil; no siempre el de Experto).
+- Ahora puedes compartir tus puzzles: al terminar uno o al abrir "Ver completados" aparece un botón Compartir. Encuadra tu foto en 1:1, escucha el clic de la cámara, y mira tu polaroid deslizarse al centro — con la silueta de Xime y gato en la esquina y el tip del nivel debajo.
+- La vista para encuadrar trae un tono sepia y una viñeta suaves; la foto que compartes sale en color completo y nítida.
+- Pellizca para acercarte (hasta 10x) y arrastra para encuadrar. La foto queda pegada a los bordes — no se sale del marco.
+- Se comparte el tip del nivel actual (si abres la foto desde un nivel Fácil, va el tip de Fácil; no siempre el de Experto).
 
 **EN**
 - You can now share your puzzles: when you finish one or open "Ver completados", a Share button shows up. Frame your photo in 1:1, hear the shutter, and watch your polaroid slide into place — Xime-and-cat silhouette in the corner, level tip underneath.
