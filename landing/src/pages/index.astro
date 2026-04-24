@@ -1,7 +1,6 @@
 ---
 import changelogMd from '../../../CHANGELOG.md?raw';
 import PuzzleGame from '../components/PuzzleGame.astro';
-import TesterModal from '../components/TesterModal.astro';
 
 const baseUrl = import.meta.env.BASE_URL;
 const siteUrl = 'https://games.sabino.cl/zoominchile';
@@ -1751,7 +1750,7 @@ try {
       <a href="#features" class="hide-mobile" data-es="Caracter&iacute;sticas" data-en="Features">Caracter&iacute;sticas</a>
       <a href="#gallery" class="hide-mobile" data-es="Nuestra App" data-en="Our App">Nuestra App</a>
       <a href="#hof" class="hide-mobile" data-es="Ranking" data-en="Ranking">Ranking</a>
-      <a href="#" data-open-tester-modal data-es="Probar la App" data-en="Try It">Probar la App</a>
+      <a href="https://play.google.com/store/apps/details?id=cl.depointless.zoominchile" target="_blank" rel="noopener" data-es="Descargar" data-en="Download">Descargar</a>
       <div class="lang-toggle">
         <button class="active" data-lang="es">ES</button>
         <button data-lang="en">EN</button>
@@ -1775,10 +1774,10 @@ try {
           Cada puzzle es una foto que tomamos en nuestros viajes. Un rinc&oacute;n, una historia, un pedacito de Chile para descubrir juntos.
         </p>
         <div class="hero-actions reveal stagger-3">
-          <button class="btn-primary" data-open-tester-modal>
-            <i class="ph ph-envelope-simple"></i>
-            <span data-es="Probar la App" data-en="Try It">Probar la App</span>
-          </button>
+          <a class="btn-primary" href="https://play.google.com/store/apps/details?id=cl.depointless.zoominchile" target="_blank" rel="noopener" style="text-decoration:none;">
+            <i class="ph ph-google-play-logo"></i>
+            <span data-es="Descargar en Google Play" data-en="Download on Google Play">Descargar en Google Play</span>
+          </a>
         </div>
         <div class="hero-stats reveal stagger-4">
           <span class="stat-chip">
@@ -2095,24 +2094,16 @@ try {
     <img class="cta-cat" src={`${baseUrl}girl_cat_chill.png`} alt="" width="144" height="91" />
     <i class="ph-fill ph-heart cta-heart" aria-hidden="true"></i>
     <div class="cta-box">
-      <h2 class="reveal" data-es="Pronto en Google Play" data-en="Coming soon to Google Play">Pronto en Google Play</h2>
-      <p class="reveal stagger-1" data-es="Estamos en fase de testing. &Uacute;nete como tester y s&eacute; de los primeros en jugar." data-en="We're in testing phase. Join as a tester and be among the first to play.">Estamos en fase de testing. &Uacute;nete como tester y s&eacute; de los primeros en jugar.</p>
-      <div class="cta-spots reveal stagger-2" id="ctaSpots" style="display:none;">
-        <span class="spots-badge">
-          <i class="ph ph-users"></i>
-          <span id="spotsText"></span>
-        </span>
-      </div>
+      <h2 class="reveal" data-es="Ya est&aacute; en Google Play" data-en="Now on Google Play">Ya est&aacute; en Google Play</h2>
+      <p class="reveal stagger-1" data-es="Desc&aacute;rgala gratis y acomp&aacute;&ntilde;anos a recorrer Chile." data-en="Download it free and come explore Chile with us.">Desc&aacute;rgala gratis y acomp&aacute;&ntilde;anos a recorrer Chile.</p>
       <div class="cta-actions reveal stagger-2">
-        <button class="btn-primary" data-open-tester-modal>
-          <i class="ph ph-envelope-simple"></i>
-          <span data-es="Probar la App" data-en="Try It">Probar la App</span>
-        </button>
+        <a class="btn-primary" href="https://play.google.com/store/apps/details?id=cl.depointless.zoominchile" target="_blank" rel="noopener" style="text-decoration:none;">
+          <i class="ph ph-google-play-logo"></i>
+          <span data-es="Descargar en Google Play" data-en="Download on Google Play">Descargar en Google Play</span>
+        </a>
       </div>
     </div>
   </section>
-
-  <TesterModal />
 
   <!-- FOOTER -->
   <footer>
@@ -2381,25 +2372,7 @@ try {
       } catch (_) {}
     })();
 
-    // ── Tester Spots ──
-    (async () => {
-      try {
-        const res = await fetch('https://games.sabino.cl/zoominchile/api/tester-spots');
-        if (!res.ok) return;
-        const { spots, registered } = await res.json();
-        const remaining = Math.max(0, spots - registered);
-        if (remaining <= 0) return;
-        const lang = document.documentElement.lang || 'es';
-        const el = document.getElementById('spotsText');
-        const container = document.getElementById('ctaSpots');
-        el.setAttribute('data-es', `Solo ${remaining} cupos disponibles`);
-        el.setAttribute('data-en', `Only ${remaining} spots left`);
-        el.textContent = lang === 'en' ? `Only ${remaining} spots left` : `Solo ${remaining} cupos disponibles`;
-        container.style.display = '';
-      } catch (_) {}
-    })();
-
-    // ── Hall of Fame ──
+// ── Hall of Fame ──
     (async () => {
       const loading = document.getElementById('hofLoading');
       const list = document.getElementById('hofList');

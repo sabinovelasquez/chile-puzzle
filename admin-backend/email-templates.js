@@ -8,7 +8,7 @@
 // Email HTML is <table>-based and uses inline styles only, so it renders in
 // Outlook (which strips <style> and ignores flex/grid) as well as Gmail/Apple.
 
-const DOWNLOAD_URL = 'https://play.google.com/apps/internaltest/4700433915880246135';
+const DOWNLOAD_URL = 'https://play.google.com/store/apps/details?id=cl.depointless.zoominchile';
 const LANDING_URL = 'https://games.sabino.cl/zoominchile';
 const LOGO_URL = 'https://games.sabino.cl/zoominchile/icon.png';
 

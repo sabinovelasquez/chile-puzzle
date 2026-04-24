@@ -100,9 +100,9 @@ cd admin-backend && node server.js                              # Serves on http
 # 4. Output: build/app/outputs/bundle/release/app-release.aab
 
 # 5. Upload to Play Console:
-#    Testing → Internal testing → Create new release → Upload AAB
+#    Production → Create new release → Upload AAB
 #    Add release notes (en-US, es-419, es-ES, es-US)
-#    Internal testing opt-in: https://play.google.com/apps/internaltest/4700433915880246135
+#    Play Store: https://play.google.com/store/apps/details?id=cl.depointless.zoominchile
 
 # 6. Commit & push
 git add -A && git commit -m "chore: bump version to X.Y.Z+N"
@@ -138,8 +138,8 @@ git push
 - **Developer:** Depointless
 - **App name:** Zoom-In Chile
 - **Category:** Game (Puzzle), Free
-- **Track:** Internal testing (not production yet)
-- **Internal testing link:** https://play.google.com/apps/internaltest/4700433915880246135
+- **Track:** Production
+- **Play Store:** https://play.google.com/store/apps/details?id=cl.depointless.zoominchile
 - **Privacy policy:** https://games.sabino.cl/zoominchile/privacy
 - **AAB:** `build/app/outputs/bundle/release/app-release.aab`
 - **App access:** All functionality available without restrictions (point-based unlocks are gameplay, not access restrictions)
