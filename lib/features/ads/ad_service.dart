@@ -10,7 +10,9 @@ class AdService {
     MobileAds.instance.initialize();
   }
 
-  static const String _interstitialAdUnitId = 'ca-app-pub-1612904750122173/3891326939';
+  static const String _interstitialAdUnitId = kDebugMode
+      ? 'ca-app-pub-3940256099942544/1033173712'
+      : 'ca-app-pub-1612904750122173/3891326939';
 
   static void loadInterstitial() {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
