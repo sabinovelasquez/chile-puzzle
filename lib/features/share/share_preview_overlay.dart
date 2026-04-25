@@ -297,9 +297,11 @@ class _AnimatedPolaroid extends StatelessWidget {
       animation: slipT,
       builder: (context, _) {
         final t = slipT.value;
-        // Slip from the lower-right toward center.
+        // Slip in from above-right toward center, like a polaroid sliding
+        // out of an unseen camera at the top of the frame. Same magnitude
+        // as the prior bottom-right entry, vertically mirrored.
         final dx = (1 - t) * stageW * 0.55;
-        final dy = (1 - t) * stageH * 0.55;
+        final dy = -(1 - t) * stageH * 0.55;
         final scaleFactor = 0.94 + 0.06 * t;
         // Shadow evolves: wide+soft during flight → tight+dark on contact.
         final blur = 48.0 - 32.0 * t;
