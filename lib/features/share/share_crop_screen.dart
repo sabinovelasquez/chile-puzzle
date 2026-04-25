@@ -366,29 +366,21 @@ class _ShareCropScreenState extends State<ShareCropScreen>
                         ),
                       ),
                       // Inner camera-framing outline: a thin black rectangle
-                      // inset from the photo edge with a small corner radius,
-                      // emulating the framing markings on a viewfinder. Fades
-                      // in while the user is panning/zooming (paired with the
-                      // blur), fades back out on release. Lives OUTSIDE the
-                      // RepaintBoundary so it never bakes into the PNG.
-                      Positioned.fill(
+                      // inset from the photo edge — always visible, emulating
+                      // the framing markings on a viewfinder. Lives OUTSIDE
+                      // the RepaintBoundary so it never bakes into the PNG.
+                      const Positioned.fill(
                         child: IgnorePointer(
-                          child: AnimatedBuilder(
-                            animation: _blur,
-                            builder: (_, __) => Opacity(
-                              opacity: Curves.easeOut.transform(_blur.value),
-                              child: const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    border: Border.fromBorderSide(BorderSide(
-                                      color: Colors.black,
-                                      width: 1,
-                                    )),
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(6),
-                                    ),
-                                  ),
+                          child: Padding(
+                            padding: EdgeInsets.all(32),
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                border: Border.fromBorderSide(BorderSide(
+                                  color: Colors.black,
+                                  width: 1,
+                                )),
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(4),
                                 ),
                               ),
                             ),
