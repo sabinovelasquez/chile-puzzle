@@ -401,7 +401,7 @@ class _RewardChip extends StatelessWidget {
     final offerText = langCode == 'es'
         ? 'Comparte y gana +$points pts'
         : 'Share & earn +$points pts';
-    final color = claimed ? AppTheme.accentGreen : AppTheme.ctaPurple;
+    final color = AppTheme.accentGreen;
     final icon = claimed
         ? PhosphorIconsBold.checkCircle
         : PhosphorIconsBold.gift;

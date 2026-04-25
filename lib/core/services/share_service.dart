@@ -60,8 +60,12 @@ class ShareService {
       context,
     );
 
-    // 1. Crop — user frames a 1:1 region of the source photo.
-    final imageUrl = location.getImageForDifficulty(difficulty);
+    // 1. Crop — user frames a 1:1 region of the source photo. Prefer the
+    //    untouched original upload (full resolution) when the backend has
+    //    one stored; falls back to the per-difficulty pre-rendered crop or
+    //    the standard image. The crop screen pans/zooms freely so a larger
+    //    source means more detail under the lens.
+    final imageUrl = location.getBestSourceImage(difficulty);
     final cropped = await navigator.push<ui.Image>(
       MaterialPageRoute(
         fullscreenDialog: true,

@@ -7,6 +7,10 @@ class LocationModel {
   final double latitude;
   final double longitude;
   final String image;
+  /// Optional URL to the highest-resolution original upload (pre-crop, pre-
+  /// rotation). Empty for legacy rows. Use this for surfaces that need the
+  /// largest possible source — e.g. the share-flow polaroid crop screen.
+  final String originalImage;
   final String thumbnail;
   final Map<String, String> tip;
   /// Optional per-difficulty tip overrides. Keyed by difficulty (4/5/6).
@@ -38,6 +42,7 @@ class LocationModel {
     required this.latitude,
     required this.longitude,
     required this.image,
+    this.originalImage = '',
     required this.thumbnail,
     required this.tip,
     this.tipsByDifficulty = const {},
@@ -67,6 +72,14 @@ class LocationModel {
   /// should render it as-is without applying [getCropForDifficulty] math.
   bool hasPreRenderedCrop(int difficulty) =>
       imagesByDifficulty.containsKey(difficulty);
+
+  /// Best-quality source for the share polaroid crop: the original upload if
+  /// the backend stored it, else the per-difficulty image, else [image].
+  /// The crop screen wants the largest possible canvas to pan/zoom.
+  String getBestSourceImage(int difficulty) {
+    if (originalImage.isNotEmpty) return originalImage;
+    return getImageForDifficulty(difficulty);
+  }
 
   /// Returns the crop rect for a given difficulty, interpolated between
   /// full image (easiest) and the admin-defined focus crop (hardest).
@@ -123,6 +136,10 @@ class LocationModel {
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
       image: _fixUrl(json['image'] as String),
+      originalImage: () {
+        final v = json['originalImage'];
+        return (v is String && v.isNotEmpty) ? _fixUrl(v) : '';
+      }(),
       thumbnail: _fixUrl(json['thumbnail'] as String),
       tip: Map<String, String>.from(json['tip'] as Map),
       tipsByDifficulty: parsedTips,
