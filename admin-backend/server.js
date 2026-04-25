@@ -10,6 +10,7 @@ const { renderDownloadEmail, renderReleaseEmail, renderProgressBackupEmail } = r
 const { readChangelogEntry } = require('./changelog');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const cheerio = require('cheerio');
+const expressRateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,9 +19,34 @@ const URL_PREFIX = process.env.URL_PREFIX || '';
 const uploadsDir = path.join(__dirname, 'public', 'uploads');
 const upload = multer({ dest: uploadsDir });
 
+// Behind nginx — trust the first proxy hop so express-rate-limit reads the
+// real client IP from X-Forwarded-For instead of treating every request as
+// coming from 127.0.0.1.
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Rate limiters for unauthenticated public POST endpoints. Admin POST/PUT/
+// DELETE are gated by basic auth at the nginx layer and don't need this.
+// Note: there's already a custom in-memory rateLimit() helper further down
+// for backup create/restore — we leave those alone and add limiters here
+// for the previously-unbounded endpoints (leaderboard submissions, email).
+const publicWriteLimiter = expressRateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, slow down.' },
+});
+const emailLimiter = expressRateLimit({
+  windowMs: 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many email requests, try again in a minute.' },
+});
 
 async function writeStats() {
   const { n } = db.prepare('SELECT COUNT(*) as n FROM locations WHERE active = 1').get();
@@ -936,7 +962,7 @@ app.get('/api/leaderboard', (req, res) => {
   res.json({ entries });
 });
 
-app.post('/api/leaderboard', (req, res) => {
+app.post('/api/leaderboard', publicWriteLimiter, (req, res) => {
   const { initials, locationId, difficulty, points, totalPoints, puzzlesCompleted, timeSeconds, moves } = req.body;
 
   if (!initials || !/^[A-Z]{3}$/.test(initials)) {
@@ -1610,7 +1636,7 @@ app.get('/api/progress/restore/:code', (req, res) => {
   res.json({ progress, expiresAt: row.expires_at });
 });
 
-app.post('/api/progress/backup/email', async (req, res) => {
+app.post('/api/progress/backup/email', emailLimiter, async (req, res) => {
   const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
   if (!rateLimit(backupCreateHits, ip, 60 * 60 * 1000, 20)) {
     return res.status(429).json({ error: 'Too many requests, try again later' });
