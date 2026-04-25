@@ -365,18 +365,31 @@ class _ShareCropScreenState extends State<ShareCropScreen>
                           ),
                         ),
                       ),
-                      // Thin black inner outline: a UI guide that frames the
-                      // photo at the same rounded shape as the ClipRRect. It
-                      // sits OUTSIDE the RepaintBoundary so it's never baked
-                      // into the captured PNG.
+                      // Inner camera-framing outline: a thin black rectangle
+                      // inset from the photo edge with a small corner radius,
+                      // emulating the framing markings on a viewfinder. Fades
+                      // in while the user is panning/zooming (paired with the
+                      // blur), fades back out on release. Lives OUTSIDE the
+                      // RepaintBoundary so it never bakes into the PNG.
                       Positioned.fill(
                         child: IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.black,
-                                width: 1.2,
+                          child: AnimatedBuilder(
+                            animation: _blur,
+                            builder: (_, __) => Opacity(
+                              opacity: Curves.easeOut.transform(_blur.value),
+                              child: const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    border: Border.fromBorderSide(BorderSide(
+                                      color: Colors.black,
+                                      width: 1,
+                                    )),
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(6),
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
