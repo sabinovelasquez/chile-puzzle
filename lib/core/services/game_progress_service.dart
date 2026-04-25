@@ -237,4 +237,37 @@ class GameProgressService {
   static Future<void> setLeaderboardInitials(String initials) async {
     await _prefs.setString(_initialsKey, initials);
   }
+
+  // --- Per-puzzle "unlockable" flags (drive the green pulsing dot) ---
+  // Idempotent helpers: first call flips the flag and persists; subsequent
+  // calls are no-ops. Callers don't need to check before invoking.
+
+  static Future<bool> markShared(String locationId, int difficulty) =>
+      _markFlag(locationId, difficulty, (r) => r.copyWith(hasShared: true),
+          isAlready: (r) => r.hasShared);
+
+  static Future<bool> markPhotoViewed(String locationId, int difficulty) =>
+      _markFlag(locationId, difficulty, (r) => r.copyWith(photoViewed: true),
+          isAlready: (r) => r.photoViewed);
+
+  static Future<bool> markMapsOpened(String locationId, int difficulty) =>
+      _markFlag(locationId, difficulty, (r) => r.copyWith(mapsOpened: true),
+          isAlready: (r) => r.mapsOpened);
+
+  static Future<bool> _markFlag(
+    String locationId,
+    int difficulty,
+    PuzzleResult Function(PuzzleResult) update, {
+    required bool Function(PuzzleResult) isAlready,
+  }) async {
+    final key = '${locationId}_$difficulty';
+    final r = _progress.completedPuzzles[key];
+    if (r == null || isAlready(r)) return false;
+    _progress.completedPuzzles[key] = update(r);
+    await _save();
+    return true;
+  }
+
+  static PuzzleResult? puzzleResult(String locationId, int difficulty) =>
+      _progress.completedPuzzles['${locationId}_$difficulty'];
 }

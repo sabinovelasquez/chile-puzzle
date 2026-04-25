@@ -7,6 +7,12 @@ class PuzzleResult {
   final int timeSecs;
   final int moves;
   final DateTime completedAt;
+  // Flags that gate the "new unlockable" pulsing dot in the completion drawer.
+  // Default false on existing saves so prior puzzles still show the badge
+  // until the user interacts with each action.
+  final bool hasShared;
+  final bool photoViewed;
+  final bool mapsOpened;
 
   const PuzzleResult({
     required this.locationId,
@@ -15,7 +21,27 @@ class PuzzleResult {
     required this.timeSecs,
     required this.moves,
     required this.completedAt,
+    this.hasShared = false,
+    this.photoViewed = false,
+    this.mapsOpened = false,
   });
+
+  PuzzleResult copyWith({
+    bool? hasShared,
+    bool? photoViewed,
+    bool? mapsOpened,
+  }) =>
+      PuzzleResult(
+        locationId: locationId,
+        difficulty: difficulty,
+        points: points,
+        timeSecs: timeSecs,
+        moves: moves,
+        completedAt: completedAt,
+        hasShared: hasShared ?? this.hasShared,
+        photoViewed: photoViewed ?? this.photoViewed,
+        mapsOpened: mapsOpened ?? this.mapsOpened,
+      );
 
   Map<String, dynamic> toJson() => {
         'locationId': locationId,
@@ -24,6 +50,9 @@ class PuzzleResult {
         'timeSecs': timeSecs,
         'moves': moves,
         'completedAt': completedAt.toIso8601String(),
+        'hasShared': hasShared,
+        'photoViewed': photoViewed,
+        'mapsOpened': mapsOpened,
       };
 
   factory PuzzleResult.fromJson(Map<String, dynamic> json) => PuzzleResult(
@@ -33,6 +62,9 @@ class PuzzleResult {
         timeSecs: json['timeSecs'] as int,
         moves: json['moves'] as int,
         completedAt: DateTime.parse(json['completedAt'] as String),
+        hasShared: json['hasShared'] as bool? ?? false,
+        photoViewed: json['photoViewed'] as bool? ?? false,
+        mapsOpened: json['mapsOpened'] as bool? ?? false,
       );
 }
 
