@@ -8,6 +8,26 @@ emails to testers.
 New releases go on top. Each entry has an `**ES**` and `**EN**`
 sub-block with one bullet per line.
 
+## 1.12.1+21 — 2026-04-25
+
+**ES**
+- El mapa, el ranking y el perfil ahora funcionan sin conexión: los datos se guardan en caché y se muestran aunque no haya internet, con un aviso discreto cuando estás fuera de línea.
+- Los botones de acción que aún no has usado (como compartir una foto) muestran un punto verde pulsante para que no te pierdas las recompensas disponibles.
+- Compartir una foto da puntos por nivel de dificultad; una pastilla "+Npts" aparece sobre la imagen para que veas cuánto ganas antes de compartir.
+- La fila de acciones del mapa se reorganizó: encuadre crema, opciones a la izquierda y a la derecha, más fácil de leer de un vistazo.
+- La pantalla de carga ahora usa el mismo fondo blanco con el gif animado en todos los rincones de la app, con una aparición suave.
+- Botones principales ahora en lila pastel — más suave a la vista.
+- En la vista de encuadre al acercar la imagen el fondo se difumina, hay un contorno interior negro fino y la polaroid entra desde arriba a la derecha al confirmar.
+
+**EN**
+- The map, leaderboard, and profile now work offline: data is cached and shown even without a connection, with a subtle banner when you're offline.
+- Action buttons you haven't used yet (like sharing a photo) show a pulsing green dot so you don't miss available rewards.
+- Sharing a photo earns points per difficulty level; a "+Npts" pill appears over the image so you can see what you'll earn before sharing.
+- The map actions row was reorganised: cream frame, options split left and right, easier to scan at a glance.
+- The loading screen now uses the same white background with the animated gif everywhere in the app, with a smooth fade-in.
+- Primary buttons are now in pastel purple — easier on the eyes.
+- In the crop view, zooming in blurs the background, a thin black inner outline appears, and the polaroid slides in from the top-right when you confirm.
+
 ## 1.12.0+20 — 2026-04-22
 
 **ES**
