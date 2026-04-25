@@ -11,7 +11,6 @@ import 'package:chile_puzzle/core/services/mock_backend.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'package:chile_puzzle/core/services/settings_service.dart';
 import 'package:chile_puzzle/core/services/loading_overlay_service.dart';
-import 'package:chile_puzzle/core/widgets/app_loader.dart';
 import 'package:chile_puzzle/core/services/share_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/features/puzzle/puzzle_screen.dart';
@@ -560,7 +559,12 @@ class _MapScreenState extends State<MapScreen>
                       if (loadingProgress == null) return child;
                       return Container(
                         color: Colors.grey.shade200,
-                        child: const Center(child: AppLoader(size: 32)),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 24, height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
                       );
                     },
                     errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade300),
@@ -1742,7 +1746,11 @@ class _LocationImage extends StatelessWidget {
       fit: BoxFit.cover,
       placeholder: (context, _) => Container(
         color: Colors.grey.shade200,
-        child: const Center(child: AppLoader(size: 28)),
+        child: const Center(
+          child: SizedBox(width: 20, height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
       ),
       errorWidget: (_, __, ___) => Container(
         color: Colors.grey.shade200,

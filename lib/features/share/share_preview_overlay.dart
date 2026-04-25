@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:chile_puzzle/core/widgets/app_loader.dart';
 
 import '../../core/theme/app_theme.dart';
 import 'shareable_card.dart';
@@ -182,7 +181,15 @@ class _SharePreviewOverlayState extends State<SharePreviewOverlay>
                             ),
                           ),
                           icon: _sharing
-                              ? const AppLoader(size: 22)
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor:
+                                        AlwaysStoppedAnimation(Colors.white),
+                                  ),
+                                )
                               : const Icon(PhosphorIconsBold.shareNetwork,
                                   size: 18),
                           label: Text(
