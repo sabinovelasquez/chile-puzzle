@@ -511,7 +511,7 @@ class _CrosshairPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.55)
+      ..color = Colors.black.withValues(alpha: 0.65)
       ..strokeWidth = 1.4
       ..strokeCap = StrokeCap.round;
     final c = Offset(size.width / 2, size.height / 2);
@@ -531,7 +531,7 @@ class _CrosshairPainter extends CustomPainter {
     canvas.drawCircle(
       c,
       1.8,
-      Paint()..color = Colors.white.withValues(alpha: 0.75),
+      Paint()..color = Colors.black.withValues(alpha: 0.85),
     );
   }
 
