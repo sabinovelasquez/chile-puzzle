@@ -9,6 +9,7 @@ class AppTheme {
   static const accentBlue = Color(0xFF3B82F6);
   static const accentPurple = Color(0xFF8B5CF6);
   static const surfaceGrey = Color(0xFFF5F5F7);
+  static const creamBackground = Color(0xFFFAF5EA);
 
   static TextTheme get _textTheme {
     final body = GoogleFonts.plusJakartaSansTextTheme();

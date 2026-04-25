@@ -627,55 +627,75 @@ class _MapScreenState extends State<MapScreen>
             // pill reports the total).
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _hintIconToggle(
-                    icon: PhosphorIconsBold.lock,
-                    iconFill: PhosphorIconsFill.lock,
-                    selected: hintLock,
-                    onTap: () {
-                      setDialogState(() => hintLock = !hintLock);
-                      _showHintNotification(
-                        ctx: ctx, langCode: langCode,
-                        hint: _HintKind.lock, enabled: hintLock,
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 14),
-                  _hintIconToggle(
-                    icon: PhosphorIconsBold.squaresFour,
-                    iconFill: PhosphorIconsFill.squaresFour,
-                    selected: hintMulti,
-                    onTap: () {
-                      setDialogState(() => hintMulti = !hintMulti);
-                      _showHintNotification(
-                        ctx: ctx, langCode: langCode,
-                        hint: _HintKind.multi, enabled: hintMulti,
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 14),
-                  _hintIconToggle(
-                    icon: PhosphorIconsBold.image,
-                    iconFill: PhosphorIconsFill.image,
-                    selected: hintReference,
-                    onTap: () {
-                      setDialogState(() => hintReference = !hintReference);
-                      _showHintNotification(
-                        ctx: ctx, langCode: langCode,
-                        hint: _HintKind.reference, enabled: hintReference,
-                      );
-                    },
-                  ),
-                  if (_hintTotalPenalty(hintLock, hintMulti, hintReference) > 0) ...[
-                    const SizedBox(width: 14),
-                    _HintPenaltyBadge(
-                      penalty: _hintTotalPenalty(hintLock, hintMulti, hintReference),
-                      langCode: langCode,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppTheme.creamBackground, width: 1.4),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _hintIconToggle(
+                          icon: PhosphorIconsBold.lock,
+                          iconFill: PhosphorIconsFill.lock,
+                          selected: hintLock,
+                          onTap: () {
+                            setDialogState(() => hintLock = !hintLock);
+                            _showHintNotification(
+                              ctx: ctx, langCode: langCode,
+                              hint: _HintKind.lock, enabled: hintLock,
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 12),
+                        _hintIconToggle(
+                          icon: PhosphorIconsBold.squaresFour,
+                          iconFill: PhosphorIconsFill.squaresFour,
+                          selected: hintMulti,
+                          onTap: () {
+                            setDialogState(() => hintMulti = !hintMulti);
+                            _showHintNotification(
+                              ctx: ctx, langCode: langCode,
+                              hint: _HintKind.multi, enabled: hintMulti,
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 12),
+                        _hintIconToggle(
+                          icon: PhosphorIconsBold.image,
+                          iconFill: PhosphorIconsFill.image,
+                          selected: hintReference,
+                          onTap: () {
+                            setDialogState(() => hintReference = !hintReference);
+                            _showHintNotification(
+                              ctx: ctx, langCode: langCode,
+                              hint: _HintKind.reference, enabled: hintReference,
+                            );
+                          },
+                        ),
+                      ],
                     ),
+                    if (_hintTotalPenalty(hintLock, hintMulti, hintReference) > 0)
+                      _HintPenaltyBadge(
+                        penalty: _hintTotalPenalty(hintLock, hintMulti, hintReference),
+                        langCode: langCode,
+                      )
+                    else
+                      Text(
+                        langCode == 'es' ? 'Potenciadores' : 'Power-ups',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade500,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
                   ],
-                ],
+                ),
               ),
             ),
 
