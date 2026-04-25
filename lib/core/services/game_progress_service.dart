@@ -270,4 +270,12 @@ class GameProgressService {
 
   static PuzzleResult? puzzleResult(String locationId, int difficulty) =>
       _progress.completedPuzzles['${locationId}_$difficulty'];
+
+  /// Bumps total points (for rewards earned outside of puzzle completion,
+  /// e.g. one-shot share bonus) and persists. Always positive.
+  static Future<void> addReward(int delta) async {
+    if (delta <= 0) return;
+    _progress.totalPoints += delta;
+    await _save();
+  }
 }

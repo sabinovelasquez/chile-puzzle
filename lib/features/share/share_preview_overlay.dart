@@ -24,12 +24,18 @@ class SharePreviewOverlay extends StatefulWidget {
     required this.croppedPhoto,
     required this.tipText,
     required this.onShare,
+    required this.rewardPoints,
+    required this.alreadyClaimed,
   });
 
   final Future<String> pngPathFuture;
   final ui.Image croppedPhoto;
   final String tipText;
-  final Future<void> Function(String pngPath) onShare;
+  /// Returns true if this share invocation actually awarded the reward
+  /// (i.e. result was successful AND the puzzle hadn't been shared before).
+  final Future<bool> Function(String pngPath) onShare;
+  final int rewardPoints;
+  final bool alreadyClaimed;
 
   @override
   State<SharePreviewOverlay> createState() => _SharePreviewOverlayState();
@@ -40,6 +46,10 @@ class _SharePreviewOverlayState extends State<SharePreviewOverlay>
   _Phase _phase = _Phase.reveal;
   String? _pngPath;
   bool _sharing = false;
+  // Local "claimed in this session" flag — flips true after a successful
+  // share returns true. Combined with widget.alreadyClaimed it gates the
+  // reward chip copy ("earn vs received").
+  bool _justClaimed = false;
 
   late final AnimationController _slip;
   late final Animation<double> _slipT;
@@ -79,10 +89,28 @@ class _SharePreviewOverlayState extends State<SharePreviewOverlay>
     final path = _pngPath;
     if (_sharing || path == null) return;
     setState(() => _sharing = true);
+    bool awarded = false;
     try {
-      await widget.onShare(path);
+      awarded = await widget.onShare(path);
     } finally {
-      if (mounted) setState(() => _sharing = false);
+      if (mounted) {
+        setState(() {
+          _sharing = false;
+          if (awarded) _justClaimed = true;
+        });
+      }
+    }
+    if (awarded && mounted) {
+      final langCode = Localizations.localeOf(context).languageCode;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(langCode == 'es'
+              ? '+${widget.rewardPoints} pts por compartir'
+              : '+${widget.rewardPoints} pts for sharing'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -132,7 +160,16 @@ class _SharePreviewOverlayState extends State<SharePreviewOverlay>
                     child: AnimatedOpacity(
                       opacity: _phase == _Phase.idle ? 1.0 : 0.0,
                       duration: const Duration(milliseconds: 320),
-                      child: SizedBox(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _RewardChip(
+                            points: widget.rewardPoints,
+                            claimed: widget.alreadyClaimed || _justClaimed,
+                            langCode: langCode,
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: canShare ? _doShare : null,
@@ -156,6 +193,8 @@ class _SharePreviewOverlayState extends State<SharePreviewOverlay>
                             ),
                           ),
                         ),
+                      ),
+                        ],
                       ),
                     ),
                   ),
@@ -328,6 +367,58 @@ class _PreviewPolaroid extends StatelessWidget {
         ),
       );
     });
+  }
+}
+
+/// Small pill above the Share button that advertises the share reward
+/// while it's still claimable, then flips to a "received" state once
+/// awarded (either previously or in this session).
+class _RewardChip extends StatelessWidget {
+  const _RewardChip({
+    required this.points,
+    required this.claimed,
+    required this.langCode,
+  });
+
+  final int points;
+  final bool claimed;
+  final String langCode;
+
+  @override
+  Widget build(BuildContext context) {
+    final claimedText = langCode == 'es'
+        ? 'Recompensa recibida'
+        : 'Reward received';
+    final offerText = langCode == 'es'
+        ? 'Comparte y gana +$points pts'
+        : 'Share & earn +$points pts';
+    final color = claimed ? AppTheme.accentGreen : AppTheme.ctaPurple;
+    final icon = claimed
+        ? PhosphorIconsBold.checkCircle
+        : PhosphorIconsBold.gift;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.35), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            claimed ? claimedText : offerText,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

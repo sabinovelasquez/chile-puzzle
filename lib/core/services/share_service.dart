@@ -11,9 +11,30 @@ import '../../features/share/share_crop_screen.dart';
 import '../../features/share/share_preview_overlay.dart';
 import '../../features/share/shareable_card.dart';
 import '../models/location_model.dart';
+import 'game_progress_service.dart';
 
 class ShareService {
   static const String _landingUrl = 'https://games.sabino.cl/zoominchile';
+
+  /// One-shot share reward by difficulty (column count). Easy/beginner = 50,
+  /// medium = 100, hard = 150, expert/master = 200. Awarded at most once
+  /// per puzzle (gated by [PuzzleResult.hasShared]).
+  static int rewardForDifficulty(int difficulty) {
+    switch (difficulty) {
+      case 3:
+      case 4:
+        return 50;
+      case 5:
+        return 100;
+      case 6:
+        return 150;
+      case 8:
+      case 10:
+        return 200;
+      default:
+        return 100;
+    }
+  }
 
   /// Full share flow. Opens crop UI, renders the shareable PNG, then shows a
   /// preview with a Share button that invokes the native share sheet.
@@ -61,6 +82,11 @@ class ShareService {
         ? '$name — Zoom-In Chile 🧩 Descúbrelo en $_landingUrl'
         : '$name — Zoom-In Chile 🧩 Discover it at $_landingUrl';
 
+    final reward = rewardForDifficulty(difficulty);
+    final alreadyClaimed =
+        GameProgressService.puzzleResult(location.id, difficulty)?.hasShared ??
+            false;
+
     // 3. Preview + share.
     await navigator.push<void>(
       PageRouteBuilder(
@@ -72,11 +98,24 @@ class ShareService {
           pngPathFuture: pngPathFuture,
           croppedPhoto: cropped,
           tipText: tip,
+          rewardPoints: reward,
+          alreadyClaimed: alreadyClaimed,
           onShare: (path) async {
-            await Share.shareXFiles(
+            final result = await Share.shareXFiles(
               [XFile(path, mimeType: 'image/png')],
               text: caption,
             );
+            // success: confirmed share (iOS, some Android targets).
+            // unavailable: Android often returns this even on a real share —
+            // share_plus can't read the result reliably on most OEMs, so we
+            // treat "unavailable" as success there. dismissed: user backed out.
+            final ok = result.status == ShareResultStatus.success ||
+                (Platform.isAndroid &&
+                    result.status == ShareResultStatus.unavailable);
+            if (!ok || alreadyClaimed) return false;
+            await GameProgressService.markShared(location.id, difficulty);
+            await GameProgressService.addReward(reward);
+            return true;
           },
         ),
         transitionsBuilder: (_, anim, _, child) =>
