@@ -714,16 +714,20 @@ class _MapScreenState extends State<MapScreen>
 
                   return GestureDetector(
                     onTap: () async {
-                      Navigator.pop(ctx);
                       await SettingsService.setLastHints(
                         lock: hintLock,
                         multi: hintMulti,
                         reference: hintReference,
                       );
                       if (!mounted) return;
+                      // Keep the dialog open while we ensure the image is
+                      // available. _launchPuzzle pops the dialog itself
+                      // (only on success) right before pushing the puzzle —
+                      // matches the smooth flow used by "Ver completados".
                       _launchPuzzle(
                         loc,
                         diff,
+                        dialogContext: ctx,
                         lockInPlace: hintLock,
                         multiSelect: hintMulti,
                         referenceEnabled: hintReference,
@@ -1072,14 +1076,57 @@ class _MapScreenState extends State<MapScreen>
   Future<void> _launchPuzzle(
     LocationModel loc,
     int difficulty, {
+    BuildContext? dialogContext,
     bool lockInPlace = false,
     bool multiSelect = false,
     bool referenceEnabled = false,
   }) async {
+    final imageUrl = loc.getImageForDifficulty(difficulty);
+    final imageProvider = CachedNetworkImageProvider(imageUrl);
+
+    // Show the global loader IMMEDIATELY so the tap registers visually —
+    // the dialog stays open underneath, but the loader sits above it so
+    // the user never wonders if their tap was received.
+    //
+    // We pre-resolve the image into Flutter's in-memory cache (not just
+    // the on-disk cache) so that when the puzzle screen mounts, its own
+    // CachedNetworkImage hits the cache instantly and never flashes a
+    // second loader on top of the first one.
+    LoadingOverlayService.show();
+    try {
+      await precacheImage(imageProvider, context)
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {
+      LoadingOverlayService.hide();
+      if (!mounted) return;
+      final langCode = Localizations.localeOf(context).languageCode;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(langCode == 'es'
+              ? 'Necesitas conexión para descargar este puzzle'
+              : 'You need a connection to download this puzzle'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    LoadingOverlayService.hide();
+    if (!mounted) return;
+    // Pop the difficulty dialog (if any) and push the puzzle in the
+    // same frame — the dialog's exit animation overlaps the puzzle
+    // route's fade-in, so the user never sees the bare map between
+    // the two screens.
+    if (dialogContext != null && Navigator.canPop(dialogContext)) {
+      Navigator.pop(dialogContext);
+    }
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => PuzzleScreen(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 200),
+        reverseTransitionDuration: const Duration(milliseconds: 150),
+        transitionsBuilder: (ctx, animation, _, child) =>
+            FadeTransition(opacity: animation, child: child),
+        pageBuilder: (ctx, _, __) => PuzzleScreen(
           location: loc,
           difficulty: difficulty,
           gameConfig: _config,
@@ -1154,6 +1201,130 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
+  Widget _buildOfflineBanner(String langCode) {
+    final ageLabel = _relativeAge(MockBackend.lastSyncedAt, langCode);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: AppTheme.accentOrange.withValues(alpha: 0.12),
+      child: Row(
+        children: [
+          Icon(PhosphorIconsBold.cloudSlash, size: 18, color: AppTheme.accentOrange),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              langCode == 'es'
+                  ? (ageLabel == null
+                      ? 'Sin conexión — mostrando lo que tienes guardado'
+                      : 'Sin conexión — última sincronización $ageLabel')
+                  : (ageLabel == null
+                      ? "Offline — showing what's saved"
+                      : 'Offline — last synced $ageLabel'),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.accentOrange,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() { _isLoading = true; _error = null; });
+              _initData();
+            },
+            style: TextButton.styleFrom(
+              minimumSize: Size.zero,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              langCode == 'es' ? 'Reintentar' : 'Retry',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.accentOrange,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String langCode, {required bool isOffline}) {
+    // Two cases:
+    //   - offline + the raw location list is empty (fetch failed, no cache) → offline message + retry
+    //   - any other empty (filter, search, zone with no matches) → "Sin resultados"
+    final isOfflineEmpty = isOffline && _allLocations.isEmpty;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isOfflineEmpty
+                  ? PhosphorIconsBold.cloudSlash
+                  : PhosphorIconsBold.magnifyingGlass,
+              size: 48,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              isOfflineEmpty
+                  ? (langCode == 'es'
+                      ? 'Sin conexión'
+                      : 'No connection')
+                  : (langCode == 'es' ? 'Sin resultados' : 'No results'),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            if (isOfflineEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                langCode == 'es'
+                    ? 'Revisa tu conexión y vuelve a intentar'
+                    : 'Check your connection and try again',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() { _isLoading = true; _error = null; });
+                  _initData();
+                },
+                icon: const Icon(PhosphorIconsBold.arrowClockwise, size: 18),
+                label: Text(langCode == 'es' ? 'Reintentar' : 'Retry'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// "hace 3 min" / "3 min ago" — compact humanized age for the offline banner.
+  String? _relativeAge(DateTime? when, String langCode) {
+    if (when == null) return null;
+    final diff = DateTime.now().difference(when);
+    final es = langCode == 'es';
+    if (diff.inMinutes < 1) return es ? 'hace instantes' : 'just now';
+    if (diff.inMinutes < 60) {
+      return es ? 'hace ${diff.inMinutes} min' : '${diff.inMinutes} min ago';
+    }
+    if (diff.inHours < 24) {
+      return es ? 'hace ${diff.inHours} h' : '${diff.inHours} h ago';
+    }
+    return es ? 'hace ${diff.inDays} d' : '${diff.inDays} d ago';
+  }
+
   Widget _buildError() {
     return Center(
       child: Column(
@@ -1215,9 +1386,13 @@ class _MapScreenState extends State<MapScreen>
     final inProgressCount = _getInProgressIds(progress).length;
     final completedCount = _getCompletedIds(progress).length;
     final favCount = GameProgressService.favoriteLocationIds.length;
+    final isOffline = MockBackend.lastFetchWasOffline;
 
     return Column(
       children: [
+        // Banner only when we have cached content to show — otherwise the
+        // empty state below already communicates the offline condition.
+        if (isOffline && _allLocations.isNotEmpty) _buildOfflineBanner(langCode),
         // Search bar (collapsible)
         if (_searchExpanded)
           Padding(
@@ -1310,19 +1485,7 @@ class _MapScreenState extends State<MapScreen>
           child: _isLoading
               ? const Center(child: ClipOval(child: SizedBox(width: 95, height: 95, child: _LoaderGif())))
               : sorted.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(PhosphorIconsBold.magnifyingGlass, size: 48, color: Colors.grey.shade400),
-                      const SizedBox(height: 12),
-                      Text(
-                        langCode == 'es' ? 'Sin resultados' : 'No results',
-                        style: GoogleFonts.plusJakartaSans(fontSize: 16, color: Colors.grey.shade500),
-                      ),
-                    ],
-                  ),
-                )
+              ? _buildEmptyState(langCode, isOffline: isOffline)
               : GridView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -1557,23 +1720,45 @@ class _LocationImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget image = Image.network(
-      imageUrl,
+    final isOffline = MockBackend.lastFetchWasOffline;
+    Widget image = CachedNetworkImage(
+      imageUrl: imageUrl,
       fit: BoxFit.cover,
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
-        return Container(
-          color: Colors.grey.shade200,
-          child: const Center(
-            child: SizedBox(width: 20, height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
-        );
-      },
-      errorBuilder: (_, __, ___) => Container(
+      placeholder: (context, _) => Container(
         color: Colors.grey.shade200,
-        child: Icon(PhosphorIconsBold.image, size: 32, color: Colors.grey.shade600),
+        child: const Center(
+          child: SizedBox(width: 20, height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      ),
+      errorWidget: (_, __, ___) => Container(
+        color: Colors.grey.shade200,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isOffline ? PhosphorIconsBold.cloudSlash : PhosphorIconsBold.image,
+                size: 32,
+                color: Colors.grey.shade600,
+              ),
+              if (isOffline) ...[
+                const SizedBox(height: 4),
+                Text(
+                  Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Necesita conexión'
+                      : 'Needs connection',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
 

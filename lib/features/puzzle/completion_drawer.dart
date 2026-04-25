@@ -579,9 +579,23 @@ class _RankingButtonState extends State<_RankingButton> {
       return;
     }
 
+    // Network failure → honest snackbar, no rank, no leaderboard open.
+    if (result == null) {
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(langCode == 'es'
+              ? 'No se pudo enviar el ranking — sin conexión'
+              : "Couldn't submit ranking — offline"),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _submitting = false;
-      _rank = result?['rank'] as int?;
+      _rank = result['rank'] as int?;
     });
 
     if (_rank != null) {

@@ -141,19 +141,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _entries.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(PhosphorIconsBold.ranking, size: 48, color: Colors.grey.shade400),
-                      const SizedBox(height: 12),
-                      Text(
-                        langCode == 'es' ? 'Sin puntajes aún' : 'No scores yet',
-                        style: GoogleFonts.plusJakartaSans(fontSize: 16, color: Colors.grey.shade500),
-                      ),
-                    ],
-                  ),
-                )
+              ? _buildEmpty(langCode)
               : RefreshIndicator(
                   onRefresh: _loadLeaderboard,
                   child: ListView.builder(
@@ -169,6 +157,55 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                     },
                   ),
                 ),
+    );
+  }
+
+  Widget _buildEmpty(String langCode) {
+    final isOffline = MockBackend.lastLeaderboardWasOffline;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isOffline ? PhosphorIconsBold.cloudSlash : PhosphorIconsBold.ranking,
+              size: 48,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              isOffline
+                  ? (langCode == 'es' ? 'Sin conexión' : 'No connection')
+                  : (langCode == 'es' ? 'Sin puntajes aún' : 'No scores yet'),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            if (isOffline) ...[
+              const SizedBox(height: 6),
+              Text(
+                langCode == 'es'
+                    ? 'El ranking se mostrará cuando vuelvas a conectarte'
+                    : "We'll show rankings once you're back online",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: _loadLeaderboard,
+                icon: const Icon(PhosphorIconsBold.arrowClockwise, size: 18),
+                label: Text(langCode == 'es' ? 'Reintentar' : 'Retry'),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

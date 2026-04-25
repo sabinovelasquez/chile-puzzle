@@ -53,10 +53,15 @@ class _LoaderBody extends StatelessWidget {
     return Material(
       color: Colors.black.withValues(alpha: 0.55),
       child: const Center(
-        child: SizedBox(
-          width: 96,
-          height: 96,
-          child: Image(image: AssetImage('assets/loader.gif')),
+        child: ClipOval(
+          child: SizedBox(
+            width: 96,
+            height: 96,
+            child: Image(
+              image: AssetImage('assets/loader.gif'),
+              fit: BoxFit.cover,
+            ),
+          ),
         ),
       ),
     );

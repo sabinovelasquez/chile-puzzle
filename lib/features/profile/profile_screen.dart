@@ -1397,6 +1397,34 @@ class _BackupSheetState extends State<_BackupSheet> with SingleTickerProviderSta
                 ],
               ),
               const SizedBox(height: 12),
+              if (MockBackend.lastFetchWasOffline)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentOrange.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(PhosphorIconsBold.cloudSlash, size: 16, color: AppTheme.accentOrange),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          langCode == 'es'
+                              ? 'Estas acciones requieren conexión'
+                              : 'These actions require a connection',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.accentOrange,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               SizedBox(
                 height: 320,
                 child: TabBarView(
@@ -1426,7 +1454,7 @@ class _BackupSheetState extends State<_BackupSheet> with SingleTickerProviderSta
           const SizedBox(height: 16),
           if (_code == null) ...[
             FilledButton.icon(
-              onPressed: _creating ? null : _createBackup,
+              onPressed: (_creating || MockBackend.lastFetchWasOffline) ? null : _createBackup,
               icon: _creating
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Icon(PhosphorIconsBold.plusCircle, size: 18),
@@ -1485,7 +1513,7 @@ class _BackupSheetState extends State<_BackupSheet> with SingleTickerProviderSta
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: (_sendingEmail || _emailSent) ? null : _emailCode,
+              onPressed: (_sendingEmail || _emailSent || MockBackend.lastFetchWasOffline) ? null : _emailCode,
               icon: _sendingEmail
                   ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(PhosphorIconsBold.paperPlaneTilt, size: 16),
@@ -1536,7 +1564,7 @@ class _BackupSheetState extends State<_BackupSheet> with SingleTickerProviderSta
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
-            onPressed: _restoring ? null : _restore,
+            onPressed: (_restoring || MockBackend.lastFetchWasOffline) ? null : _restore,
             icon: _restoring
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Icon(PhosphorIconsBold.downloadSimple, size: 18),
