@@ -398,11 +398,14 @@ class _ShareCropScreenState extends State<ShareCropScreen>
                       ),
                       // Centered crosshair guide, light and non-interactive.
                       // NOT captured — it sits OUTSIDE the RepaintBoundary above.
-                      const Positioned.fill(
-                        child: IgnorePointer(
-                          child: Center(child: _Crosshair()),
+                      // Hidden while the source loads so the loader is the
+                      // only thing on screen.
+                      if (_sourceImage != null)
+                        const Positioned.fill(
+                          child: IgnorePointer(
+                            child: Center(child: _Crosshair()),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
