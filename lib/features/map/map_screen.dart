@@ -11,6 +11,7 @@ import 'package:chile_puzzle/core/services/mock_backend.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'package:chile_puzzle/core/services/settings_service.dart';
 import 'package:chile_puzzle/core/services/loading_overlay_service.dart';
+import 'package:chile_puzzle/core/widgets/pulsing_dot.dart';
 import 'package:chile_puzzle/core/services/share_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/features/puzzle/puzzle_screen.dart';
@@ -238,6 +239,40 @@ class _MapScreenState extends State<MapScreen>
         .where((e) => e.value >= _getDifficultyCount(e.key))
         .map((e) => e.key)
         .toList();
+  }
+
+  /// True if any difficulty of [loc] has been completed but not yet shared
+  /// — drives the "+pts up for grabs" pulsing-dot on cards & filter chips.
+  bool _hasUnclaimedShare(LocationModel loc) {
+    for (final diff in loc.difficultyLevels) {
+      final r = GameProgressService.puzzleResult(loc.id, diff);
+      if (r != null && !r.hasShared) return true;
+    }
+    return false;
+  }
+
+  /// True if the current filter + zone + search would expose at least one
+  /// location with an unclaimed share reward. Used by chips to nudge the
+  /// player toward unfinished one-shot rewards.
+  bool _filterHasUnclaimedShare(String filter) {
+    final progress = GameProgressService.progress;
+    Iterable<LocationModel> pool = _allLocations;
+    switch (filter) {
+      case 'in_progress':
+        final ids = _getInProgressIds(progress).toSet();
+        pool = pool.where((l) => ids.contains(l.id));
+        break;
+      case 'completed':
+        final ids = _getCompletedIds(progress).toSet();
+        pool = pool.where((l) => ids.contains(l.id));
+        break;
+      case 'favorites':
+        final ids = GameProgressService.favoriteLocationIds.toSet();
+        pool = pool.where((l) => ids.contains(l.id));
+        break;
+      // 'all' and 'new' fall through with no pool restriction.
+    }
+    return pool.any(_hasUnclaimedShare);
   }
 
   void _onFilterChanged(String filter) {
@@ -822,21 +857,33 @@ class _MapScreenState extends State<MapScreen>
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      _showFullPhoto(loc, langCode, topDiff);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF7396A4),
-                      side: const BorderSide(color: Color(0xFFB8CDD4)),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 5),
-                      textStyle: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w500),
-                    ),
-                    icon: const Icon(PhosphorIconsBold.image, size: 15),
-                    label: Text(langCode == 'es' ? 'Ver completados' : 'View completed'),
+                  child: Stack(
+                    clipBehavior: Clip.hardEdge,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _showFullPhoto(loc, langCode, topDiff);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF7396A4),
+                          side: const BorderSide(color: Color(0xFFB8CDD4)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 5),
+                          textStyle: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                        icon: const Icon(PhosphorIconsBold.image, size: 15),
+                        label: Text(langCode == 'es' ? 'Ver completados' : 'View completed'),
+                      ),
+                      // Pulsing dot lives INSIDE the button outline — top-right
+                      // padded inset so it doesn't bleed past the border.
+                      if (_hasUnclaimedShare(loc))
+                        const Positioned(
+                          top: 8, right: 10,
+                          child: IgnorePointer(child: PulsingDot(size: 8)),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -1457,12 +1504,14 @@ class _MapScreenState extends State<MapScreen>
               _FilterChip(
                 label: langCode == 'es' ? 'Todos' : 'All',
                 selected: _activeFilter == 'all' && _activeZone == null && _searchQuery.isEmpty,
+                showDot: _filterHasUnclaimedShare('all'),
                 onTap: () => _onFilterChanged('all'),
               ),
               _FilterChip(
                 label: langCode == 'es' ? 'Nuevos' : 'New',
                 icon: PhosphorIconsBold.sparkle,
                 selected: _activeFilter == 'new',
+                showDot: _filterHasUnclaimedShare('new'),
                 onTap: () => _onFilterChanged('new'),
               ),
               if (inProgressCount > 0)
@@ -1470,6 +1519,7 @@ class _MapScreenState extends State<MapScreen>
                   label: langCode == 'es' ? 'En progreso' : 'In progress',
                   icon: PhosphorIconsBold.hourglass,
                   selected: _activeFilter == 'in_progress',
+                  showDot: _filterHasUnclaimedShare('in_progress'),
                   onTap: () => _onFilterChanged('in_progress'),
                 ),
               if (completedCount > 0)
@@ -1477,6 +1527,7 @@ class _MapScreenState extends State<MapScreen>
                   label: langCode == 'es' ? 'Completados' : 'Completed',
                   icon: PhosphorIconsBold.checkCircle,
                   selected: _activeFilter == 'completed',
+                  showDot: _filterHasUnclaimedShare('completed'),
                   onTap: () => _onFilterChanged('completed'),
                 ),
               if (favCount > 0)
@@ -1484,17 +1535,11 @@ class _MapScreenState extends State<MapScreen>
                   label: langCode == 'es' ? 'Favoritos' : 'Favorites',
                   icon: PhosphorIconsBold.heart,
                   selected: _activeFilter == 'favorites',
+                  showDot: _filterHasUnclaimedShare('favorites'),
                   onTap: () => _onFilterChanged('favorites'),
                 ),
-              // Zone chips from config (only if they have locations)
-              ..._config.zones
-                .where((zone) => _allLocations.any((loc) => loc.region == zone.id))
-                .map((zone) => _FilterChip(
-                  label: langCode == 'es' ? (zone.name['es'] ?? zone.id) : (zone.name['en'] ?? zone.id),
-                  icon: _zoneIcon(zone.icon),
-                  selected: _activeZone == zone.id,
-                  onTap: () => _onZoneChanged(_activeZone == zone.id ? null : zone.id),
-                )),
+              // Zone chips removed — pending rethink of how zones surface in
+              // the filter row; for now only the basic status filters live here.
             ],
           ),
         ),
@@ -1531,6 +1576,7 @@ class _MapScreenState extends State<MapScreen>
     ).toList();
     final allCompleted = completedDiffs.length == difficulties.length;
     final isUnlocked = _isLocationUnlocked(loc);
+    final hasUnclaimedShare = _hasUnclaimedShare(loc);
 
     // B&W progressive: 1.0 = full color, 0.0 = full grayscale
     final double saturation = allCompleted
@@ -1677,15 +1723,30 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
-            // Name
+            // Name (with optional pulsing-dot when this card has an
+            // unclaimed share reward — drives the player toward "+pts").
             Positioned(
               left: 10, bottom: 36, right: 10,
-              child: Text(
-                loc.getLocalizedName(langCode),
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
-                ),
-                maxLines: 2, overflow: TextOverflow.ellipsis,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Flexible(
+                    child: Text(
+                      loc.getLocalizedName(langCode),
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
+                      ),
+                      maxLines: 2, overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (hasUnclaimedShare) ...[
+                    const SizedBox(width: 6),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 5),
+                      child: PulsingDot(size: 8),
+                    ),
+                  ],
+                ],
               ),
             ),
             // Difficulty icons over photo
@@ -1819,12 +1880,14 @@ class _FilterChip extends StatelessWidget {
   final String label;
   final PhosphorIconData? icon;
   final bool selected;
+  final bool showDot;
   final VoidCallback onTap;
 
   const _FilterChip({
     required this.label,
     this.icon,
     required this.selected,
+    this.showDot = false,
     required this.onTap,
   });
 
@@ -1836,29 +1899,40 @@ class _FilterChip extends StatelessWidget {
         padding: const EdgeInsets.only(right: 8),
         child: GestureDetector(
           onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: selected ? AppTheme.accentBlue : Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, size: 14, color: selected ? Colors.white : Colors.grey.shade600),
-                  const SizedBox(width: 4),
-                ],
-                Text(
-                  label,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: selected ? Colors.white : Colors.grey.shade700,
-                  ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: selected ? AppTheme.accentBlue : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              ],
-            ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (icon != null) ...[
+                      Icon(icon, size: 14, color: selected ? Colors.white : Colors.grey.shade600),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(
+                      label,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: selected ? Colors.white : Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (showDot)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: const PulsingDot(size: 8),
+                ),
+            ],
           ),
         ),
       ),

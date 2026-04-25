@@ -9,6 +9,7 @@ import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/features/ads/ad_service.dart';
 import 'package:chile_puzzle/core/services/mock_backend.dart';
 import 'package:chile_puzzle/core/services/share_service.dart';
+import 'package:chile_puzzle/core/widgets/pulsing_dot.dart';
 import 'package:chile_puzzle/core/services/settings_service.dart';
 import 'package:chile_puzzle/features/leaderboard/initials_input.dart';
 import 'package:chile_puzzle/features/leaderboard/leaderboard_screen.dart';
@@ -218,13 +219,29 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                           ),
                           child: Row(
                             children: [
-                              Container(
-                                width: 36, height: 36,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.accentOrange.withValues(alpha: 0.15),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(PhosphorIconsBold.shareNetwork, size: 18, color: AppTheme.accentOrange),
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    width: 36, height: 36,
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.accentOrange.withValues(alpha: 0.15),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(PhosphorIconsBold.shareNetwork, size: 18, color: AppTheme.accentOrange),
+                                  ),
+                                  if (!(GameProgressService
+                                          .puzzleResult(
+                                              loc.id,
+                                              result?.difficulty ??
+                                                  loc.difficultyLevels.first)
+                                          ?.hasShared ??
+                                      true))
+                                    const Positioned(
+                                      top: -2, right: -2,
+                                      child: PulsingDot(size: 9),
+                                    ),
+                                ],
                               ),
                               const SizedBox(width: 12),
                               Expanded(
