@@ -137,7 +137,7 @@ class _SharePreviewOverlayState extends State<SharePreviewOverlay>
                         child: ElevatedButton.icon(
                           onPressed: canShare ? _doShare : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.accentBlue,
+                            backgroundColor: AppTheme.ctaPurple,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(

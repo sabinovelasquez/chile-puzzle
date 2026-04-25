@@ -379,7 +379,7 @@ class _ShareCropScreenState extends State<ShareCropScreen>
                       ? null
                       : _confirm,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.accentBlue,
+                    backgroundColor: AppTheme.ctaPurple,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),

@@ -341,7 +341,7 @@ class _PuzzleScreenState extends State<PuzzleScreen>
                     child: ElevatedButton.icon(
                       onPressed: () => Navigator.pop(ctx, true),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.accentBlue,
+                        backgroundColor: AppTheme.ctaPurple,
                         foregroundColor: Colors.white,
                       ),
                       icon: const Icon(PhosphorIconsBold.megaphoneSimple, size: 16),

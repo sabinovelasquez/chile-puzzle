@@ -8,6 +8,7 @@ class AppTheme {
   static const accentOrange = Color(0xFFE67E22);
   static const accentBlue = Color(0xFF3B82F6);
   static const accentPurple = Color(0xFF8B5CF6);
+  static const ctaPurple = Color(0xFFB39DDB);
   static const surfaceGrey = Color(0xFFF5F5F7);
   static const creamBackground = Color(0xFFFAF5EA);
 
@@ -61,7 +62,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: accentBlue,
+          backgroundColor: ctaPurple,
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
