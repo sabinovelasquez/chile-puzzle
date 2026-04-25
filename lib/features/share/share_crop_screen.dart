@@ -47,7 +47,10 @@ class _ShareCropScreenState extends State<ShareCropScreen>
   /// with easeOutCubic. During the gesture we let InteractiveViewer run
   /// free (boundaryMargin: infinity) so drags stay 1:1 with the finger —
   /// no listener-clamp fighting the gesture stream.
-  static const double _maxZoom = 10.0;
+  // 22× lets the player drill into details on the original full-resolution
+  // upload (typically 4–6k pixels wide) without running out of zoom before
+  // pixels start showing.
+  static const double _maxZoom = 22.0;
   late final AnimationController _settle;
   Matrix4? _settleFrom;
   Matrix4? _settleTo;
@@ -236,12 +239,18 @@ class _ShareCropScreenState extends State<ShareCropScreen>
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      langCode == 'es' ? 'Encuadra tu foto' : 'Frame your photo',
-                      style: GoogleFonts.spaceGrotesk(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                    child: Visibility(
+                      visible: _sourceImage != null,
+                      maintainSize: true,
+                      maintainAnimation: true,
+                      maintainState: true,
+                      child: Text(
+                        langCode == 'es' ? 'Encuadra tu foto' : 'Frame your photo',
+                        style: GoogleFonts.spaceGrotesk(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -399,24 +408,37 @@ class _ShareCropScreenState extends State<ShareCropScreen>
                 ),
               ),
             ),
-            // Hint text
+            // Hint text — hidden while the source is loading so only the
+            // loader shows. Slot stays reserved so layout doesn't jump.
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 4, 24, 20),
-              child: Text(
-                langCode == 'es'
-                    ? 'Pellizca y arrastra para encuadrar'
-                    : 'Pinch and drag to frame',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white70,
-                  fontSize: 13,
+              child: Visibility(
+                visible: _sourceImage != null,
+                maintainSize: true,
+                maintainAnimation: true,
+                maintainState: true,
+                child: Text(
+                  langCode == 'es'
+                      ? 'Pellizca y arrastra para encuadrar'
+                      : 'Pinch and drag to frame',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white70,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ),
-            // Bottom confirm button (thumb-reach duplicate).
+            // Bottom confirm button (thumb-reach duplicate). Hidden while
+            // the source is loading; reserved slot keeps the layout stable.
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-              child: SizedBox(
+              child: Visibility(
+                visible: _sourceImage != null,
+                maintainSize: true,
+                maintainAnimation: true,
+                maintainState: true,
+                child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   // Blocked until the cover transform is actually applied —
@@ -440,6 +462,7 @@ class _ShareCropScreenState extends State<ShareCropScreen>
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                ),
                 ),
               ),
             ),
