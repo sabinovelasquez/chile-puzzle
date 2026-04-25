@@ -52,6 +52,12 @@ class _ShareCropScreenState extends State<ShareCropScreen>
   Matrix4? _settleFrom;
   Matrix4? _settleTo;
 
+  /// Drives the focus-blur affordance: sigma ramps 0 → maxBlur while the
+  /// user is panning/zooming, eases back to 0 ~180ms after release. Lives
+  /// outside the RepaintBoundary so the captured PNG never carries blur.
+  late final AnimationController _blur;
+  static const double _maxBlurSigma = 4.0;
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +65,11 @@ class _ShareCropScreenState extends State<ShareCropScreen>
       vsync: this,
       duration: const Duration(milliseconds: 260),
     )..addListener(_onSettleTick);
+    _blur = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+      reverseDuration: const Duration(milliseconds: 180),
+    );
     _loadSourceImage();
   }
 
@@ -66,6 +77,7 @@ class _ShareCropScreenState extends State<ShareCropScreen>
   void dispose() {
     _settle.removeListener(_onSettleTick);
     _settle.dispose();
+    _blur.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -99,6 +111,7 @@ class _ShareCropScreenState extends State<ShareCropScreen>
       _settleFrom = null;
       _settleTo = null;
     }
+    _blur.forward();
   }
 
   void _onInteractionEnd(_) {
@@ -119,6 +132,7 @@ class _ShareCropScreenState extends State<ShareCropScreen>
     const maxTy = 0.0;
     final cx = tx.clamp(minTx, maxTx);
     final cy = ty.clamp(minTy, maxTy);
+    _blur.reverse();
     if (scale == rawScale && cx == tx && cy == ty) return; // already valid
     _settleFrom = m.clone();
     _settleTo = Matrix4.identity()
@@ -257,7 +271,20 @@ class _ShareCropScreenState extends State<ShareCropScreen>
                           borderRadius: BorderRadius.circular(20),
                           child: ColorFiltered(
                             colorFilter: _sepiaMatrix(0.55),
-                            child: RepaintBoundary(
+                            child: AnimatedBuilder(
+                              animation: _blur,
+                              builder: (context, child) {
+                                final t = Curves.easeOut.transform(_blur.value);
+                                final sigma = _maxBlurSigma * t;
+                                return ImageFiltered(
+                                  imageFilter: ui.ImageFilter.blur(
+                                    sigmaX: sigma,
+                                    sigmaY: sigma,
+                                  ),
+                                  child: child,
+                                );
+                              },
+                              child: RepaintBoundary(
                               key: _boundaryKey,
                               child: Stack(
                                 children: [
@@ -332,6 +359,24 @@ class _ShareCropScreenState extends State<ShareCropScreen>
                                     ),
                                   ),
                                 ],
+                              ),
+                            ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Thin black inner outline: a UI guide that frames the
+                      // photo at the same rounded shape as the ClipRRect. It
+                      // sits OUTSIDE the RepaintBoundary so it's never baked
+                      // into the captured PNG.
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.black,
+                                width: 1.2,
                               ),
                             ),
                           ),
