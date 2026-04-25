@@ -4,7 +4,7 @@ Things parked during a release to keep the envelope tight. Pull from here when s
 
 ## Security / API hardening
 
-- **Rate-limit POST endpoints.** Add `express-rate-limit` in `admin-backend/server.js` on `POST /api/leaderboard*` and `POST /api/backup*` (≈10 req/min per IP). Deploys without app changes. Why: today the leaderboard submit + backup create endpoints are public and unbounded — a bad actor could spam fake scores or generate thousands of backup codes. Cheap mitigation, blocks 95% of the realistic abuse.
+- ~~**Rate-limit POST endpoints.**~~ **Done in 792d869** — `express-rate-limit` on `/api/leaderboard` (10/min) and `/api/progress/backup/email` (3/min). `app.set('trust proxy', 1)` so buckets key on real client IP. Backup create/restore keep their existing in-memory sliding-window limiter.
 - **Firebase App Check + Play Integrity.** Add `firebase_app_check` to the Flutter app, init in `main.dart`, attach the App Check token to every API request. Server middleware verifies via Google. Why: the only real way to assert "this request comes from my real APK on a Play Store install". Defer until ~1k users or visible abuse. Tradeoff: rooted/emulator users break — need a policy.
 - **API hardening review** before going past 1k DAU: audit each public endpoint for what data leaks (currently locations + scoring + trophies + leaderboard, all considered public game content).
 
