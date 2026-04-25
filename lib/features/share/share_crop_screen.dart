@@ -33,7 +33,7 @@ class ShareCropScreen extends StatefulWidget {
 }
 
 class _ShareCropScreenState extends State<ShareCropScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final GlobalKey _boundaryKey = GlobalKey();
   final TransformationController _controller = TransformationController();
 
