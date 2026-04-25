@@ -2126,32 +2126,23 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
               right: 12,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: () {
+                onTap: () async {
                   // Share the tip for the currently-visible slide, not the
                   // difficulty the view was opened at — the user may have
                   // swiped the carousel to another level.
                   final diff = _slides.isNotEmpty
                       ? _slides[_currentPage].difficulty
                       : widget.difficulty;
-                  ShareService.shareLocation(
+                  await ShareService.shareLocation(
                     context: context,
                     location: loc,
                     difficulty: diff,
                     langCode: widget.langCode,
                   );
+                  if (mounted) setState(() {});
                 },
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: const BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    PhosphorIconsBold.shareNetwork,
-                    size: 22,
-                    color: Colors.white,
-                  ),
+                child: _ShareIconWithReward(
+                  reward: _shareRewardForCurrentSlide(loc),
                 ),
               ),
             ),
@@ -2228,6 +2219,120 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Reward points for the slide currently visible in the carousel, or null
+  /// if the player has already claimed the share reward for that puzzle.
+  /// Drives the "+Npts" pill on the share icon.
+  int? _shareRewardForCurrentSlide(LocationModel loc) {
+    if (_slides.isEmpty) return null;
+    final diff = _slides[_currentPage].difficulty;
+    final result = GameProgressService.puzzleResult(loc.id, diff);
+    if (result == null) return null; // not yet completed
+    if (result.hasShared) return null; // already claimed
+    return ShareService.rewardForDifficulty(diff);
+  }
+}
+
+/// Share-icon button with an optional "+Npts" pill at its top-right corner.
+/// Pill animates in on first appearance and pulses gently to draw attention
+/// while the reward is still claimable.
+class _ShareIconWithReward extends StatelessWidget {
+  final int? reward;
+  const _ShareIconWithReward({required this.reward});
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Container(
+      width: 44,
+      height: 44,
+      decoration: const BoxDecoration(
+        color: Colors.black54,
+        shape: BoxShape.circle,
+      ),
+      child: const Icon(
+        PhosphorIconsBold.shareNetwork,
+        size: 22,
+        color: Colors.white,
+      ),
+    );
+    if (reward == null) return icon;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        icon,
+        Positioned(
+          top: -4,
+          right: -6,
+          child: _RewardPill(points: reward!),
+        ),
+      ],
+    );
+  }
+}
+
+class _RewardPill extends StatefulWidget {
+  final int points;
+  const _RewardPill({required this.points});
+
+  @override
+  State<_RewardPill> createState() => _RewardPillState();
+}
+
+class _RewardPillState extends State<_RewardPill>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) {
+        final t = Curves.easeInOut.transform(_ctrl.value);
+        final scale = 0.95 + 0.10 * t;
+        return Transform.scale(
+          scale: scale,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppTheme.accentGreen,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Colors.white, width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.accentGreen.withValues(alpha: 0.5),
+                  blurRadius: 6,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Text(
+              '+${widget.points}',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                height: 1.0,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

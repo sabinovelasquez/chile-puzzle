@@ -5,13 +5,11 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
-import 'package:chile_puzzle/core/models/player_progress.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/features/ads/ad_service.dart';
 import 'package:chile_puzzle/core/services/mock_backend.dart';
 import 'package:chile_puzzle/core/services/share_service.dart';
 import 'package:chile_puzzle/core/widgets/app_loader.dart';
-import 'package:chile_puzzle/core/widgets/pulsing_dot.dart';
 import 'package:chile_puzzle/core/services/settings_service.dart';
 import 'package:chile_puzzle/features/leaderboard/initials_input.dart';
 import 'package:chile_puzzle/features/leaderboard/leaderboard_screen.dart';
@@ -60,29 +58,7 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
     );
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
-      final diff = widget.result?.difficulty ?? loc.difficultyLevels.first;
-      if (await GameProgressService.markMapsOpened(loc.id, diff) && mounted) {
-        setState(() {});
-      }
     }
-  }
-
-  Future<void> _markPhotoViewed() async {
-    final loc = widget.location;
-    final diff = widget.result?.difficulty ?? loc.difficultyLevels.first;
-    if (await GameProgressService.markPhotoViewed(loc.id, diff) && mounted) {
-      setState(() {});
-    }
-  }
-
-  /// Reads a boolean flag from the persisted PuzzleResult (or false if the
-  /// puzzle isn't recorded yet — happens briefly before the completion is
-  /// written). Used to drive the pulsing-dot visibility on each action.
-  bool _flagOf(bool Function(PuzzleResult) read) {
-    final loc = widget.location;
-    final diff = widget.result?.difficulty ?? loc.difficultyLevels.first;
-    final r = GameProgressService.puzzleResult(loc.id, diff);
-    return r != null && read(r);
   }
 
   @override
@@ -191,20 +167,12 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                     }),
 
                     // Action buttons
-                    _ActionWithBadge(
-                      showBadge: !_flagOf((r) => r.photoViewed),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _navigating
-                              ? null
-                              : () {
-                                  _markPhotoViewed();
-                                  widget.onHide?.call();
-                                },
-                          icon: const Icon(PhosphorIconsBold.image, size: 18),
-                          label: Text(langCode == 'es' ? 'Ver foto' : 'View photo'),
-                        ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _navigating ? null : widget.onHide,
+                        icon: const Icon(PhosphorIconsBold.image, size: 18),
+                        label: Text(langCode == 'es' ? 'Ver foto' : 'View photo'),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -227,9 +195,7 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                     const SizedBox(height: 10),
 
                     // Share card
-                    _ActionWithBadge(
-                      showBadge: !_flagOf((r) => r.hasShared),
-                      child: GestureDetector(
+                    GestureDetector(
                       onTap: _navigating
                           ? null
                           : () async {
@@ -286,14 +252,11 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                           ),
                         ),
                       ),
-                      ),
                     ),
                     const SizedBox(height: 16),
 
                     // Google Maps link
-                    _ActionWithBadge(
-                      showBadge: !_flagOf((r) => r.mapsOpened),
-                      child: GestureDetector(
+                    GestureDetector(
                       onTap: _navigating ? null : _openInGoogleMaps,
                       child: Opacity(
                         opacity: _navigating ? 0.4 : 1.0,
@@ -337,7 +300,6 @@ class _CompletionDrawerState extends State<CompletionDrawer> {
                             Icon(PhosphorIconsBold.arrowRight, size: 16, color: Colors.grey.shade400),
                           ],
                         ),
-                      ),
                       ),
                       ),
                     ),
@@ -781,31 +743,6 @@ class _RankingButtonState extends State<_RankingButton> {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Wraps a completion-drawer action and overlays a pulsing green dot at the
-/// top-right corner when [showBadge] is true. The dot indicates a still-unused
-/// unlockable affordance (share, view full photo, open in maps).
-class _ActionWithBadge extends StatelessWidget {
-  final bool showBadge;
-  final Widget child;
-  const _ActionWithBadge({required this.showBadge, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    if (!showBadge) return child;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        child,
-        Positioned(
-          top: -4,
-          right: -4,
-          child: const PulsingDot(size: 11),
-        ),
-      ],
     );
   }
 }
