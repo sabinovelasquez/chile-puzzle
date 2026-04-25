@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:chile_puzzle/core/widgets/app_loader.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:chile_puzzle/core/models/game_config.dart';
 import 'package:chile_puzzle/core/models/location_model.dart';
@@ -1456,7 +1457,7 @@ class _BackupSheetState extends State<_BackupSheet> with SingleTickerProviderSta
             FilledButton.icon(
               onPressed: (_creating || MockBackend.lastFetchWasOffline) ? null : _createBackup,
               icon: _creating
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const AppLoader(size: 20)
                   : const Icon(PhosphorIconsBold.plusCircle, size: 18),
               label: Text(l10n?.generateBackupCode ?? 'Generate code'),
               style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
@@ -1515,7 +1516,7 @@ class _BackupSheetState extends State<_BackupSheet> with SingleTickerProviderSta
             OutlinedButton.icon(
               onPressed: (_sendingEmail || _emailSent || MockBackend.lastFetchWasOffline) ? null : _emailCode,
               icon: _sendingEmail
-                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const AppLoader(size: 18)
                   : const Icon(PhosphorIconsBold.paperPlaneTilt, size: 16),
               label: Text(l10n?.emailCode ?? 'Email it to me'),
               style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 40)),
@@ -1566,7 +1567,7 @@ class _BackupSheetState extends State<_BackupSheet> with SingleTickerProviderSta
           FilledButton.icon(
             onPressed: (_restoring || MockBackend.lastFetchWasOffline) ? null : _restore,
             icon: _restoring
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                ? const AppLoader(size: 20)
                 : const Icon(PhosphorIconsBold.downloadSimple, size: 18),
             label: Text(l10n?.restoreAction ?? 'Restore'),
             style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),

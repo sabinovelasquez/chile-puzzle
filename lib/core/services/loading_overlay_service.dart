@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:chile_puzzle/core/widgets/app_loader.dart';
 
 /// Global loading overlay — a single ValueNotifier the root widget watches
 /// via [LoadingOverlayHost]. The overlay sits above all routes, so it can
@@ -24,6 +25,10 @@ class LoadingOverlayService {
 /// Wraps a child with the full-screen loader that appears whenever
 /// [LoadingOverlayService.show] has been called. Place above the Navigator
 /// (via MaterialApp.builder) so it survives route pushes/pops.
+///
+/// The overlay crossfades on visibility change (≈320ms easeOut), so when
+/// hide() fires the underlying screen reveals itself smoothly instead of
+/// popping in.
 class LoadingOverlayHost extends StatelessWidget {
   final Widget child;
   const LoadingOverlayHost({super.key, required this.child});
@@ -33,12 +38,19 @@ class LoadingOverlayHost extends StatelessWidget {
     return Stack(
       children: [
         child,
-        ValueListenableBuilder<bool>(
-          valueListenable: LoadingOverlayService.listenable,
-          builder: (_, visible, __) {
-            if (!visible) return const SizedBox.shrink();
-            return const Positioned.fill(child: _LoaderBody());
-          },
+        Positioned.fill(
+          child: ValueListenableBuilder<bool>(
+            valueListenable: LoadingOverlayService.listenable,
+            builder: (_, visible, __) => IgnorePointer(
+              ignoring: !visible,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeOut,
+                opacity: visible ? 1.0 : 0.0,
+                child: const _LoaderBody(),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -50,20 +62,9 @@ class _LoaderBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black.withValues(alpha: 0.55),
-      child: const Center(
-        child: ClipOval(
-          child: SizedBox(
-            width: 96,
-            height: 96,
-            child: Image(
-              image: AssetImage('assets/loader.gif'),
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-      ),
+    return const Material(
+      color: Colors.white,
+      child: Center(child: AppLoader(size: 96)),
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_confetti/flutter_confetti.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/core/services/mock_backend.dart';
+import 'package:chile_puzzle/core/widgets/app_loader.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   /// When both [locationId] and [difficulty] are provided, the screen
@@ -139,7 +140,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: AppLoader(size: 72))
           : _entries.isEmpty
               ? _buildEmpty(langCode)
               : RefreshIndicator(

@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:chile_puzzle/core/widgets/app_loader.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -265,13 +266,7 @@ class _ShareCropScreenState extends State<ShareCropScreen>
                                       color: Colors.black,
                                       child: _sourceImage == null
                                           ? const Center(
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                valueColor:
-                                                    AlwaysStoppedAnimation(
-                                                  Colors.white70,
-                                                ),
-                                              ),
+                                              child: AppLoader(size: 56),
                                             )
                                           : Builder(
                                               builder: (_) {

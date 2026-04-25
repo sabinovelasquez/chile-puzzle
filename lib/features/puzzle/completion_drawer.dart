@@ -9,6 +9,7 @@ import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/features/ads/ad_service.dart';
 import 'package:chile_puzzle/core/services/mock_backend.dart';
 import 'package:chile_puzzle/core/services/share_service.dart';
+import 'package:chile_puzzle/core/widgets/app_loader.dart';
 import 'package:chile_puzzle/core/services/settings_service.dart';
 import 'package:chile_puzzle/features/leaderboard/initials_input.dart';
 import 'package:chile_puzzle/features/leaderboard/leaderboard_screen.dart';
@@ -618,13 +619,7 @@ class _RankingButtonState extends State<_RankingButton> {
           color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Center(
-          child: SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2, color: color),
-          ),
-        ),
+        child: const Center(child: AppLoader(size: 24)),
       );
     }
 
@@ -706,11 +701,7 @@ class _RankingButtonState extends State<_RankingButton> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (_submitting)
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: color),
-                )
+                const AppLoader(size: 22)
               else ...[
                 Icon(PhosphorIconsBold.ranking, size: 18, color: color),
                 const SizedBox(width: 8),
