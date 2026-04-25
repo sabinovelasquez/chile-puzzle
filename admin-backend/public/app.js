@@ -989,6 +989,45 @@ scoringForm.onsubmit = async (e) => {
 };
 
 // ============================================================
+// APP CONFIG (Settings tab) — share text + share link
+// ============================================================
+const appConfigForm = document.getElementById('appConfigForm');
+let appConfig = { shareTextEn: '', shareTextEs: '', shareLink: '' };
+
+function populateAppConfig() {
+  document.getElementById('shareTextEn').value = appConfig.shareTextEn || '';
+  document.getElementById('shareTextEs').value = appConfig.shareTextEs || '';
+  document.getElementById('shareLink').value = appConfig.shareLink || '';
+}
+
+function showAppConfigMsg(text, ok) {
+  const el = document.getElementById('appConfigMsg');
+  el.textContent = text;
+  el.style.display = 'block';
+  el.style.background = ok ? 'rgba(34,197,94,0.12)' : 'rgba(248,81,73,0.12)';
+  el.style.color = ok ? '#22c55e' : '#f85149';
+  setTimeout(() => { el.style.display = 'none'; }, 2400);
+}
+
+if (appConfigForm) {
+  appConfigForm.onsubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      shareTextEn: document.getElementById('shareTextEn').value.trim(),
+      shareTextEs: document.getElementById('shareTextEs').value.trim(),
+      shareLink: document.getElementById('shareLink').value.trim(),
+    };
+    try {
+      await putJSON(API_BASE + '/api/app-config', payload);
+      appConfig = payload;
+      showAppConfigMsg('Settings saved.', true);
+    } catch (err) {
+      showAppConfigMsg('Save failed: ' + err.message, false);
+    }
+  };
+}
+
+// ============================================================
 // VISUAL CROP TOOL + DIFFICULTY PREVIEWS
 // ============================================================
 const cropCanvas = document.getElementById('cropCanvas');
@@ -1930,12 +1969,13 @@ document.querySelector('.tab[data-tab="releases"]').addEventListener('click', ()
 async function init() {
   showLoader('Loading…');
   try {
-    const [locResult, zonesResult, trophiesResult, scoringResult, testersResult] = await Promise.all([
+    const [locResult, zonesResult, trophiesResult, scoringResult, testersResult, appConfigResult] = await Promise.all([
       fetchJSON(API_BASE + '/api/locations?all=1&limit=1000'),
       fetchJSON(API_BASE + '/api/zones'),
       fetchJSON(API_BASE + '/api/trophies'),
       fetchJSON(API_BASE + '/api/scoring'),
       fetchJSON(API_BASE + '/api/testers'),
+      fetchJSON(API_BASE + '/api/app-config'),
     ]);
     // Support both paginated {data:[...]} and legacy array responses
     locations = Array.isArray(locResult) ? locResult : (locResult.data || []);
@@ -1943,8 +1983,9 @@ async function init() {
     trophies = trophiesResult;
     scoring = scoringResult;
     testers = testersResult;
+    appConfig = appConfigResult || appConfig;
     renderLocList(); renderZoneList(); renderTrophyList(); renderTesterTable();
-    populateZoneDropdown(); populateScoring();
+    populateZoneDropdown(); populateScoring(); populateAppConfig();
   } catch (e) {
     showToast('Load failed: ' + e.message, true);
   } finally {

@@ -10,11 +10,12 @@ import 'package:share_plus/share_plus.dart';
 import '../../features/share/share_crop_screen.dart';
 import '../../features/share/share_preview_overlay.dart';
 import '../../features/share/shareable_card.dart';
+import '../models/game_config.dart';
 import '../models/location_model.dart';
 import 'game_progress_service.dart';
+import 'mock_backend.dart';
 
 class ShareService {
-  static const String _landingUrl = 'https://games.sabino.cl/zoominchile';
 
   /// One-shot share reward by difficulty (column count). Easy/beginner = 50,
   /// medium = 100, hard = 150, expert/master = 200. Awarded at most once
@@ -78,9 +79,11 @@ class ShareService {
 
     final name = location.getLocalizedName(langCode);
     final tip = location.getLocalizedTipForDifficulty(langCode, difficulty);
-    final caption = langCode == 'es'
-        ? '$name — Zoom-In Chile 🧩 Descúbrelo en $_landingUrl'
-        : '$name — Zoom-In Chile 🧩 Discover it at $_landingUrl';
+    final share = MockBackend.lastConfig?.share ?? ShareConfig.fallback;
+    final caption = share
+        .textForLocale(langCode)
+        .replaceAll('{name}', name)
+        .replaceAll('{link}', share.link);
 
     final reward = rewardForDifficulty(difficulty);
     final alreadyClaimed =

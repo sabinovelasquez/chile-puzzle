@@ -27,6 +27,12 @@ class MockBackend {
   /// have never synced on this install.
   static DateTime? lastSyncedAt;
 
+  /// The most recently fetched (or cache-loaded) GameConfig. Read by code
+  /// that runs outside the map screen (e.g. ShareService) and so doesn't
+  /// have direct access to the GameConfig instance the screen holds.
+  /// Null until the first fetch completes.
+  static GameConfig? lastConfig;
+
   static String get _baseUrl {
     // Always use production server (local dev server not running)
     return _prodUrl;
@@ -65,13 +71,17 @@ class MockBackend {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_kCachedConfig, response.body);
         lastFetchWasOffline = false;
-        return GameConfig.fromJson(json.decode(response.body));
+        final cfg = GameConfig.fromJson(json.decode(response.body));
+        lastConfig = cfg;
+        return cfg;
       }
     } catch (e) {
       debugPrint('Error fetching game config: $e');
     }
     // Network failed — try cache.
-    return _loadCachedConfig();
+    final cached = await _loadCachedConfig();
+    lastConfig = cached;
+    return cached;
   }
 
   static Future<List<LocationModel>> _loadCachedLocations() async {

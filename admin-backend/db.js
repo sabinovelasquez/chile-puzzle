@@ -265,6 +265,31 @@ try {
   db.exec("ALTER TABLE locations ADD COLUMN rotation_deg REAL NOT NULL DEFAULT 0");
 }
 
+// App-level config (single row): share text + share link the Flutter app
+// embeds in Share.shareXFiles(). Use {name} / {link} placeholders so the
+// app substitutes per share.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS app_config (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    share_text_en TEXT NOT NULL DEFAULT '',
+    share_text_es TEXT NOT NULL DEFAULT '',
+    share_link TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+const appConfigRow = db.prepare('SELECT id FROM app_config WHERE id = 1').get();
+if (!appConfigRow) {
+  db.prepare(`
+    INSERT INTO app_config (id, share_text_en, share_text_es, share_link)
+    VALUES (
+      1,
+      '{name} — Zoom-In Chile 🧩 Discover it at {link}',
+      '{name} — Zoom-In Chile 🧩 Descúbrelo en {link}',
+      'https://play.google.com/store/apps/details?id=cl.depointless.zoominchile'
+    )
+  `).run();
+}
+
 // Ensure scoring has a default row
 const scoringRow = db.prepare('SELECT id FROM scoring WHERE id = 1').get();
 if (!scoringRow) {
@@ -432,6 +457,15 @@ function rowToRelease(row) {
   };
 }
 
+function rowToAppConfig(row) {
+  return {
+    shareTextEn: row.share_text_en || '',
+    shareTextEs: row.share_text_es || '',
+    shareLink: row.share_link || '',
+    updatedAt: row.updated_at,
+  };
+}
+
 module.exports = {
   db,
   rowToLocation,
@@ -441,4 +475,5 @@ module.exports = {
   rowToScoring,
   rowToTester,
   rowToRelease,
+  rowToAppConfig,
 };

@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const sharp = require('sharp');
-const { db, rowToLocation, locationToParams, rowToZone, rowToTrophy, rowToScoring, rowToTester, rowToRelease } = require('./db');
+const { db, rowToLocation, locationToParams, rowToZone, rowToTrophy, rowToScoring, rowToTester, rowToRelease, rowToAppConfig } = require('./db');
 const { renderDownloadEmail, renderReleaseEmail, renderProgressBackupEmail } = require('./email-templates');
 const { readChangelogEntry } = require('./changelog');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
@@ -624,7 +624,33 @@ app.get('/api/config', (req, res) => {
   const zones = db.prepare('SELECT * FROM zones ORDER BY "order" ASC').all().map(rowToZone);
   const scoring = rowToScoring(db.prepare('SELECT * FROM scoring WHERE id = 1').get());
   const trophies = db.prepare('SELECT * FROM trophies').all().map(rowToTrophy);
-  res.json({ zones, scoring, trophies });
+  const appConfig = rowToAppConfig(db.prepare('SELECT * FROM app_config WHERE id = 1').get());
+  res.json({ zones, scoring, trophies, appConfig });
+});
+
+// App-level config (share text + share link). Read is included in
+// /api/config above; this endpoint is just for the admin UI to edit.
+app.get('/api/app-config', (req, res) => {
+  const row = db.prepare('SELECT * FROM app_config WHERE id = 1').get();
+  res.json(rowToAppConfig(row));
+});
+
+app.put('/api/app-config', (req, res) => {
+  const { shareTextEn, shareTextEs, shareLink } = req.body || {};
+  if (typeof shareTextEn !== 'string' ||
+      typeof shareTextEs !== 'string' ||
+      typeof shareLink !== 'string') {
+    return res.status(400).json({ error: 'shareTextEn, shareTextEs, shareLink must be strings' });
+  }
+  db.prepare(`
+    UPDATE app_config
+    SET share_text_en = @en,
+        share_text_es = @es,
+        share_link = @link,
+        updated_at = datetime('now')
+    WHERE id = 1
+  `).run({ en: shareTextEn, es: shareTextEs, link: shareLink });
+  res.json({ success: true });
 });
 
 // ============================================================

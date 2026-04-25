@@ -23,6 +23,7 @@
                 <button class="tab" data-tab="scoring">Scoring</button>
                 <button class="tab" data-tab="testers">Testers</button>
                 <button class="tab" data-tab="releases">Releases</button>
+                <button class="tab" data-tab="settings">Settings</button>
             </nav>
         </header>
 
@@ -455,6 +456,35 @@
                     </div>
                 </form>
                 <div id="releaseEmpty" class="empty-state"><p>Select a release from the sidebar or create a new one.</p></div>
+            </main>
+        </div>
+
+        <!-- SETTINGS TAB -->
+        <div class="dashboard tab-content" data-tab="settings">
+            <main class="editor-area" style="max-width:680px;margin:0 auto;">
+                <form id="appConfigForm">
+                    <h2>App Settings</h2>
+                    <p style="color:var(--text-secondary);margin-bottom:1.5rem;">Text and link the Flutter app sends with each shared polaroid. Use <code>{name}</code> for the location name and <code>{link}</code> for the share link below.</p>
+
+                    <div id="appConfigMsg" style="display:none;padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.9rem;"></div>
+
+                    <div class="form-group">
+                        <label>Share text (ES)</label>
+                        <textarea id="shareTextEs" rows="3" placeholder="{name} — Zoom-In Chile 🧩 Descúbrelo en {link}"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Share text (EN)</label>
+                        <textarea id="shareTextEn" rows="3" placeholder="{name} — Zoom-In Chile 🧩 Discover it at {link}"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Share link <small>(Play Store URL recommended)</small></label>
+                        <input type="url" id="shareLink" placeholder="https://play.google.com/store/apps/details?id=cl.depointless.zoominchile">
+                    </div>
+
+                    <div class="actions">
+                        <button type="submit" class="btn success">Save settings</button>
+                    </div>
+                </form>
             </main>
         </div>
     </div>
