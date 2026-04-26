@@ -535,6 +535,75 @@ app.post('/api/locations/process', async (req, res) => {
   }
 });
 
+// Generate a Cachorra ↔ Gato dialog (Expert tier tip) from a free-form
+// anecdote. The system prompt is supplied by the admin so it can be tuned
+// over time without redeploying.
+app.post('/api/locations/dialog', async (req, res) => {
+  const { anecdote, locationName = '', prompt: customPrompt } = req.body;
+  if (!anecdote?.trim()) return res.status(400).json({ error: 'anecdote is required' });
+  if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'Gemini API key not configured' });
+  const promptTemplate = (customPrompt && customPrompt.trim()) || DEFAULT_DIALOG_PROMPT;
+  const finalPrompt = promptTemplate
+    .replaceAll('{ANECDOTE}', anecdote.trim())
+    .replaceAll('{LOCATION}', locationName.trim() || '(sin nombre)');
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+    const result = await model.generateContent(finalPrompt);
+    const dialog = parseDialogResponse(result.response.text());
+    res.json({ dialog });
+  } catch (e) {
+    console.error('generate-dialog failed:', e);
+    res.status(500).json({ error: e.message || 'Dialog generation failed' });
+  }
+});
+
+const DEFAULT_DIALOG_PROMPT = `Eres una escritora íntima de diálogos cortos para un juego de puzzles sobre lugares de Chile. Los protagonistas son Cachorra (Xime, joven, curiosa, chilena cercana) y Gato (Sabino, sarcástico, tierno cuando le emociona el lugar). Hablan entre ellos, no al jugador.
+
+Tu trabajo: generar un diálogo de 3 a 5 líneas alternando Cachorra y Gato, basado en la anécdota que te entrego abajo. Este diálogo es la pista del nivel EXPERTO del juego — el lugar ya se identificó por la foto, no hay que nombrarlo ni describirlo.
+
+Reglas:
+- Tono cotidiano, chileno (tú, sin voseo). Sin "¿Sabías que...?", sin marketing, sin signos de exclamación.
+- Cachorra suele iniciar con un dato, una observación o una pregunta tierna.
+- Gato responde con sorpresa, sarcasmo blando, o ternura — escoge según el momento.
+- Cada línea inicia con "- " (guion + espacio).
+- Total ≤ 200 caracteres por idioma. Es un campo limitado: cuenta los caracteres.
+- No nombrar el lugar.
+
+ANÉCDOTA / CONTEXTO:
+{ANECDOTE}
+
+REFERENCIA INTERNA (no usar en el diálogo): {LOCATION}
+
+OUTPUT — responde con SOLO este JSON, sin markdown, sin comentarios:
+{
+  "es": "- Cachorra…\\n- Gato…\\n- Cachorra…\\n- Gato…",
+  "en": "- Cachorra…\\n- Gato…\\n- Cachorra…\\n- Gato…"
+}`;
+
+function parseDialogResponse(text) {
+  const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('Could not parse AI response as JSON');
+  const obj = JSON.parse(match[0]);
+  if (!obj.es || !obj.en) throw new Error('Missing es or en in dialog response');
+  for (const lang of ['es', 'en']) {
+    if (typeof obj[lang] !== 'string') throw new Error(`Invalid ${lang} payload`);
+    if (obj[lang].length > 200) {
+      const truncated = obj[lang].slice(0, 197);
+      const lastSpace = truncated.lastIndexOf(' ');
+      obj[lang] = (lastSpace > 100 ? truncated.slice(0, lastSpace) : truncated) + '…';
+    }
+  }
+  return obj;
+}
+
+// Expose the default prompt so the admin UI can populate the editor on first
+// load. Read-only; admins keep their tweaks in localStorage.
+app.get('/api/locations/dialog/default-prompt', (req, res) => {
+  res.json({ prompt: DEFAULT_DIALOG_PROMPT });
+});
+
 app.post('/api/translate', async (req, res) => {
   const { text, from = 'es', to = 'en' } = req.body;
   if (!text?.trim()) return res.status(400).json({ error: 'text is required' });

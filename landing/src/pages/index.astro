@@ -1850,7 +1850,7 @@ try {
             <div class="feature-icon" style="background: var(--gold-light);">
               <i class="ph ph-trophy" style="color: var(--gold);"></i>
             </div>
-            <h3 data-es="27 Trofeos" data-en="27 Trophies">27 Trofeos</h3>
+            <h3 id="trophiesCount" data-es="27 Trofeos" data-en="27 Trophies">27 Trofeos</h3>
             <p data-es="Logros por velocidad, puntos y zonas completadas." data-en="Achievements for speed, points, and completed zones.">Logros por velocidad, puntos y zonas completadas.</p>
           </div>
           <div class="feature-card reveal stagger-2">
@@ -2369,6 +2369,25 @@ try {
           sp.setAttribute('data-en', `Only ${count} places, Gato?`);
           sp.textContent = lang === 'en' ? `Only ${count} places, Gato?` : `Solo ${count} lugares, Gato?`;
         }
+      } catch (_) {}
+    })();
+
+    // ── Live trophy count (mirrors locations: read-once, swap copy) ──
+    (async () => {
+      try {
+        const res = await fetch('https://games.sabino.cl/zoominchile/api/trophies');
+        if (!res.ok) return;
+        const trophies = await res.json();
+        const count = Array.isArray(trophies) ? trophies.length : 0;
+        if (!count) return;
+        const lang = document.documentElement.lang || 'es';
+        const el = document.getElementById('trophiesCount');
+        if (!el) return;
+        const esText = `${count} Trofeos`;
+        const enText = `${count} Trophies`;
+        el.setAttribute('data-es', esText);
+        el.setAttribute('data-en', enText);
+        el.textContent = lang === 'en' ? enText : esText;
       } catch (_) {}
     })();
 

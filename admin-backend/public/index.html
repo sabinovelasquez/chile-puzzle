@@ -11,6 +11,32 @@
 </head>
 <body>
     <div id="toast"></div>
+    <div class="audit-modal" id="auditModal" hidden role="dialog" aria-modal="true" aria-labelledby="auditModalTitle">
+        <div class="audit-modal-backdrop" data-audit-close></div>
+        <div class="audit-modal-dialog">
+            <header class="audit-modal-header">
+                <h3 id="auditModalTitle">Auditoría de puntajes</h3>
+                <button type="button" class="icon-btn" data-audit-close aria-label="Cerrar">×</button>
+            </header>
+            <div class="audit-modal-body">
+                <section class="audit-section">
+                    <h4>Rangos sugeridos por zona</h4>
+                    <table class="audit-ranges">
+                        <thead><tr><th>Zona</th><th>Rango</th><th>Hoy</th></tr></thead>
+                        <tbody id="auditRangesBody"></tbody>
+                    </table>
+                </section>
+                <section class="audit-section">
+                    <h4 id="auditOutHeader">Fuera de rango</h4>
+                    <p class="audit-empty" id="auditEmpty">Todas las ubicaciones están dentro del rango sugerido. ✨</p>
+                    <table class="audit-out" id="auditOutTable">
+                        <thead><tr><th>Ubicación</th><th>Zona</th><th>Hoy</th><th>Rango</th></tr></thead>
+                        <tbody id="auditOutBody"></tbody>
+                    </table>
+                </section>
+            </div>
+        </div>
+    </div>
     <div class="glass-container">
         <div id="drawerBackdrop"></div>
         <nav id="mobileDrawer" class="mobile-drawer mobile-only" aria-label="Navegación">
@@ -40,6 +66,9 @@
                     <span class="upload-label-text">+ Upload image(s)</span>
                 </label>
                 <input type="file" id="locImageUpload" accept="image/*" multiple hidden>
+                <button type="button" class="btn audit-btn" id="auditOpenBtn">
+                    <span id="auditBtnLabel">Auditoría de puntajes</span>
+                </button>
                 <div id="uploadProgress" class="upload-progress" hidden></div>
                 <div class="loc-filters">
                     <div class="loc-search-wrap">
@@ -194,6 +223,22 @@
                         <div class="tip-pair" data-diff="6">
                             <div class="form-group lang-en"><label>Tip — Expert (EN) <small>fallback: Easy</small></label><textarea id="locTipExpertEn" rows="2" maxlength="200"></textarea><small class="char-count">0/200</small></div>
                             <div class="form-group lang-es"><label>Tip — Expert (ES) <small>fallback: Easy</small></label><textarea id="locTipExpertEs" rows="2" maxlength="200"></textarea><small class="char-count">0/200</small><button type="button" id="translateExpertBtn" class="btn-translate" title="Translate ES → EN">EN ↗</button></div>
+                            <div class="form-group dialog-gen">
+                                <label>🐱 Diálogo Cachorra ↔ Gato <small>genera el tip Experto desde una anécdota</small></label>
+                                <textarea id="dialogAnecdote" rows="3" placeholder="Cuenta acá la anécdota o el dato que inspira el diálogo. Ej: 'Aquí Xime y yo nos pillamos el atardecer y un perro tuerto que nos siguió hasta el hostal.'"></textarea>
+                                <details class="dialog-prompt-details">
+                                    <summary>Editar prompt del sistema</summary>
+                                    <textarea id="dialogPrompt" rows="10" spellcheck="false"></textarea>
+                                    <div class="dialog-prompt-actions">
+                                        <small class="field-help">Tu prompt se guarda en este navegador. Usa <code>{ANECDOTE}</code> y <code>{LOCATION}</code> como placeholders.</small>
+                                        <button type="button" id="dialogPromptResetBtn" class="link-btn">Restablecer por defecto</button>
+                                    </div>
+                                </details>
+                                <div class="dialog-gen-actions">
+                                    <button type="button" id="generateDialogBtn" class="btn primary">Generar diálogo</button>
+                                    <span class="process-status" id="dialogStatus"></span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

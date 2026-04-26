@@ -362,6 +362,101 @@ document.getElementById('translateExpertBtn').addEventListener('click', async fu
   }
 });
 
+// ============================================================
+// DIALOG GENERATOR — Cachorra ↔ Gato Expert tip from a free-form anecdote.
+// Uses Gemini via /api/locations/dialog. The system prompt is editable and
+// persisted in localStorage so admins can tune voice over time.
+// ============================================================
+const DIALOG_PROMPT_KEY = 'admin_dialog_prompt';
+const dialogAnecdote = document.getElementById('dialogAnecdote');
+const dialogPromptEl = document.getElementById('dialogPrompt');
+const dialogStatus = document.getElementById('dialogStatus');
+const generateDialogBtn = document.getElementById('generateDialogBtn');
+const dialogPromptResetBtn = document.getElementById('dialogPromptResetBtn');
+let DEFAULT_DIALOG_PROMPT_CACHED = '';
+
+async function loadDefaultDialogPrompt() {
+  if (DEFAULT_DIALOG_PROMPT_CACHED) return DEFAULT_DIALOG_PROMPT_CACHED;
+  try {
+    const res = await fetch(API_BASE + '/api/locations/dialog/default-prompt');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const j = await res.json();
+    DEFAULT_DIALOG_PROMPT_CACHED = j.prompt || '';
+  } catch (_) { /* network glitch — fall back to whatever is stored */ }
+  return DEFAULT_DIALOG_PROMPT_CACHED;
+}
+
+async function ensureDialogPromptInEditor() {
+  if (!dialogPromptEl) return;
+  if (dialogPromptEl.value) return;
+  const stored = localStorage.getItem(DIALOG_PROMPT_KEY);
+  if (stored) { dialogPromptEl.value = stored; return; }
+  dialogPromptEl.value = await loadDefaultDialogPrompt();
+}
+
+if (dialogPromptEl) {
+  // Save tweaks back to localStorage when the user edits the prompt.
+  dialogPromptEl.addEventListener('input', () => {
+    localStorage.setItem(DIALOG_PROMPT_KEY, dialogPromptEl.value);
+  });
+}
+
+if (dialogPromptResetBtn) {
+  dialogPromptResetBtn.addEventListener('click', async () => {
+    if (!confirm('¿Restablecer el prompt al por defecto del servidor?')) return;
+    localStorage.removeItem(DIALOG_PROMPT_KEY);
+    DEFAULT_DIALOG_PROMPT_CACHED = '';
+    const def = await loadDefaultDialogPrompt();
+    if (dialogPromptEl) dialogPromptEl.value = def;
+    showToast('Prompt restablecido');
+  });
+}
+
+if (generateDialogBtn) {
+  generateDialogBtn.addEventListener('click', async () => {
+    const anecdote = dialogAnecdote?.value?.trim() || '';
+    if (!anecdote) {
+      showToast('Escribe primero la anécdota', true);
+      dialogAnecdote?.focus();
+      return;
+    }
+    await ensureDialogPromptInEditor();
+    const promptText = dialogPromptEl?.value?.trim() || '';
+    const locationName = (fNameEs?.value || fNameEn?.value || '').trim();
+    if (dialogStatus) {
+      dialogStatus.textContent = 'Generando…';
+      dialogStatus.style.color = '';
+      dialogStatus.style.display = 'inline';
+    }
+    startBtnSpinner(generateDialogBtn, 'Generando…');
+    try {
+      const res = await fetch(API_BASE + '/api/locations/dialog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anecdote, locationName, prompt: promptText }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Dialog generation failed');
+      if (data.dialog?.es) fTipExpertEs.value = data.dialog.es;
+      if (data.dialog?.en) fTipExpertEn.value = data.dialog.en;
+      refreshCharCounts();
+      if (dialogStatus) {
+        dialogStatus.textContent = 'Diálogo generado — revisa antes de guardar.';
+        dialogStatus.style.color = '#238636';
+      }
+      showToast('Diálogo generado — revisa antes de guardar');
+    } catch (err) {
+      if (dialogStatus) {
+        dialogStatus.textContent = 'Error: ' + err.message;
+        dialogStatus.style.color = '#f85149';
+      }
+      showToast('Error al generar: ' + err.message, true);
+    } finally {
+      stopBtnSpinner(generateDialogBtn);
+    }
+  });
+}
+
 // Per-difficulty editor state
 const DEFAULT_CROPS = {
   '3': { x: 0.1,  y: 0,    w: 0.8,  h: 1    }, // Easy: centered approx, editable
@@ -817,7 +912,129 @@ function renderLocList() {
     div.onclick = () => openLocEditor(loc.id);
     el.appendChild(div);
   });
+  // Keep the audit button label/state in sync with whatever we just rendered.
+  if (typeof refreshAuditButton === 'function') refreshAuditButton();
 }
+
+// ============================================================
+// AUDIT MODAL — surfaces zone ranges + locations outside their bucket.
+// Computed live from the in-memory locations array; no extra fetch.
+// ============================================================
+function computeAuditOutOfRange() {
+  const out = [];
+  locations.forEach(l => {
+    const r = locRegion(l);
+    if (!r) return;
+    const range = getPointsRangeForZone(r);
+    if (!range) return;
+    const rp = l.requiredPoints || 0;
+    if (rp < range.min || rp > range.max) out.push({ loc: l, zone: r, rp, range });
+  });
+  const order = { easy:0, normal:1, hard:2, expert:3, insane:4 };
+  out.sort((a, b) => {
+    const oa = order[a.zone] ?? 99, ob = order[b.zone] ?? 99;
+    if (oa !== ob) return oa - ob;
+    return a.rp - b.rp;
+  });
+  return out;
+}
+
+function refreshAuditButton() {
+  const label = document.getElementById('auditBtnLabel');
+  const btn = document.getElementById('auditOpenBtn');
+  if (!label || !btn) return;
+  const out = computeAuditOutOfRange();
+  const total = locations.length;
+  if (!total) {
+    label.textContent = 'Auditoría de puntajes';
+    btn.classList.remove('audit-warn');
+    return;
+  }
+  if (out.length) {
+    label.textContent = `⚠ Auditoría · ${out.length} de ${total} fuera de rango`;
+    btn.classList.add('audit-warn');
+  } else {
+    label.textContent = `✓ Auditoría · ${total} dentro de rango`;
+    btn.classList.remove('audit-warn');
+  }
+}
+
+function renderAuditModal() {
+  const rangesBody = document.getElementById('auditRangesBody');
+  const outBody = document.getElementById('auditOutBody');
+  const outTable = document.getElementById('auditOutTable');
+  const outHeader = document.getElementById('auditOutHeader');
+  const empty = document.getElementById('auditEmpty');
+  if (!rangesBody || !outBody) return;
+
+  const counts = {};
+  locations.forEach(l => {
+    const r = locRegion(l) || '__none';
+    counts[r] = (counts[r] || 0) + 1;
+  });
+
+  rangesBody.innerHTML = ['easy','normal','hard','expert','insane'].map(z => {
+    const range = getPointsRangeForZone(z);
+    const label = ZONE_LABEL_ES[z] || z;
+    const rangeText = range ? `${fmtPts(range.min)} – ${fmtPts(range.max)} pts` : '—';
+    return `<tr>
+      <td><span class="zone-badge zone-${z}">${label}</span></td>
+      <td class="num">${rangeText}</td>
+      <td class="num">${counts[z] || 0}</td>
+    </tr>`;
+  }).join('');
+
+  const out = computeAuditOutOfRange();
+  if (outHeader) {
+    outHeader.textContent = out.length
+      ? `⚠ Fuera de rango (${out.length})`
+      : 'Fuera de rango';
+  }
+  if (empty) empty.style.display = out.length ? 'none' : '';
+  if (outTable) outTable.style.display = out.length ? '' : 'none';
+  outBody.innerHTML = out.map(({ loc, zone, rp, range }) => {
+    const name = (loc.name?.es && loc.name.es !== SENTINEL) ? loc.name.es : loc.id;
+    return `<tr data-loc-id="${esc(loc.id)}" class="audit-out-row">
+      <td>${esc(name)}</td>
+      <td><span class="zone-badge zone-${zone}">${ZONE_LABEL_ES[zone] || zone}</span></td>
+      <td class="num warn">${fmtPts(rp)}</td>
+      <td class="num">${fmtPts(range.min)} – ${fmtPts(range.max)}</td>
+    </tr>`;
+  }).join('');
+  outBody.querySelectorAll('.audit-out-row').forEach(tr => {
+    tr.onclick = () => {
+      const id = tr.dataset.locId;
+      if (!id) return;
+      closeAuditModal();
+      openLocEditor(id);
+    };
+  });
+}
+
+function openAuditModal() {
+  const m = document.getElementById('auditModal');
+  if (!m) return;
+  renderAuditModal();
+  m.hidden = false;
+  document.body.classList.add('audit-modal-open');
+}
+function closeAuditModal() {
+  const m = document.getElementById('auditModal');
+  if (!m) return;
+  m.hidden = true;
+  document.body.classList.remove('audit-modal-open');
+}
+
+(() => {
+  const btn = document.getElementById('auditOpenBtn');
+  if (btn) btn.addEventListener('click', openAuditModal);
+  document.querySelectorAll('[data-audit-close]').forEach(el => {
+    el.addEventListener('click', closeAuditModal);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAuditModal();
+  });
+})();
 
 function renderZoneChips() {
   const row = document.getElementById('locZoneChips');
@@ -2340,6 +2557,8 @@ async function init() {
     renderZoneChips();
     renderLocList(); renderZoneList(); renderTrophyList(); renderTesterTable();
     renderCalendar();
+    refreshAuditButton();
+    ensureDialogPromptInEditor();
     populateZoneDropdown(); populateScoring(); populateAppConfig();
   } catch (e) {
     showToast('Load failed: ' + e.message, true);
