@@ -11,7 +11,6 @@ import 'package:chile_puzzle/core/services/mock_backend.dart';
 import 'package:chile_puzzle/core/services/game_progress_service.dart';
 import 'package:chile_puzzle/core/services/settings_service.dart';
 import 'package:chile_puzzle/core/services/loading_overlay_service.dart';
-import 'package:chile_puzzle/core/widgets/pulsing_dot.dart';
 import 'package:chile_puzzle/core/services/share_service.dart';
 import 'package:chile_puzzle/core/theme/app_theme.dart';
 import 'package:chile_puzzle/features/puzzle/puzzle_screen.dart';
@@ -240,17 +239,6 @@ class _MapScreenState extends State<MapScreen>
         .map((e) => e.key)
         .toList();
   }
-
-  /// True if any difficulty of [loc] has been completed but not yet shared
-  /// — drives the "+pts up for grabs" pulsing-dot on cards & filter chips.
-  bool _hasUnclaimedShare(LocationModel loc) {
-    for (final diff in loc.difficultyLevels) {
-      final r = GameProgressService.puzzleResult(loc.id, diff);
-      if (r != null && !r.hasShared) return true;
-    }
-    return false;
-  }
-
 
   void _onFilterChanged(String filter) {
     if (filter == _activeFilter && _activeZone == null && _searchQuery.isEmpty) return;
@@ -851,18 +839,39 @@ class _MapScreenState extends State<MapScreen>
                       textStyle: const TextStyle(
                           fontSize: 14, fontWeight: FontWeight.w600),
                     ),
-                    icon: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        const Icon(PhosphorIconsBold.image, size: 18),
-                        if (_hasUnclaimedShare(loc))
-                          const Positioned(
-                            top: -3, right: -5,
-                            child: PulsingDot(size: 7),
-                          ),
-                      ],
-                    ),
+                    icon: const Icon(PhosphorIconsBold.image, size: 18),
                     label: Text(langCode == 'es' ? 'Ver completados' : 'View completed'),
+                  ),
+                ),
+              ),
+
+            // Compartir polaroid — sits between "Ver completados" and Maps so
+            // the action is one tap away once the player has finished a level.
+            if (anyCompleted)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      ShareService.shareLocation(
+                        context: context,
+                        location: loc,
+                        difficulty: topDiff,
+                        langCode: langCode,
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF7396A4),
+                      side: const BorderSide(color: Color(0xFFB8CDD4)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      textStyle: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    icon: const Icon(PhosphorIconsBold.shareNetwork, size: 18),
+                    label: Text(langCode == 'es' ? 'Compartir' : 'Share'),
                   ),
                 ),
               ),
@@ -1550,7 +1559,6 @@ class _MapScreenState extends State<MapScreen>
     ).toList();
     final allCompleted = completedDiffs.length == difficulties.length;
     final isUnlocked = _isLocationUnlocked(loc);
-    final hasUnclaimedShare = _hasUnclaimedShare(loc);
 
     // B&W progressive: 1.0 = full color, 0.0 = full grayscale
     final double saturation = allCompleted
@@ -1697,30 +1705,15 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
-            // Name (with optional pulsing-dot when this card has an
-            // unclaimed share reward — drives the player toward "+pts").
+            // Name
             Positioned(
               left: 10, bottom: 36, right: 10,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Flexible(
-                    child: Text(
-                      loc.getLocalizedName(langCode),
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
-                      ),
-                      maxLines: 2, overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (hasUnclaimedShare) ...[
-                    const SizedBox(width: 6),
-                    const Padding(
-                      padding: EdgeInsets.only(top: 5),
-                      child: PulsingDot(size: 8),
-                    ),
-                  ],
-                ],
+              child: Text(
+                loc.getLocalizedName(langCode),
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
+                ),
+                maxLines: 2, overflow: TextOverflow.ellipsis,
               ),
             ),
             // Difficulty icons over photo
@@ -2161,34 +2154,9 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
                 ),
               ),
             ),
-          // Share button — third in the top-right stack, below tip-toggle.
-          // Only visible once the photo has finished loading.
-          if (_imageReady)
-            Positioned(
-              top: 116,
-              right: 12,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () async {
-                  // Share the tip for the currently-visible slide, not the
-                  // difficulty the view was opened at — the user may have
-                  // swiped the carousel to another level.
-                  final diff = _slides.isNotEmpty
-                      ? _slides[_currentPage].difficulty
-                      : widget.difficulty;
-                  await ShareService.shareLocation(
-                    context: context,
-                    location: loc,
-                    difficulty: diff,
-                    langCode: widget.langCode,
-                  );
-                  if (mounted) setState(() {});
-                },
-                child: _ShareIconWithReward(
-                  reward: _shareRewardForCurrentSlide(loc),
-                ),
-              ),
-            ),
+          // (Share button removed from the photo overlay — sharing now
+          // lives in the difficulty dialog, between Ver completados and
+          // Google Maps, so the photo viewer stays uncluttered.)
           // Tip carousel + silhouette — both anchored at bottom.
           // Toggle controls both tip AND silhouette. Hidden while loading.
           if (_imageReady)
@@ -2265,119 +2233,6 @@ class _FullPhotoViewState extends State<_FullPhotoView> {
     );
   }
 
-  /// Reward points for the slide currently visible in the carousel, or null
-  /// if the player has already claimed the share reward for that puzzle.
-  /// Drives the "+Npts" pill on the share icon.
-  int? _shareRewardForCurrentSlide(LocationModel loc) {
-    if (_slides.isEmpty) return null;
-    final diff = _slides[_currentPage].difficulty;
-    final result = GameProgressService.puzzleResult(loc.id, diff);
-    if (result == null) return null; // not yet completed
-    if (result.hasShared) return null; // already claimed
-    return ShareService.rewardForDifficulty(diff);
-  }
-}
-
-/// Share-icon button with an optional "+Npts" pill at its top-right corner.
-/// Pill animates in on first appearance and pulses gently to draw attention
-/// while the reward is still claimable.
-class _ShareIconWithReward extends StatelessWidget {
-  final int? reward;
-  const _ShareIconWithReward({required this.reward});
-
-  @override
-  Widget build(BuildContext context) {
-    final icon = Container(
-      width: 44,
-      height: 44,
-      decoration: const BoxDecoration(
-        color: Colors.black54,
-        shape: BoxShape.circle,
-      ),
-      child: const Icon(
-        PhosphorIconsBold.shareNetwork,
-        size: 22,
-        color: Colors.white,
-      ),
-    );
-    if (reward == null) return icon;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        icon,
-        Positioned(
-          top: -4,
-          right: -6,
-          child: _RewardPill(points: reward!),
-        ),
-      ],
-    );
-  }
-}
-
-class _RewardPill extends StatefulWidget {
-  final int points;
-  const _RewardPill({required this.points});
-
-  @override
-  State<_RewardPill> createState() => _RewardPillState();
-}
-
-class _RewardPillState extends State<_RewardPill>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (_, __) {
-        final t = Curves.easeInOut.transform(_ctrl.value);
-        final scale = 0.95 + 0.10 * t;
-        return Transform.scale(
-          scale: scale,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(
-              color: AppTheme.accentGreen,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: Colors.white, width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.accentGreen.withValues(alpha: 0.5),
-                  blurRadius: 6,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: Text(
-              '+${widget.points}',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-                height: 1.0,
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
 
 /// Swipeable tip carousel used inside `_FullPhotoView`. Each page shows one
