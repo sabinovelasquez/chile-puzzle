@@ -71,39 +71,52 @@ function stopBtnSpinner(btn) {
   btn.disabled = false;
 }
 
-// --- Mobile drawer ---
+// --- Mobile drawer (navigation only) + master-detail editor toggle ---
+function closeMobileEditor() {
+  document.body.classList.remove('editor-open');
+}
+function openMobileEditor() {
+  document.body.classList.add('editor-open');
+}
+
 (function initDrawer() {
   const btn = document.getElementById('menuBtn');
   const backdrop = document.getElementById('drawerBackdrop');
-  if (!btn || !backdrop) return;
-  btn.onclick = () => document.body.classList.toggle('drawer-open');
-  backdrop.onclick = () => document.body.classList.remove('drawer-open');
+  const backBtn = document.getElementById('editorBackBtn');
+  const drawer = document.getElementById('mobileDrawer');
+  const list = document.getElementById('mobileDrawerList');
+  if (!btn || !backdrop || !drawer || !list) return;
 
-  // Mirror the tab bar as a stacked list inside every sidebar (mobile-only via CSS)
-  document.querySelectorAll('.tab-content .sidebar').forEach(sidebar => {
-    const list = document.createElement('div');
-    list.className = 'mobile-tab-list';
-    document.querySelectorAll('.tab-bar .tab').forEach(tab => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = tab.textContent;
-      b.dataset.tab = tab.dataset.tab;
-      if (tab.classList.contains('active')) b.classList.add('active');
-      b.onclick = () => {
-        tab.click();
-        document.body.classList.remove('drawer-open');
-      };
-      list.appendChild(b);
-    });
-    sidebar.prepend(list);
+  btn.onclick = () => document.body.classList.toggle('drawer-open');
+  backdrop.onclick = () => {
+    document.body.classList.remove('drawer-open');
+  };
+  if (backBtn) backBtn.onclick = () => closeMobileEditor();
+
+  // Build navigation list inside the dedicated drawer (no longer mirrored
+  // into each sidebar, so the sidebar can stay focused on its own content).
+  document.querySelectorAll('.tab-bar .tab').forEach(tab => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = tab.textContent;
+    b.dataset.tab = tab.dataset.tab;
+    if (tab.classList.contains('active')) b.classList.add('active');
+    b.onclick = () => {
+      tab.click();
+      document.body.classList.remove('drawer-open');
+      closeMobileEditor();
+    };
+    list.appendChild(b);
   });
 
-  // Keep all mirror lists in sync when any tab is activated
+  // Keep the drawer list in sync when any tab is activated.
   document.querySelectorAll('.tab-bar .tab').forEach(tab => {
     tab.addEventListener('click', () => {
-      document.querySelectorAll('.mobile-tab-list button').forEach(b => {
+      document.querySelectorAll('#mobileDrawerList button').forEach(b => {
         b.classList.toggle('active', b.dataset.tab === tab.dataset.tab);
       });
+      // Switching tabs always returns to the sidebar (list) view.
+      closeMobileEditor();
     });
   });
 })();
@@ -121,7 +134,8 @@ const fImage = document.getElementById('locImage'), fThumb = document.getElement
 const fOriginal = document.getElementById('locOriginal');
 const fOriginalW = document.getElementById('locOriginalW');
 const fOriginalH = document.getElementById('locOriginalH');
-const fActive = document.getElementById('locActive');
+const fPublishAt = document.getElementById('locPublishAt');
+const fPublishHelp = document.getElementById('publishHelp');
 const fSilD3 = document.getElementById('locSilD3');
 const fSilD4 = document.getElementById('locSilD4');
 const fSilD5 = document.getElementById('locSilD5');
@@ -142,6 +156,74 @@ function refreshDeleteOrigBtn() {
   if (!deleteOrigBtn) return;
   deleteOrigBtn.hidden = !fOriginal.value;
 }
+
+// ============================================================
+// PUBLISH STATE — three radios (draft / now / scheduled) compose
+// the wire-format pair { active, publishAt }.
+// ============================================================
+function getPubStateRadio(value) {
+  return document.querySelector(`input[name="pubState"][value="${value}"]`);
+}
+function getPubStateValue() {
+  const checked = document.querySelector('input[name="pubState"]:checked');
+  return checked ? checked.value : 'now';
+}
+function setPubStateValue(value) {
+  const radio = getPubStateRadio(value) || getPubStateRadio('now');
+  if (radio) radio.checked = true;
+  syncPublishAtEnabled();
+}
+function syncPublishAtEnabled() {
+  if (!fPublishAt) return;
+  fPublishAt.disabled = getPubStateValue() !== 'scheduled';
+}
+// Convert a Date or ISO string to the value format datetime-local expects:
+// YYYY-MM-DDTHH:mm in local time. Empty string for null.
+function toDatetimeLocalValue(iso) {
+  if (!iso) return '';
+  const d = (iso instanceof Date) ? iso : new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+// Read editor state and derive the {active, publishAt} we send to the API.
+function readPublishStateForSave() {
+  const state = getPubStateValue();
+  if (state === 'draft') return { active: false, publishAt: null };
+  if (state === 'now') return { active: true, publishAt: null };
+  // scheduled — must have a future-ish datetime; if missing, treat as "now"
+  const localValue = fPublishAt?.value || '';
+  if (!localValue) return { active: true, publishAt: null };
+  return { active: true, publishAt: new Date(localValue).toISOString() };
+}
+// Populate the editor from a loaded location.
+function applyLocationToPublishState(loc) {
+  const isoFuture = loc.publishAt && new Date(loc.publishAt) > new Date();
+  if (loc.active === false) {
+    setPubStateValue('draft');
+    fPublishAt.value = toDatetimeLocalValue(loc.publishAt);
+  } else if (isoFuture) {
+    setPubStateValue('scheduled');
+    fPublishAt.value = toDatetimeLocalValue(loc.publishAt);
+  } else {
+    setPubStateValue('now');
+    fPublishAt.value = '';
+  }
+}
+// Wire up the radio toggle once at startup.
+document.querySelectorAll('input[name="pubState"]').forEach(r => {
+  r.addEventListener('change', () => {
+    syncPublishAtEnabled();
+    // When user picks "scheduled" with no value yet, prefill ~tomorrow 9am
+    if (getPubStateValue() === 'scheduled' && !fPublishAt.value) {
+      const t = new Date();
+      t.setDate(t.getDate() + 1);
+      t.setHours(9, 0, 0, 0);
+      fPublishAt.value = toDatetimeLocalValue(t);
+    }
+    fPublishAt.focus?.();
+  });
+});
 
 // ============================================================
 // AI TIP GENERATION
@@ -388,23 +470,38 @@ function updateMapFromFields() {
 }
 
 // --- Required points suggestions per zone ---
+// Non-overlapping, monotonically increasing Easy → Insane. Recalibrated
+// 2026-04-26 because the previous buckets allowed Insane=5000 while Expert
+// reached 7500, breaking the unlock chain.
 const POINTS_BY_ZONE = {
-  easy:   [0, 50, 100, 150],
-  normal: [200, 500, 750, 1000],
-  hard:   [800, 1500, 2000, 3000],
-  expert: [2500, 3500, 5000, 7500],
-  insane: [5000, 7500, 10000, 15000],
+  easy:   [0, 50, 100, 150, 250],
+  normal: [400, 600, 800, 1100, 1500],
+  hard:   [2000, 2500, 3200, 4000, 5000],
+  expert: [6000, 7500, 9000, 11000],
+  insane: [13000, 16000, 20000],
 };
 
-function populatePointsDropdown(zone, currentValue) {
-  const opts = POINTS_BY_ZONE[zone] || [0, 100, 500, 1000, 2000, 5000];
-  // Include current value if not in the list
-  const values = [...new Set([...opts, ...(currentValue != null ? [currentValue] : [])])].sort((a, b) => a - b);
-  fRequiredPoints.innerHTML = values.map(v => `<option value="${v}"${v === currentValue ? ' selected' : ''}>${v} pts</option>`).join('');
+function getPointsRangeForZone(zoneId) {
+  const opts = POINTS_BY_ZONE[zoneId];
+  if (!opts || !opts.length) return null;
+  return { min: opts[0], max: opts[opts.length - 1] };
+}
+
+function populatePointsSuggestions(zone) {
+  const opts = POINTS_BY_ZONE[zone] || [];
+  const dl = document.getElementById('pointsDatalist');
+  if (dl) dl.innerHTML = opts.map(v => `<option value="${v}">`).join('');
 }
 
 fZone.addEventListener('change', () => {
-  populatePointsDropdown(fZone.value, parseInt(fRequiredPoints.value) || 0);
+  populatePointsSuggestions(fZone.value);
+  // When user switches zones on a fresh editor (value still 0), snap to the
+  // first suggestion of the new zone so they don't have to type from scratch.
+  const cur = parseInt(fRequiredPoints.value) || 0;
+  if (cur === 0) {
+    const first = POINTS_BY_ZONE[fZone.value]?.[0];
+    if (first != null) fRequiredPoints.value = first;
+  }
 });
 
 // Multi-file upload → batch-stub (the ONLY way to create new locations).
@@ -561,16 +658,32 @@ deleteOrigBtn.addEventListener('click', async () => {
 
 let locSearchQuery = '';
 let locStatusFilter = 'all'; // 'all' | 'active' | 'inactive'
+let locZoneFilter = 'all';   // 'all' | <zone.id> | '__none' (sin zona)
+
+function locRegion(loc) {
+  return (loc.region && loc.region !== SENTINEL) ? loc.region : '';
+}
+
+function locStatus(loc) {
+  if (loc.active === false) return 'draft';
+  if (loc.publishAt && new Date(loc.publishAt) > new Date()) return 'scheduled';
+  return 'published';
+}
+
+const STATUS_ICONS = { published: '✅', scheduled: '🕓', draft: '📝' };
+const STATUS_LABELS = { published: 'publicada', scheduled: 'programada', draft: 'borrador' };
 
 function filteredLocations() {
   const q = locSearchQuery.trim().toLowerCase();
   return locations.filter((loc) => {
     if (locStatusFilter === 'active' && loc.active === false) return false;
     if (locStatusFilter === 'inactive' && loc.active !== false) return false;
+    const region = locRegion(loc);
+    if (locZoneFilter === '__none' && region) return false;
+    if (locZoneFilter !== 'all' && locZoneFilter !== '__none' && region !== locZoneFilter) return false;
     if (!q) return true;
     const nameEs = (loc.name?.es && loc.name.es !== SENTINEL) ? loc.name.es : '';
     const nameEn = (loc.name?.en && loc.name.en !== SENTINEL) ? loc.name.en : '';
-    const region = (loc.region && loc.region !== SENTINEL) ? loc.region : '';
     return (
       nameEs.toLowerCase().includes(q) ||
       nameEn.toLowerCase().includes(q) ||
@@ -580,13 +693,48 @@ function filteredLocations() {
   });
 }
 
+function locItemHtml(loc) {
+  const status = locStatus(loc);
+  const region = locRegion(loc);
+  const displayName = (loc.name?.es && loc.name.es !== SENTINEL) ? loc.name.es : loc.id;
+  const points = loc.requiredPoints != null ? loc.requiredPoints : 0;
+  const fmtPts = points.toLocaleString('es-CL');
+  const zoneClass = region ? `zone-${region}` : 'zone-none';
+  const zoneLabel = region
+    ? (zones.find(z => z.id === region)?.name?.es || region)
+    : 'Sin zona';
+  return `
+    <div class="loc-item-row">
+      <span class="loc-status-icon" title="${STATUS_LABELS[status]}">${STATUS_ICONS[status]}</span>
+      <div class="loc-item-text">
+        <strong>${esc(displayName)}</strong>
+        <small>
+          <span class="zone-badge ${zoneClass}">${esc(zoneLabel)}</span>
+          <span class="loc-points">${fmtPts} pts</span>
+        </small>
+      </div>
+    </div>`;
+}
+
+function groupHeaderHtml(zoneId, count) {
+  const zoneLabel = zoneId
+    ? (zones.find(z => z.id === zoneId)?.name?.es || zoneId)
+    : 'Sin zona';
+  const zoneClass = zoneId ? `zone-${zoneId}` : 'zone-none';
+  return `<div class="loc-group-header ${zoneClass}">
+    <span class="loc-group-label">${esc(zoneLabel)}</span>
+    <span class="loc-group-count">${count}</span>
+  </div>`;
+}
+
 function renderLocList() {
   const el = document.getElementById('locationList');
   const countEl = document.getElementById('locSearchCount');
   el.innerHTML = '';
   const visible = filteredLocations();
+  const filtersActive = locSearchQuery || locStatusFilter !== 'all' || locZoneFilter !== 'all';
   if (countEl) {
-    countEl.textContent = locSearchQuery || locStatusFilter !== 'all'
+    countEl.textContent = filtersActive
       ? `${visible.length}/${locations.length}`
       : `${locations.length}`;
   }
@@ -599,25 +747,69 @@ function renderLocList() {
     el.appendChild(empty);
     return;
   }
-  visible.forEach(loc => {
+
+  // Sort within each zone by requiredPoints ASC, then name. Groups follow the
+  // server-defined zone order (zones global), with "Sin zona" at the end.
+  const zoneOrder = new Map();
+  zones.forEach((z, i) => zoneOrder.set(z.id, i));
+  const sorted = [...visible].sort((a, b) => {
+    const ra = locRegion(a), rb = locRegion(b);
+    const oa = ra ? (zoneOrder.get(ra) ?? 999) : 1000;
+    const ob = rb ? (zoneOrder.get(rb) ?? 999) : 1000;
+    if (oa !== ob) return oa - ob;
+    const pa = a.requiredPoints || 0, pb = b.requiredPoints || 0;
+    if (pa !== pb) return pa - pb;
+    const na = (a.name?.es && a.name.es !== SENTINEL) ? a.name.es : a.id;
+    const nb = (b.name?.es && b.name.es !== SENTINEL) ? b.name.es : b.id;
+    return na.localeCompare(nb, 'es');
+  });
+
+  // Group only when no specific zone filter is active. Otherwise render flat.
+  const showGroups = locZoneFilter === 'all';
+  let currentZone = null;
+  let countsByZone = null;
+  if (showGroups) {
+    countsByZone = sorted.reduce((acc, loc) => {
+      const r = locRegion(loc);
+      acc[r] = (acc[r] || 0) + 1;
+      return acc;
+    }, {});
+  }
+  sorted.forEach((loc) => {
+    const region = locRegion(loc);
+    if (showGroups && region !== currentZone) {
+      currentZone = region;
+      const headerWrap = document.createElement('div');
+      headerWrap.innerHTML = groupHeaderHtml(region, countsByZone[region] || 0);
+      el.appendChild(headerWrap.firstElementChild);
+    }
     const div = document.createElement('div');
     const isInactive = loc.active === false;
     div.className = 'item' +
       (isInactive ? ' inactive' : '') +
       (currentEditId === loc.id ? ' active' : '');
-    const displayName = (loc.name?.es && loc.name.es !== SENTINEL) ? loc.name.es : loc.id;
-    const displayRegion = (loc.region && loc.region !== SENTINEL) ? loc.region : '—';
-    const badge = isInactive ? ' <span class="inactive-badge">inactive</span>' : '';
-    div.innerHTML = `<strong>${esc(displayName)}</strong><small>${esc(displayRegion)}${badge}</small>`;
+    div.innerHTML = locItemHtml(loc);
     div.onclick = () => openLocEditor(loc.id);
     el.appendChild(div);
   });
 }
 
-// Wire up search + status chips. Debounced so rapid typing doesn't thrash DOM.
+function renderZoneChips() {
+  const row = document.getElementById('locZoneChips');
+  if (!row) return;
+  const items = [{ id: 'all', label: 'Todas' }];
+  zones.forEach(z => items.push({ id: z.id, label: z.name?.es || z.id }));
+  items.push({ id: '__none', label: 'Sin zona' });
+  row.innerHTML = items.map(c =>
+    `<button type="button" class="chip${c.id === locZoneFilter ? ' active' : ''}" data-zone="${esc(c.id)}">${esc(c.label)}</button>`
+  ).join('');
+}
+
+// Wire up search + status chips + zone chips. Debounced so rapid typing doesn't thrash DOM.
 (() => {
   const search = document.getElementById('locSearch');
   const chips = document.getElementById('locStatusChips');
+  const zoneChips = document.getElementById('locZoneChips');
   if (search) {
     let t;
     search.addEventListener('input', (e) => {
@@ -634,6 +826,16 @@ function renderLocList() {
       if (!btn) return;
       locStatusFilter = btn.dataset.status || 'all';
       chips.querySelectorAll('.chip').forEach((c) =>
+        c.classList.toggle('active', c === btn));
+      renderLocList();
+    });
+  }
+  if (zoneChips) {
+    zoneChips.addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip');
+      if (!btn) return;
+      locZoneFilter = btn.dataset.zone || 'all';
+      zoneChips.querySelectorAll('.chip').forEach((c) =>
         c.classList.toggle('active', c === btn));
       renderLocList();
     });
@@ -655,7 +857,7 @@ function openLocEditor(id) {
   fNameEs.value = loc.name?.es === SENTINEL ? '' : (loc.name?.es || '');
   const region = loc.region === SENTINEL ? '' : (loc.region || '');
   fZone.value = region || (zones[0]?.id || '');
-  populatePointsDropdown(fZone.value, loc.requiredPoints || 0);
+  populatePointsSuggestions(fZone.value);
   fRequiredPoints.value = loc.requiredPoints || 0;
   fLat.value = loc.latitude || -33.4569;
   fLng.value = loc.longitude || -70.6483;
@@ -667,7 +869,7 @@ function openLocEditor(id) {
   fOriginalW.value = loc.originalWidth || 0;
   fOriginalH.value = loc.originalHeight || 0;
   refreshDeleteOrigBtn();
-  fActive.checked = loc.active !== false;
+  applyLocationToPublishState(loc);
   const sbd = loc.silhouetteByDifficulty || {};
   fSilD3.checked = !!sbd['3'];
   fSilD4.checked = !!sbd['4'];
@@ -699,9 +901,9 @@ function openLocEditor(id) {
   else cropToolHide();
   fImageUpload.value = '';
   renderLocList();
-  // On mobile, the sidebar is a slide-in drawer — hide it once the user
-  // has committed to a location so the editor has the full screen.
-  document.body.classList.remove('drawer-open');
+  // On mobile we use a master-detail layout: opening a location swaps the
+  // sidebar list out for the editor. Desktop CSS ignores this class.
+  openMobileEditor();
 }
 
 document.getElementById('regenCropsBtn').onclick = async () => {
@@ -725,6 +927,7 @@ document.getElementById('deleteLocationBtn').onclick = async () => {
   currentEditId = null;
   locForm.classList.add('hidden'); locEmpty.classList.remove('hidden');
   renderLocList();
+  closeMobileEditor();
 };
 
 locForm.onsubmit = async (e) => {
@@ -738,6 +941,18 @@ locForm.onsubmit = async (e) => {
   if (!fTipEn.value.trim() || !fTipEs.value.trim()) {
     showToast('Easy tip (EN and ES) is required', true); return;
   }
+  // Soft validation: warn if requiredPoints is outside the suggested range
+  // for the chosen zone. Confirm dialog so the operator can override.
+  const points = parseInt(fRequiredPoints.value) || 0;
+  const range = getPointsRangeForZone(fZone.value);
+  if (range && (points < range.min || points > range.max)) {
+    const zoneName = (zones.find(z => z.id === fZone.value)?.name?.es) || fZone.value;
+    const fmt = (n) => n.toLocaleString('es-CL');
+    const ok = confirm(
+      `Este puntaje (${fmt(points)}) está fuera del rango sugerido para ${zoneName} (${fmt(range.min)}–${fmt(range.max)}).\n\n¿Quieres guardar igual?`
+    );
+    if (!ok) return;
+  }
   const obj = {
     id,
     name: { en: fNameEn.value.trim(), es: fNameEs.value.trim() },
@@ -750,7 +965,7 @@ locForm.onsubmit = async (e) => {
     originalImage: fOriginal.value,
     originalWidth: parseInt(fOriginalW.value) || 0,
     originalHeight: parseInt(fOriginalH.value) || 0,
-    active: fActive.checked,
+    ...readPublishStateForSave(),
     silhouetteByDifficulty: {
       '3': fSilD3.checked,
       '4': fSilD4.checked,
@@ -796,6 +1011,125 @@ locForm.onsubmit = async (e) => {
 };
 
 // ============================================================
+// CALENDAR — month grid of scheduled publications
+// ============================================================
+let calMonthCursor = (() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; })();
+
+function calFmtMonthLabel(d) {
+  return d.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
+    .replace(/^\w/, (c) => c.toUpperCase());
+}
+function calDayKey(d) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function renderCalendar() {
+  const grid = document.getElementById('calendarGrid');
+  const label = document.getElementById('calMonthLabel');
+  const empty = document.getElementById('calendarEmpty');
+  if (!grid || !label) return;
+
+  // Index all scheduled locations by day key (local time).
+  const byDay = new Map();
+  let totalScheduled = 0;
+  locations.forEach((loc) => {
+    if (!loc.publishAt) return;
+    const d = new Date(loc.publishAt);
+    if (isNaN(d.getTime())) return;
+    totalScheduled++;
+    const key = calDayKey(d);
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key).push({ loc, when: d });
+  });
+
+  if (empty) empty.hidden = totalScheduled > 0;
+
+  label.textContent = calFmtMonthLabel(calMonthCursor);
+
+  // First day of the displayed month, then back up to the preceding Monday.
+  const monthStart = new Date(calMonthCursor);
+  // JS getDay(): 0=Sun..6=Sat. We want Mon-first weeks → shift by 1 mod 7.
+  const monStartIdx = (monthStart.getDay() + 6) % 7;
+  const gridStart = new Date(monthStart);
+  gridStart.setDate(monthStart.getDate() - monStartIdx);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const monthIdx = calMonthCursor.getMonth();
+
+  grid.innerHTML = '';
+  // Always render 6 weeks (42 cells) — visually stable across months.
+  for (let i = 0; i < 42; i++) {
+    const cellDate = new Date(gridStart);
+    cellDate.setDate(gridStart.getDate() + i);
+    cellDate.setHours(0,0,0,0);
+    const inMonth = cellDate.getMonth() === monthIdx;
+    const isToday = cellDate.getTime() === today.getTime();
+    const isPast = cellDate < today;
+    const key = calDayKey(cellDate);
+    const items = byDay.get(key) || [];
+
+    const cell = document.createElement('div');
+    cell.className = 'calendar-cell' +
+      (inMonth ? '' : ' out-of-month') +
+      (isToday ? ' today' : '') +
+      (isPast ? ' past' : '');
+
+    const num = document.createElement('div');
+    num.className = 'calendar-day-num';
+    num.textContent = cellDate.getDate();
+    cell.appendChild(num);
+
+    if (items.length) {
+      const list = document.createElement('div');
+      list.className = 'calendar-day-items';
+      items
+        .sort((a, b) => a.when - b.when)
+        .forEach(({ loc, when }) => {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'calendar-chip';
+          const region = locRegion(loc);
+          if (region) chip.classList.add(`zone-${region}`);
+          const displayName = (loc.name?.es && loc.name.es !== SENTINEL) ? loc.name.es : loc.id;
+          const time = `${String(when.getHours()).padStart(2,'0')}:${String(when.getMinutes()).padStart(2,'0')}`;
+          chip.innerHTML = `
+            <span class="calendar-chip-time">${time}</span>
+            <span class="calendar-chip-name">${esc(displayName)}</span>
+          `;
+          chip.title = `${displayName} · ${region || 'Sin zona'} · ${when.toLocaleString('es-CL')}`;
+          chip.onclick = () => {
+            // Switch to Locations tab and open the editor for this location.
+            const locTab = document.querySelector('.tab[data-tab="locations"]');
+            if (locTab) locTab.click();
+            openLocEditor(loc.id);
+          };
+          list.appendChild(chip);
+        });
+      cell.appendChild(list);
+    }
+    grid.appendChild(cell);
+  }
+}
+
+(() => {
+  const prev = document.getElementById('calPrev');
+  const next = document.getElementById('calNext');
+  const today = document.getElementById('calToday');
+  if (prev) prev.onclick = () => { calMonthCursor.setMonth(calMonthCursor.getMonth() - 1); renderCalendar(); };
+  if (next) next.onclick = () => { calMonthCursor.setMonth(calMonthCursor.getMonth() + 1); renderCalendar(); };
+  if (today) today.onclick = () => {
+    const d = new Date(); d.setDate(1); d.setHours(0,0,0,0);
+    calMonthCursor = d;
+    renderCalendar();
+  };
+  // Re-render whenever the Calendar tab becomes active so the data is fresh
+  // after any edit on the Locations tab.
+  const calTab = document.querySelector('.tab[data-tab="calendar"]');
+  if (calTab) calTab.addEventListener('click', () => renderCalendar());
+})();
+
+// ============================================================
 // ZONES
 // ============================================================
 const zoneForm = document.getElementById('zoneForm');
@@ -825,6 +1159,7 @@ function openZoneEditor(id) {
   document.getElementById('zoneOrder').value = z.order;
   document.getElementById('zoneIcon').value = z.icon || 'landscape';
   renderZoneList();
+  openMobileEditor();
 }
 
 document.getElementById('addZoneBtn').onclick = () => {
@@ -837,6 +1172,7 @@ document.getElementById('addZoneBtn').onclick = () => {
   document.getElementById('zoneOrder').value = zones.length + 1;
   document.getElementById('zoneIcon').value = 'landscape';
   renderZoneList();
+  openMobileEditor();
 };
 
 document.getElementById('deleteZoneBtn').onclick = () => {
@@ -845,6 +1181,7 @@ document.getElementById('deleteZoneBtn').onclick = () => {
   currentZoneId = null;
   zoneForm.classList.add('hidden'); zoneEmpty.classList.remove('hidden');
   postJSON(API_BASE + '/api/zones', zones); renderZoneList(); populateZoneDropdown();
+  closeMobileEditor();
 };
 
 zoneForm.onsubmit = async (e) => {
@@ -901,6 +1238,7 @@ function openTrophyEditor(id) {
   document.getElementById('trophyMetric').value = t.condition.metric || 'totalCompleted';
   document.getElementById('trophyThreshold').value = t.condition.threshold || t.condition.zoneId || '';
   renderTrophyList();
+  openMobileEditor();
 }
 
 document.getElementById('addTrophyBtn').onclick = () => {
@@ -917,6 +1255,7 @@ document.getElementById('addTrophyBtn').onclick = () => {
   document.getElementById('trophyMetric').value = 'totalCompleted';
   document.getElementById('trophyThreshold').value = '';
   renderTrophyList();
+  openMobileEditor();
 };
 
 document.getElementById('deleteTrophyBtn').onclick = () => {
@@ -925,6 +1264,7 @@ document.getElementById('deleteTrophyBtn').onclick = () => {
   currentTrophyId = null;
   trophyForm.classList.add('hidden'); trophyEmpty.classList.remove('hidden');
   postJSON(API_BASE + '/api/trophies', trophies); renderTrophyList();
+  closeMobileEditor();
 };
 
 trophyForm.onsubmit = async (e) => {
@@ -1984,7 +2324,9 @@ async function init() {
     scoring = scoringResult;
     testers = testersResult;
     appConfig = appConfigResult || appConfig;
+    renderZoneChips();
     renderLocList(); renderZoneList(); renderTrophyList(); renderTesterTable();
+    renderCalendar();
     populateZoneDropdown(); populateScoring(); populateAppConfig();
   } catch (e) {
     showToast('Load failed: ' + e.message, true);

@@ -13,11 +13,17 @@
     <div id="toast"></div>
     <div class="glass-container">
         <div id="drawerBackdrop"></div>
+        <nav id="mobileDrawer" class="mobile-drawer mobile-only" aria-label="Navegación">
+            <div class="mobile-drawer-header">Menú</div>
+            <div class="mobile-drawer-list" id="mobileDrawerList"></div>
+        </nav>
         <header>
-            <button id="menuBtn" class="icon-btn mobile-only" aria-label="Menu">☰</button>
+            <button id="menuBtn" class="icon-btn mobile-only" aria-label="Menú">☰</button>
+            <button id="editorBackBtn" class="icon-btn mobile-only" aria-label="Volver a la lista">←</button>
             <h1>Chile Puzzle Admin</h1>
             <nav class="tab-bar">
                 <button class="tab active" data-tab="locations">Locations</button>
+                <button class="tab" data-tab="calendar">Calendario</button>
                 <button class="tab" data-tab="zones">Zones</button>
                 <button class="tab" data-tab="trophies">Trophies</button>
                 <button class="tab" data-tab="scoring">Scoring</button>
@@ -45,6 +51,7 @@
                         <button type="button" class="chip" data-status="active">Active</button>
                         <button type="button" class="chip" data-status="inactive">Inactive</button>
                     </div>
+                    <div class="chip-row chip-row-zones" id="locZoneChips"></div>
                 </div>
                 <div id="locationList" class="item-list"></div>
             </aside>
@@ -52,10 +59,6 @@
                 <form id="editorForm" class="hidden" data-lang="es" data-diff="3">
                     <div class="editor-top-row">
                         <h2>Edit Location</h2>
-                        <label class="active-toggle">
-                            <input type="checkbox" id="locActive">
-                            <span>Published</span>
-                        </label>
                         <fieldset class="silhouette-row" style="display:flex;gap:10px;align-items:center;border:0;padding:0;margin:0;">
                             <span style="font-size:0.85rem;opacity:0.8;">Silhouette:</span>
                             <label class="mini-check"><input type="checkbox" id="locSilD3"> Easy</label>
@@ -64,6 +67,17 @@
                             <label class="mini-check"><input type="checkbox" id="locSilD6"> Expert</label>
                         </fieldset>
                     </div>
+
+                    <fieldset class="publish-state" id="publishStateGroup">
+                        <legend>Estado de publicación</legend>
+                        <div class="publish-state-options">
+                            <label class="publish-radio"><input type="radio" name="pubState" value="draft"><span class="publish-pill"><span class="publish-emoji">📝</span> Borrador</span></label>
+                            <label class="publish-radio"><input type="radio" name="pubState" value="now" checked><span class="publish-pill"><span class="publish-emoji">✅</span> Publicar ahora</span></label>
+                            <label class="publish-radio"><input type="radio" name="pubState" value="scheduled"><span class="publish-pill"><span class="publish-emoji">🕓</span> Programar para…</span></label>
+                        </div>
+                        <input type="datetime-local" id="locPublishAt" disabled>
+                        <small class="field-help" id="publishHelp">Cuando llegue la fecha, esta ubicación aparecerá automáticamente en el juego. No necesitas hacer nada más.</small>
+                    </fieldset>
                     <div class="form-group id-row">
                         <label>ID <small style="opacity:0.7">(auto-generated)</small></label>
                         <div class="id-copy-row">
@@ -75,12 +89,15 @@
                         <div class="form-group lang-en"><label>Name (EN)</label><input type="text" id="locNameEn"></div>
                         <div class="form-group lang-es"><label>Name (ES)</label><input type="text" id="locNameEs"></div>
                         <div class="form-group">
-                            <label>Zone</label>
+                            <label>Zona</label>
                             <select id="locZone"></select>
+                            <small class="field-help">La zona define el orden recomendado para desbloquear este lugar. Es solo una guía: tú decides el puntaje exacto abajo.</small>
                         </div>
                         <div class="form-group">
-                            <label>Required Points to Unlock</label>
-                            <select id="locRequiredPoints"></select>
+                            <label>Puntos para desbloquear</label>
+                            <input type="number" id="locRequiredPoints" list="pointsDatalist" min="0" step="50" autocomplete="off">
+                            <datalist id="pointsDatalist"></datalist>
+                            <small class="field-help">El jugador necesita acumular este puntaje para que esta ubicación aparezca disponible. Mientras más visualmente difícil sea la foto, más alto el puntaje.</small>
                         </div>
                     </div>
                     <div class="grid-2">
@@ -190,6 +207,29 @@
                     <button type="button" data-lang="en">EN</button>
                 </div>
             </main>
+        </div>
+
+        <!-- CALENDAR TAB -->
+        <div class="tab-content calendar-tab" data-tab="calendar">
+            <div class="calendar-wrap">
+                <header class="calendar-header">
+                    <h2>Calendario de publicaciones</h2>
+                    <p class="calendar-sub">Aquí ves cuándo aparece cada ubicación que dejaste programada. Haz clic en una para editarla.</p>
+                    <div class="calendar-nav">
+                        <button type="button" class="btn calendar-prev" id="calPrev">‹</button>
+                        <span class="calendar-month" id="calMonthLabel">—</span>
+                        <button type="button" class="btn calendar-next" id="calNext">›</button>
+                        <button type="button" class="btn calendar-today" id="calToday">Hoy</button>
+                    </div>
+                </header>
+                <div class="calendar-weekdays">
+                    <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+                <div class="calendar-empty" id="calendarEmpty" hidden>
+                    No tienes ubicaciones programadas. Cuando agregues una con fecha futura, aparecerá aquí.
+                </div>
+            </div>
         </div>
 
         <!-- ZONES TAB -->

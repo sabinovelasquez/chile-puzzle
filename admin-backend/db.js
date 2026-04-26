@@ -265,6 +265,15 @@ try {
   db.exec("ALTER TABLE locations ADD COLUMN rotation_deg REAL NOT NULL DEFAULT 0");
 }
 
+// Migrate: scheduled-publish timestamp. NULL = no schedule (active flag rules).
+// When set in the future, the public GET /api/locations hides the row until
+// the time arrives. ISO 8601 string; SQLite's datetime() compares it lexically.
+try {
+  db.prepare('SELECT publish_at FROM locations LIMIT 0').get();
+} catch (_) {
+  db.exec("ALTER TABLE locations ADD COLUMN publish_at TEXT");
+}
+
 // App-level config (single row): share text + share link the Flutter app
 // embeds in Share.shareXFiles(). Use {name} / {link} placeholders so the
 // app substitutes per share.
@@ -313,6 +322,7 @@ function rowToLocation(row) {
     originalHeight: row.original_height || 0,
     rotationDeg: row.rotation_deg || 0,
     active: row.active !== 0,
+    publishAt: row.publish_at || null,
     silhouetteByDifficulty: {
       '3': row.show_silhouette_d3 === 1,
       '4': row.show_silhouette_d4 === 1,
@@ -370,6 +380,7 @@ function locationToParams(obj) {
     original_height: obj.originalHeight || 0,
     rotation_deg: obj.rotationDeg || 0,
     active: obj.active === false ? 0 : 1,
+    publish_at: obj.publishAt || null,
     show_silhouette_d3: s['3'] === true ? 1 : 0,
     show_silhouette_d4: s['4'] === true ? 1 : 0,
     show_silhouette_d5: s['5'] === true ? 1 : 0,

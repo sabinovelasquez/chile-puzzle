@@ -107,15 +107,19 @@ app.get('/api/locations', (req, res) => {
   let where = [];
   let params = {};
 
+  // Public requests (no `?all=1`) hide drafts (active=0) AND scheduled rows
+  // whose publish_at is still in the future. Admin opts in with ?all=1.
+  const publicVisibilityClause = '(l.active = 1 AND (l.publish_at IS NULL OR datetime(l.publish_at) <= datetime(\'now\')))';
+
   if (ids && ids.length > 0) {
     // When filtering by IDs, ignore other filters (but still respect `all`)
     const placeholders = ids.map((id, i) => `@id${i}`).join(',');
     ids.forEach((id, i) => { params[`id${i}`] = id; });
     where.push(`l.id IN (${placeholders})`);
-    if (!all) where.push('l.active = 1');
+    if (!all) where.push(publicVisibilityClause);
   } else {
-    // Default: hide inactive stubs from Flutter. Admin opts in with ?all=1
-    if (!all) where.push('l.active = 1');
+    // Default: hide inactive stubs and not-yet-published rows from Flutter.
+    if (!all) where.push(publicVisibilityClause);
     if (zone) {
       where.push('l.region = @zone');
       params.zone = zone;
@@ -156,7 +160,7 @@ app.get('/api/locations', (req, res) => {
 
 const LOCATION_INSERT_COLS = `
   id, name_en, name_es, region, required_points, latitude, longitude,
-  image, thumbnail, original_image, original_width, original_height, rotation_deg, active,
+  image, thumbnail, original_image, original_width, original_height, rotation_deg, active, publish_at,
   show_silhouette_d3, show_silhouette_d4, show_silhouette_d5, show_silhouette_d6,
   tip_en, tip_es,
   tip_normal_en, tip_normal_es, tip_hard_en, tip_hard_es, tip_expert_en, tip_expert_es,
@@ -170,7 +174,7 @@ const LOCATION_INSERT_COLS = `
 `;
 const LOCATION_INSERT_VALS = `
   @id, @name_en, @name_es, @region, @required_points, @latitude, @longitude,
-  @image, @thumbnail, @original_image, @original_width, @original_height, @rotation_deg, @active,
+  @image, @thumbnail, @original_image, @original_width, @original_height, @rotation_deg, @active, @publish_at,
   @show_silhouette_d3, @show_silhouette_d4, @show_silhouette_d5, @show_silhouette_d6,
   @tip_en, @tip_es,
   @tip_normal_en, @tip_normal_es, @tip_hard_en, @tip_hard_es, @tip_expert_en, @tip_expert_es,
@@ -267,6 +271,7 @@ app.put('/api/locations/:id', async (req, res) => {
       original_image = @original_image, original_width = @original_width, original_height = @original_height,
       rotation_deg = @rotation_deg,
       active = @active,
+      publish_at = @publish_at,
       show_silhouette_d3 = @show_silhouette_d3, show_silhouette_d4 = @show_silhouette_d4,
       show_silhouette_d5 = @show_silhouette_d5, show_silhouette_d6 = @show_silhouette_d6,
       tip_en = @tip_en, tip_es = @tip_es,

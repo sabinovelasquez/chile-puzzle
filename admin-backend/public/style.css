@@ -340,6 +340,14 @@ input:focus, textarea:focus {
     font-size: 0.75rem;
     margin-top: 6px;
 }
+.field-help {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    margin-top: 6px;
+    line-height: 1.4;
+    opacity: 0.85;
+}
 .crop-preview-grid {
     display: flex;
     gap: 12px;
@@ -826,6 +834,73 @@ form[data-diff="6"] .tip-pair[data-diff="6"] { display: block; }
 }
 
 /* ---------- Mobile (≤900px) ---------- */
+/* ---------- Mobile drawer (navigation only) ---------- */
+.mobile-drawer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 260px;
+    max-width: 80vw;
+    z-index: 100;
+    background: #0d1117;
+    border-right: 1px solid var(--glass-border);
+    transform: translateX(-100%);
+    transition: transform 0.28s ease;
+    padding: 4rem 1rem 1.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+body.drawer-open .mobile-drawer { transform: translateX(0); }
+.mobile-drawer-header {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    font-weight: 700;
+    padding: 0 0.4rem 0.6rem;
+    margin-bottom: 0.4rem;
+    border-bottom: 1px solid var(--glass-border);
+}
+.mobile-drawer-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.mobile-drawer-list button {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    padding: 0.7rem 0.9rem;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.mobile-drawer-list button:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.05);
+}
+.mobile-drawer-list button.active {
+    color: var(--accent);
+    background: rgba(88,166,255,0.12);
+    border-color: rgba(88,166,255,0.25);
+}
+
+#editorBackBtn {
+    display: none;
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    z-index: 20;
+    font-size: 1.2rem;
+}
+
 @media (max-width: 900px) {
     body {
         padding: 0;
@@ -844,57 +919,41 @@ form[data-diff="6"] .tip-pair[data-diff="6"] { display: block; }
     header h1 { font-size: 1.25rem; }
     header p { display: none; }
     .mobile-only { display: inline-flex; }
-    .tab-bar {
-        display: none;
-    }
-    .dashboard { flex-direction: column; }
+    .tab-bar { display: none; }
 
-    /* Sidebar becomes the drawer on mobile */
+    /* Master-detail: by default the sidebar fills the screen; the editor is
+       hidden until the operator picks an item. body.editor-open swaps them. */
+    .dashboard {
+        flex-direction: column;
+        height: calc(100vh - 64px);
+    }
     .sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: var(--drawer-width, 280px);
-        max-width: 85vw;
-        height: 100vh;
-        z-index: 100;
-        transform: translateX(-100%);
-        transition: transform 0.28s ease;
-        background: #11151c;
-        border-right: 1px solid var(--glass-border);
-        padding-top: 4rem;
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        border-right: none;
+        border-bottom: 1px solid var(--glass-border);
+        padding: 1rem 1rem 1.25rem;
+        background: rgba(0,0,0,0.1);
         overflow-y: auto;
     }
-    body.drawer-open .sidebar { transform: translateX(0); }
-
-    /* Mobile drawer tab switcher (stacked list) */
-    .sidebar .mobile-tab-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-        margin-bottom: 1rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid var(--glass-border);
+    .editor-area {
+        display: none;
+        padding: 1.25rem;
     }
-    .sidebar .mobile-tab-list button {
-        background: transparent;
-        border: 1px solid transparent;
-        color: var(--text-secondary);
-        padding: 0.7rem 0.9rem;
-        border-radius: 8px;
-        font-family: inherit;
-        font-size: 0.9rem;
-        font-weight: 600;
-        text-align: left;
-        cursor: pointer;
-    }
-    .sidebar .mobile-tab-list button.active {
-        color: var(--accent);
-        background: rgba(88,166,255,0.12);
-        border-color: var(--glass-border);
+    body.editor-open .sidebar { display: none; }
+    body.editor-open .editor-area {
+        display: block;
+        flex: 1;
+        height: 100%;
+        overflow-y: auto;
     }
 
-    .editor-area { padding: 1.25rem; }
+    /* Hamburger ↔ back button: mutually exclusive on mobile.
+       Hamburger stays visible on the list view; back replaces it on editor. */
+    body.editor-open #menuBtn { display: none; }
+    body.editor-open #editorBackBtn { display: inline-flex; }
+
     .grid-2 { grid-template-columns: 1fr; gap: 0.5rem; }
     #locMap { height: 180px; }
     .crop-tool canvas { max-height: 250px; }
@@ -904,11 +963,15 @@ form[data-diff="6"] .tip-pair[data-diff="6"] { display: block; }
     .lang-fab { bottom: 16px; right: 16px; }
     .tester-table { font-size: 0.8rem; }
     .tester-table th, .tester-table td { padding: 0.4rem; }
+
+    /* Calendar tab on mobile gets back the full canvas — no editor pattern */
+    .calendar-tab.tab-content { padding: 1rem; }
 }
 
 @media (min-width: 901px) {
-    /* Desktop keeps drawer hidden */
-    .sidebar .mobile-tab-list { display: none; }
+    /* Desktop hides the mobile-only chrome entirely. */
+    .mobile-drawer { display: none; }
+    #editorBackBtn { display: none; }
 }
 
 /* ============================================================
@@ -986,4 +1049,336 @@ form[data-diff="6"] .tip-pair[data-diff="6"] { display: block; }
 #releaseMsg.ok { background: rgba(76, 175, 80, 0.15); color: #7cd68a; }
 #releaseMsg.err { background: rgba(248, 81, 73, 0.15); color: #f8a89f; }
 #releaseMsg.info { background: rgba(21, 101, 192, 0.15); color: #79b9f5; }
+
+/* ---------- Sidebar: zone chip-row + grouped list + status icons ---------- */
+.chip-row-zones {
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.25rem;
+}
+.chip-row-zones .chip {
+    flex: 0 1 auto;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.68rem;
+}
+
+.loc-group-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 0.75rem;
+    margin: 0.25rem 0 0.1rem;
+    background: rgba(13, 17, 23, 0.92);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 8px;
+    border-left: 3px solid currentColor;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.loc-group-header .loc-group-label { font-weight: 700; }
+.loc-group-header .loc-group-count {
+    font-size: 0.7rem;
+    font-weight: 500;
+    opacity: 0.7;
+    background: rgba(255,255,255,0.08);
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    color: rgba(255,255,255,0.85);
+}
+
+.loc-item-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+}
+.loc-status-icon {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    flex-shrink: 0;
+}
+.loc-item-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+.loc-item-text strong {
+    font-size: 0.92rem;
+    line-height: 1.25;
+    word-break: break-word;
+}
+.loc-item-text small {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+
+.zone-badge {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: lowercase;
+    letter-spacing: 0.02em;
+    background: rgba(255,255,255,0.06);
+    color: currentColor;
+    border: 1px solid currentColor;
+    line-height: 1.4;
+}
+.loc-points {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+    opacity: 0.85;
+}
+
+/* Zone color tokens — shared by chips, badges, and group headers */
+.zone-easy   { color: #3fb950; }
+.zone-normal { color: #d29922; }
+.zone-hard   { color: #58a6ff; }
+.zone-expert { color: #bc8cff; }
+.zone-insane { color: #f85149; }
+.zone-none   { color: #8b949e; }
+
+.chip-row-zones .chip[data-zone="easy"]   { color: #3fb950; }
+.chip-row-zones .chip[data-zone="normal"] { color: #d29922; }
+.chip-row-zones .chip[data-zone="hard"]   { color: #58a6ff; }
+.chip-row-zones .chip[data-zone="expert"] { color: #bc8cff; }
+.chip-row-zones .chip[data-zone="insane"] { color: #f85149; }
+.chip-row-zones .chip[data-zone="__none"] { color: #8b949e; }
+.chip-row-zones .chip.active {
+    background: rgba(255,255,255,0.08);
+    border-color: currentColor;
+}
+
+/* ---------- Publish state fieldset (draft / now / scheduled) ---------- */
+.publish-state {
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 0.9rem 1rem 0.85rem;
+    margin: 0 0 1.2rem;
+    background: rgba(255,255,255,0.02);
+}
+.publish-state legend {
+    padding: 0 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+}
+.publish-state-options {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.65rem;
+}
+.publish-radio {
+    flex: 1 1 auto;
+    cursor: pointer;
+    margin: 0;
+}
+.publish-radio input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+.publish-pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: transparent;
+    transition: all 0.15s ease;
+    text-align: center;
+    white-space: nowrap;
+}
+.publish-radio:hover .publish-pill {
+    color: #fff;
+    border-color: rgba(255,255,255,0.3);
+}
+.publish-radio input[type="radio"]:checked + .publish-pill {
+    background: rgba(88, 166, 255, 0.16);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
+}
+.publish-radio input[type="radio"]:focus-visible + .publish-pill {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.publish-emoji { font-size: 1rem; line-height: 1; }
+#locPublishAt {
+    width: auto;
+    min-width: 220px;
+    margin-top: 0.1rem;
+    color-scheme: dark;
+}
+#locPublishAt:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ---------- Calendar tab ---------- */
+.calendar-tab.tab-content { padding: 1.5rem 2rem 2.5rem; }
+.calendar-wrap { max-width: 1100px; margin: 0 auto; }
+.calendar-header h2 { margin: 0 0 0.25rem; font-size: 1.5rem; }
+.calendar-sub {
+    margin: 0 0 1rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+.calendar-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0.6rem 0 1.2rem;
+    flex-wrap: wrap;
+}
+.calendar-month {
+    flex: 1;
+    text-align: center;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.02em;
+}
+.calendar-prev, .calendar-next, .calendar-today {
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    border: 1px solid var(--glass-border);
+    padding: 0.5rem 0.9rem;
+    font-size: 0.95rem;
+}
+.calendar-prev, .calendar-next { padding: 0.5rem 0.85rem; min-width: 2.4rem; }
+.calendar-prev:hover, .calendar-next:hover, .calendar-today:hover {
+    background: rgba(255,255,255,0.12);
+}
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.4rem;
+    margin-bottom: 0.4rem;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+.calendar-weekdays span { text-align: center; padding: 0.3rem 0; }
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.4rem;
+}
+.calendar-cell {
+    aspect-ratio: 1;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 0.4rem 0.4rem 0.45rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    overflow: hidden;
+    min-height: 90px;
+}
+.calendar-cell.out-of-month {
+    opacity: 0.35;
+}
+.calendar-cell.past {
+    background: rgba(255,255,255,0.015);
+}
+.calendar-cell.today {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px rgba(88,166,255,0.4);
+}
+.calendar-day-num {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    line-height: 1;
+    margin-bottom: 0.15rem;
+}
+.calendar-cell.today .calendar-day-num {
+    color: var(--accent);
+}
+.calendar-day-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    overflow: hidden;
+}
+.calendar-chip {
+    all: unset;
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    padding: 0.25rem 0.4rem;
+    border-radius: 6px;
+    background: rgba(88,166,255,0.1);
+    border: 1px solid currentColor;
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    overflow: hidden;
+}
+.calendar-chip:hover {
+    background: rgba(88,166,255,0.2);
+    transform: translateY(-1px);
+}
+.calendar-chip-time {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.65rem;
+    opacity: 0.85;
+}
+.calendar-chip-name {
+    color: #fff;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.calendar-cell.past .calendar-chip {
+    opacity: 0.5;
+    filter: grayscale(0.5);
+}
+.calendar-empty {
+    margin-top: 1.5rem;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    background: rgba(255,255,255,0.02);
+    border: 1px dashed var(--glass-border);
+    border-radius: 12px;
+}
+
+@media (max-width: 720px) {
+    .calendar-tab.tab-content { padding: 1rem; }
+    .calendar-cell { min-height: 60px; padding: 0.25rem; }
+    .calendar-chip-name { font-size: 0.6rem; }
+    .calendar-day-num { font-size: 0.7rem; }
+}
 
