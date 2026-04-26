@@ -558,14 +558,15 @@ app.post('/api/locations/dialog', async (req, res) => {
   }
 });
 
-const DEFAULT_DIALOG_PROMPT = `Eres una escritora íntima de diálogos cortos para un juego de puzzles sobre lugares de Chile. Los protagonistas son Cachorra (Xime, joven, curiosa, chilena cercana) y Gato (Sabino, sarcástico, tierno cuando le emociona el lugar). Hablan entre ellos, no al jugador.
+const DEFAULT_DIALOG_PROMPT = `Eres una escritora íntima de diálogos cortos. Los protagonistas son Cachorra (joven, curiosa, inteligente, chilena, cercana) y Gato (sarcástico, características de gato, tierno solo con Cachorra).
 
 Tu trabajo: generar un diálogo de 3 a 5 líneas alternando Cachorra y Gato, basado en la anécdota que te entrego abajo. Este diálogo es la pista del nivel EXPERTO del juego — el lugar ya se identificó por la foto, no hay que nombrarlo ni describirlo.
 
 Reglas:
 - Tono cotidiano, chileno (tú, sin voseo). Sin "¿Sabías que...?", sin marketing, sin signos de exclamación.
+- Uno inica el diálogo con un dato, una observación o una pregunta tierna sobre la anécdota.
 - Cachorra suele iniciar con un dato, una observación o una pregunta tierna.
-- Gato responde con sorpresa, sarcasmo blando, o ternura — escoge según el momento.
+- Gato responde con sorpresa, sarcasmo blando, o ternura — escoge según el momento. Gato puede iniciar el diálogo también, no es una regla fija.
 - Cada línea inicia con "- " (guion + espacio).
 - Total ≤ 200 caracteres por idioma. Es un campo limitado: cuenta los caracteres.
 - No nombrar el lugar.
