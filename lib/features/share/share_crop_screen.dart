@@ -310,53 +310,67 @@ class _ShareCropScreenState extends State<ShareCropScreen>
                               key: _boundaryKey,
                               child: Stack(
                                 children: [
+                                  // Loader → image swap fades smoothly via
+                                  // AnimatedSwitcher so the moment the
+                                  // source resolves, the gif fades out and
+                                  // the take-picture surface fades in
+                                  // (≈220ms). Avoids the abrupt swap that
+                                  // used to feel like a second transition.
                                   Positioned.fill(
                                     child: Container(
                                       color: Colors.black,
-                                      child: _sourceImage == null
-                                          ? const Center(
-                                              child: AppLoader(size: 56),
-                                            )
-                                          : Builder(
-                                              builder: (_) {
-                                                final coverScale = math.max(
-                                                  side / _sourceImage!.width,
-                                                  side / _sourceImage!.height,
-                                                );
-                                                return InteractiveViewer(
-                                                  transformationController:
-                                                      _controller,
-                                                  constrained: false,
-                                                  minScale: coverScale,
-                                                  maxScale:
-                                                      coverScale * _maxZoom,
-                                                  // Hard-clamp pan at the
-                                                  // image edges. No rubber-
-                                                  // band past the photo:
-                                                  // drags stop cleanly when
-                                                  // the image edge hits the
-                                                  // viewport edge, regardless
-                                                  // of portrait / landscape.
-                                                  boundaryMargin:
-                                                      EdgeInsets.zero,
-                                                  clipBehavior: Clip.hardEdge,
-                                                  onInteractionStart:
-                                                      _onInteractionStart,
-                                                  onInteractionEnd:
-                                                      _onInteractionEnd,
-                                                  child: RawImage(
-                                                    image: _sourceImage,
-                                                    width: _sourceImage!
-                                                        .width
-                                                        .toDouble(),
-                                                    height: _sourceImage!
-                                                        .height
-                                                        .toDouble(),
-                                                    fit: BoxFit.fill,
-                                                  ),
-                                                );
-                                              },
-                                            ),
+                                      child: AnimatedSwitcher(
+                                        duration: const Duration(milliseconds: 220),
+                                        transitionBuilder: (child, anim) =>
+                                            FadeTransition(
+                                                opacity: anim, child: child),
+                                        child: _sourceImage == null
+                                            ? const Center(
+                                                key: ValueKey('crop-loader'),
+                                                child: AppLoader(size: 56),
+                                              )
+                                            : Builder(
+                                                key: const ValueKey('crop-image'),
+                                                builder: (_) {
+                                                  final coverScale = math.max(
+                                                    side / _sourceImage!.width,
+                                                    side / _sourceImage!.height,
+                                                  );
+                                                  return InteractiveViewer(
+                                                    transformationController:
+                                                        _controller,
+                                                    constrained: false,
+                                                    minScale: coverScale,
+                                                    maxScale:
+                                                        coverScale * _maxZoom,
+                                                    // Hard-clamp pan at the
+                                                    // image edges. No rubber-
+                                                    // band past the photo:
+                                                    // drags stop cleanly when
+                                                    // the image edge hits the
+                                                    // viewport edge, regardless
+                                                    // of portrait / landscape.
+                                                    boundaryMargin:
+                                                        EdgeInsets.zero,
+                                                    clipBehavior: Clip.hardEdge,
+                                                    onInteractionStart:
+                                                        _onInteractionStart,
+                                                    onInteractionEnd:
+                                                        _onInteractionEnd,
+                                                    child: RawImage(
+                                                      image: _sourceImage,
+                                                      width: _sourceImage!
+                                                          .width
+                                                          .toDouble(),
+                                                      height: _sourceImage!
+                                                          .height
+                                                          .toDouble(),
+                                                      fit: BoxFit.fill,
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                      ),
                                     ),
                                   ),
                                   // Vignette baked into the capture (inside

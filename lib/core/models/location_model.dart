@@ -31,6 +31,13 @@ class LocationModel {
   /// the completed-puzzle photo view and inside the completion drawer's tip
   /// card. Keyed by difficulty (3/4/5/6). Admin-controlled.
   final Map<int, bool> silhouetteByDifficulty;
+  /// User-set rotation angle (degrees) the backend bakes into the per-
+  /// difficulty pre-rendered images and crops. The raw [originalImage]
+  /// is NOT pre-rotated — when this is non-zero, surfaces that load the
+  /// raw original would see empty corners around the photo. The share
+  /// crop screen falls back to the easiest pre-rendered image (which is
+  /// rotated AND framed to avoid voids) in that case.
+  final double rotationDeg;
   /// When the row was first inserted in the backend. Used to surface freshly
   /// uploaded locations at the top of the grid.
   final DateTime? createdAt;
@@ -54,6 +61,7 @@ class LocationModel {
     this.cropW = 0.7,
     this.cropH = 0.7,
     this.silhouetteByDifficulty = const {},
+    this.rotationDeg = 0,
     this.createdAt,
   });
 
@@ -73,10 +81,23 @@ class LocationModel {
   bool hasPreRenderedCrop(int difficulty) =>
       imagesByDifficulty.containsKey(difficulty);
 
-  /// Best-quality source for the share polaroid crop: the original upload if
-  /// the backend stored it, else the per-difficulty image, else [image].
-  /// The crop screen wants the largest possible canvas to pan/zoom.
+  /// Best-quality source for the share polaroid crop: the original upload
+  /// if the backend stored it AND the location has no admin-defined
+  /// rotation (rotated originals carry empty corners that look bad in the
+  /// crop view). When rotated, fall back to the easiest pre-rendered image
+  /// — the server already rotated and framed it to remove voids, which is
+  /// exactly what the crop screen needs.
   String getBestSourceImage(int difficulty) {
+    if (originalImage.isNotEmpty && rotationDeg == 0) return originalImage;
+    if (rotationDeg != 0) {
+      // Prefer the easiest tier (image_d3 / image_d4 / first available);
+      // those are server-cropped on the rotated original to avoid voids.
+      final sorted = List<int>.from(difficultyLevels)..sort();
+      for (final d in sorted) {
+        final url = imagesByDifficulty[d];
+        if (url != null && url.isNotEmpty) return url;
+      }
+    }
     if (originalImage.isNotEmpty) return originalImage;
     return getImageForDifficulty(difficulty);
   }
@@ -151,6 +172,7 @@ class LocationModel {
       cropW: (crop?['w'] as num?)?.toDouble() ?? 0.7,
       cropH: (crop?['h'] as num?)?.toDouble() ?? 0.7,
       silhouetteByDifficulty: parsedSil,
+      rotationDeg: (json['rotationDeg'] as num?)?.toDouble() ?? 0,
       createdAt: json['createdAt'] is String
           ? DateTime.tryParse(json['createdAt'] as String)
           : null,

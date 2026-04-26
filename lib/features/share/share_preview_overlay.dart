@@ -302,16 +302,20 @@ class _AnimatedPolaroid extends StatelessWidget {
     final polH = ShareablePolaroidShape.totalHeight * scale;
     final landedLeft = (stageW - polW) / 2;
     final landedTop = (stageH - polH) * 0.26;
+    // At t=0 we want the polaroid fully off-frame, hugging the upper-right
+    // corner — left edge sits at the stage's right edge, bottom edge sits
+    // at the stage's top edge (with a small overshoot so the rotated
+    // corners aren't visible either).
+    const overshoot = 16.0;
+    final startDx = (stageW - landedLeft) + overshoot;
+    final startDy = -(landedTop + polH) - overshoot;
 
     return AnimatedBuilder(
       animation: slipT,
       builder: (context, _) {
         final t = slipT.value;
-        // Slip in from above-right toward center, like a polaroid sliding
-        // out of an unseen camera at the top of the frame. Same magnitude
-        // as the prior bottom-right entry, vertically mirrored.
-        final dx = (1 - t) * stageW * 0.55;
-        final dy = -(1 - t) * stageH * 0.55;
+        final dx = (1 - t) * startDx;
+        final dy = (1 - t) * startDy;
         final scaleFactor = 0.94 + 0.06 * t;
         // Shadow evolves: wide+soft during flight → tight+dark on contact.
         final blur = 48.0 - 32.0 * t;
