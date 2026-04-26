@@ -95,9 +95,11 @@
                         </div>
                         <div class="form-group">
                             <label>Puntos para desbloquear</label>
-                            <input type="number" id="locRequiredPoints" list="pointsDatalist" min="0" step="50" autocomplete="off">
-                            <datalist id="pointsDatalist"></datalist>
-                            <small class="field-help">El jugador necesita acumular este puntaje para que esta ubicación aparezca disponible. Mientras más visualmente difícil sea la foto, más alto el puntaje.</small>
+                            <select id="locRequiredPoints"></select>
+                            <small class="field-help">
+                                El jugador necesita acumular este puntaje para que esta ubicación aparezca disponible.
+                                <span class="zone-range" id="zoneRangeHint"></span>
+                            </small>
                         </div>
                     </div>
                     <div class="grid-2">

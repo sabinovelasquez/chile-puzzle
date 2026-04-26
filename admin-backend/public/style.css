@@ -348,6 +348,11 @@ input:focus, textarea:focus {
     line-height: 1.4;
     opacity: 0.85;
 }
+.field-help .zone-range {
+    display: inline;
+    color: var(--accent);
+    font-weight: 600;
+}
 .crop-preview-grid {
     display: flex;
     gap: 12px;

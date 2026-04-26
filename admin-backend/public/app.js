@@ -487,21 +487,46 @@ function getPointsRangeForZone(zoneId) {
   return { min: opts[0], max: opts[opts.length - 1] };
 }
 
-function populatePointsSuggestions(zone) {
-  const opts = POINTS_BY_ZONE[zone] || [];
-  const dl = document.getElementById('pointsDatalist');
-  if (dl) dl.innerHTML = opts.map(v => `<option value="${v}">`).join('');
+const ZONE_LABEL_ES = {
+  easy: 'Fácil', normal: 'Normal', hard: 'Difícil', expert: 'Experto', insane: 'Locura',
+};
+
+function fmtPts(n) { return n.toLocaleString('es-CL'); }
+
+function refreshZoneRangeHint(zone) {
+  const el = document.getElementById('zoneRangeHint');
+  if (!el) return;
+  const range = getPointsRangeForZone(zone);
+  const label = ZONE_LABEL_ES[zone] || zone;
+  el.textContent = range
+    ? ` Rango sugerido para ${label}: ${fmtPts(range.min)} – ${fmtPts(range.max)} pts.`
+    : '';
+}
+
+// Populate the select with the bucket values for [zone]. If [currentValue]
+// falls outside the bucket (legacy data, custom override), include it as an
+// extra option marked "personalizado" so we don't lose it on save.
+function populatePointsSuggestions(zone, currentValue) {
+  const bucket = [...(POINTS_BY_ZONE[zone] || [])];
+  const cur = (currentValue == null || isNaN(currentValue)) ? null : parseInt(currentValue);
+  const customValue = (cur != null && !bucket.includes(cur)) ? cur : null;
+  const all = customValue != null ? [...bucket, customValue].sort((a, b) => a - b) : bucket;
+  fRequiredPoints.innerHTML = all.map(v => {
+    const label = v === customValue ? `${fmtPts(v)} pts · personalizado` : `${fmtPts(v)} pts`;
+    return `<option value="${v}"${v === cur ? ' selected' : ''}>${label}</option>`;
+  }).join('');
+  refreshZoneRangeHint(zone);
 }
 
 fZone.addEventListener('change', () => {
-  populatePointsSuggestions(fZone.value);
-  // When user switches zones on a fresh editor (value still 0), snap to the
-  // first suggestion of the new zone so they don't have to type from scratch.
   const cur = parseInt(fRequiredPoints.value) || 0;
-  if (cur === 0) {
-    const first = POINTS_BY_ZONE[fZone.value]?.[0];
-    if (first != null) fRequiredPoints.value = first;
-  }
+  const bucket = POINTS_BY_ZONE[fZone.value] || [];
+  // When changing zones on a fresh editor (value still 0) or when the current
+  // value isn't in the new bucket, snap to the first suggested value. This
+  // gives a sensible default in line with the chosen zone.
+  const next = (cur === 0 || !bucket.includes(cur)) ? (bucket[0] ?? 0) : cur;
+  populatePointsSuggestions(fZone.value, next);
+  fRequiredPoints.value = next;
 });
 
 // Multi-file upload → batch-stub (the ONLY way to create new locations).
@@ -857,7 +882,7 @@ function openLocEditor(id) {
   fNameEs.value = loc.name?.es === SENTINEL ? '' : (loc.name?.es || '');
   const region = loc.region === SENTINEL ? '' : (loc.region || '');
   fZone.value = region || (zones[0]?.id || '');
-  populatePointsSuggestions(fZone.value);
+  populatePointsSuggestions(fZone.value, loc.requiredPoints || 0);
   fRequiredPoints.value = loc.requiredPoints || 0;
   fLat.value = loc.latitude || -33.4569;
   fLng.value = loc.longitude || -70.6483;
@@ -940,18 +965,6 @@ locForm.onsubmit = async (e) => {
   }
   if (!fTipEn.value.trim() || !fTipEs.value.trim()) {
     showToast('Easy tip (EN and ES) is required', true); return;
-  }
-  // Soft validation: warn if requiredPoints is outside the suggested range
-  // for the chosen zone. Confirm dialog so the operator can override.
-  const points = parseInt(fRequiredPoints.value) || 0;
-  const range = getPointsRangeForZone(fZone.value);
-  if (range && (points < range.min || points > range.max)) {
-    const zoneName = (zones.find(z => z.id === fZone.value)?.name?.es) || fZone.value;
-    const fmt = (n) => n.toLocaleString('es-CL');
-    const ok = confirm(
-      `Este puntaje (${fmt(points)}) está fuera del rango sugerido para ${zoneName} (${fmt(range.min)}–${fmt(range.max)}).\n\n¿Quieres guardar igual?`
-    );
-    if (!ok) return;
   }
   const obj = {
     id,
