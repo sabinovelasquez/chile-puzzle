@@ -304,6 +304,20 @@ processBtn.addEventListener('click', async () => {
     showToast('Enter the location name first', true);
     return;
   }
+  // Warn before overwriting any tips the user may have edited.
+  // Process Location regenerates Easy / Normal / Hard for both ES + EN.
+  const existingTipFields = [
+    fTipEn, fTipEs, fTipNormalEn, fTipNormalEs, fTipHardEn, fTipHardEs,
+  ];
+  const hasExistingTips = existingTipFields.some(el => el && el.value.trim().length > 0);
+  if (hasExistingTips) {
+    const ok = confirm(
+      'Ya hay tips escritos para Easy / Normal / Hard.\n\n' +
+      'Si continúas, se sobrescribirán con los nuevos tips generados por IA.\n\n' +
+      '¿Quieres regenerar igual?'
+    );
+    if (!ok) return;
+  }
   startBtnSpinner(processBtn, 'Processing…');
   processStatus.style.display = 'block';
   processStatus.textContent = referenceLinks.length ? 'Fetching links and generating tips…' : 'Generating tips from description…';
@@ -335,31 +349,42 @@ processBtn.addEventListener('click', async () => {
   }
 });
 
-// --- Expert tip translate ES → EN ---
-document.getElementById('translateExpertBtn').addEventListener('click', async function() {
-  const src = fTipExpertEs.value.trim();
-  if (!src) { showToast('Write the Expert tip in Spanish first', true); return; }
-  const btn = this;
-  const orig = btn.textContent;
-  btn.textContent = '…';
-  btn.disabled = true;
-  try {
-    const res = await fetch(API_BASE + '/api/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: src, from: 'es', to: 'en' }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Translation failed');
-    fTipExpertEn.value = data.translated;
-    refreshCharCounts();
-    showToast('Expert tip translated');
-  } catch (err) {
-    showToast('Translate error: ' + err.message, true);
-  } finally {
-    btn.textContent = orig;
-    btn.disabled = false;
-  }
+// --- Generic tip translate ES → EN (per difficulty) ---
+// Each `.btn-translate` declares data-translate-source/target so we can wire
+// one handler for every tip pair. Translates only the targeted field — never
+// touches sibling tips, so the user can edit one tip and re-translate it
+// without losing AI-generated work elsewhere.
+document.querySelectorAll('.btn-translate').forEach((btn) => {
+  btn.addEventListener('click', async function () {
+    const srcId = this.dataset.translateSource;
+    const tgtId = this.dataset.translateTarget;
+    if (!srcId || !tgtId) return;
+    const srcEl = document.getElementById(srcId);
+    const tgtEl = document.getElementById(tgtId);
+    if (!srcEl || !tgtEl) return;
+    const src = srcEl.value.trim();
+    if (!src) { showToast('Escribe el tip en español primero', true); return; }
+    const orig = this.textContent;
+    this.textContent = '…';
+    this.disabled = true;
+    try {
+      const res = await fetch(API_BASE + '/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: src, from: 'es', to: 'en' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Translation failed');
+      tgtEl.value = data.translated;
+      refreshCharCounts();
+      showToast('Tip traducido');
+    } catch (err) {
+      showToast('Error al traducir: ' + err.message, true);
+    } finally {
+      this.textContent = orig;
+      this.disabled = false;
+    }
+  });
 });
 
 // ============================================================
