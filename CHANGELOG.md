@@ -8,6 +8,20 @@ emails to testers.
 New releases go on top. Each entry has an `**ES**` and `**EN**`
 sub-block with one bullet per line.
 
+## 1.12.6+26 — 2026-04-26
+
+**ES**
+- Al confirmar el encuadre de la polaroid ahora se ve un flash de cámara: la pantalla queda blanca un instante, cambiamos al cuadro siguiente sin que veas el corte, y la foto entra desde fuera de pantalla cuando el flash termina.
+- Entrar al encuadre ahora usa solo un deslizamiento desde abajo, sin la doble animación que se veía antes.
+- En la pantalla de encuadre, cuando la foto termina de cargar, el loader se desvanece suavemente en vez de saltar al modo de captura.
+- Las fotos con rotación configurada en el admin ahora se muestran respetando esa rotación y sin las esquinas vacías que dejaba la versión cruda de la imagen.
+
+**EN**
+- Confirming your polaroid frame now plays a real camera flash: the screen briefly turns white, we swap to the next view behind the flash, and the photo slides in from off-screen once the flash clears.
+- Entering the framing screen now uses just a single slide-up animation, no more layered fade + slide.
+- On the framing screen, when the photo finishes loading the loader fades smoothly into the capture surface instead of popping in.
+- Photos with admin-set rotation are now shown rotated correctly, without the empty corners that came from the raw original image.
+
 ## 1.12.5+25 — 2026-04-26
 
 **ES**
