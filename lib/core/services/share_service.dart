@@ -82,7 +82,10 @@ class ShareService {
     );
 
     final name = location.getLocalizedName(langCode);
-    final tip = location.getLocalizedTipForDifficulty(langCode, difficulty);
+    // Always use the base (easiest) tip in the share preview — the harder
+    // difficulty overrides give away too much, and the polaroid reads better
+    // with a general line about the place rather than a level-specific clue.
+    final tip = location.getLocalizedTip(langCode);
     final share = MockBackend.lastConfig?.share ?? ShareConfig.fallback;
     final caption = share
         .textForLocale(langCode)
