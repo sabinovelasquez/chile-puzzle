@@ -78,14 +78,9 @@ class ShareService {
         .replaceAll('{link}', share.link);
 
     // Reward is one-shot per LOCATION, gated on at least one completed
-    // difficulty. The preview chip uses the per-difficulty completion list
-    // to render colored / gray icons; the reward number is always 50.
-    final completedDifficulties = location.difficultyLevels
-        .where((d) =>
-            GameProgressService.puzzleResult(location.id, d) != null)
-        .toList()
-      ..sort();
-    final eligible = completedDifficulties.isNotEmpty;
+    // difficulty. The reward number is always 50.
+    final eligible = location.difficultyLevels.any(
+        (d) => GameProgressService.puzzleResult(location.id, d) != null);
     final alreadyClaimed =
         GameProgressService.hasSharedLocation(location.id);
 
@@ -102,8 +97,6 @@ class ShareService {
           tipText: tip,
           rewardPoints: eligible ? shareReward : 0,
           alreadyClaimed: !eligible || alreadyClaimed,
-          allDifficulties: List<int>.from(location.difficultyLevels)..sort(),
-          completedDifficulties: completedDifficulties,
           onShare: (path) async {
             final result = await Share.shareXFiles(
               [XFile(path, mimeType: 'image/png')],

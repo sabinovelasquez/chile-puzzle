@@ -25,8 +25,6 @@ class SharePreviewOverlay extends StatefulWidget {
     required this.onShare,
     required this.rewardPoints,
     required this.alreadyClaimed,
-    required this.allDifficulties,
-    required this.completedDifficulties,
   });
 
   final Future<String> pngPathFuture;
@@ -37,11 +35,6 @@ class SharePreviewOverlay extends StatefulWidget {
   final Future<bool> Function(String pngPath) onShare;
   final int rewardPoints;
   final bool alreadyClaimed;
-  /// All difficulty levels offered by this location (sorted ascending).
-  /// Drives the icon row in the reward chip — colored when completed, gray
-  /// when pending. Visual context only; reward stays a flat 50pts.
-  final List<int> allDifficulties;
-  final List<int> completedDifficulties;
 
   @override
   State<SharePreviewOverlay> createState() => _SharePreviewOverlayState();
@@ -173,9 +166,6 @@ class _SharePreviewOverlayState extends State<SharePreviewOverlay>
                             points: widget.rewardPoints,
                             claimed: widget.alreadyClaimed || _justClaimed,
                             langCode: langCode,
-                            allDifficulties: widget.allDifficulties,
-                            completedDifficulties:
-                                widget.completedDifficulties,
                           ),
                           const SizedBox(height: 10),
                           SizedBox(
@@ -389,75 +379,49 @@ class _PreviewPolaroid extends StatelessWidget {
   }
 }
 
-/// Pill above the Share button: row of difficulty icons (colored when the
-/// player has completed that level, gray otherwise) + the reward amount.
-/// Flips to a "received" check-state once the reward is claimed.
+/// Pill above the Share button that advertises the share reward while
+/// it's still claimable, then flips to a "received" state once awarded
+/// (either previously or in this session).
 class _RewardChip extends StatelessWidget {
   const _RewardChip({
     required this.points,
     required this.claimed,
     required this.langCode,
-    required this.allDifficulties,
-    required this.completedDifficulties,
   });
 
   final int points;
   final bool claimed;
   final String langCode;
-  final List<int> allDifficulties;
-  final List<int> completedDifficulties;
-
-  static const Map<int, PhosphorIconData> _icons = {
-    3: PhosphorIconsBold.plant,
-    4: PhosphorIconsBold.flame,
-    5: PhosphorIconsBold.lightning,
-    6: PhosphorIconsBold.skull,
-  };
-  static const Map<int, Color> _colors = {
-    3: AppTheme.accentGreen,
-    4: AppTheme.accentOrange,
-    5: AppTheme.accentBlue,
-    6: AppTheme.accentPurple,
-  };
 
   @override
   Widget build(BuildContext context) {
-    final accent = AppTheme.accentGreen;
-    final claimedSet = completedDifficulties.toSet();
-    final rewardLabel = claimed
+    final color = AppTheme.accentGreen;
+    final icon = claimed
+        ? PhosphorIconsBold.checkCircle
+        : PhosphorIconsBold.gift;
+    final label = claimed
         ? (langCode == 'es' ? 'Recompensa recibida' : 'Reward received')
-        : '+$points pts';
+        : (langCode == 'es'
+            ? 'Comparte y gana +$points pts'
+            : 'Share & earn +$points pts');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: accent.withValues(alpha: 0.35), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.35), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (claimed) ...[
-            Icon(PhosphorIconsBold.checkCircle, size: 14, color: accent),
-            const SizedBox(width: 6),
-          ] else
-            for (final d in allDifficulties) ...[
-              Icon(
-                _icons[d] ?? PhosphorIconsBold.puzzlePiece,
-                size: 14,
-                color: claimedSet.contains(d)
-                    ? (_colors[d] ?? accent)
-                    : Colors.grey.shade400,
-              ),
-              const SizedBox(width: 4),
-            ],
-          if (!claimed) const SizedBox(width: 4),
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
           Text(
-            rewardLabel,
+            label,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: accent,
+              color: color,
             ),
           ),
         ],
