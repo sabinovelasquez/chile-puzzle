@@ -8,6 +8,20 @@ emails to testers.
 New releases go on top. Each entry has an `**ES**` and `**EN**`
 sub-block with one bullet per line.
 
+## 1.12.2+22 — 2026-04-25
+
+**ES**
+- Quitamos los puntos verdes que avisaban de recompensas pendientes — molestaban más de lo que ayudaban. La opción de compartir y ganar puntos sigue ahí, ahora en un solo lugar.
+- "Compartir" ahora aparece como un botón propio en el menú de cada nivel completado, entre "Ver completados" y "Ver en Google Maps".
+- La pantalla de la foto completa quedó más limpia: el botón flotante de compartir se quitó (ahora vive en el menú del nivel).
+- El consejo que acompaña a la polaroid compartida ahora siempre es la pista general del lugar, no la del nivel difícil que ya conocías.
+
+**EN**
+- Removed the green dots that flagged pending rewards — they were more nagging than helpful. Sharing for points still works, now in one clear spot.
+- "Share" now appears as its own button in each completed level's menu, between "View completed" and "Google Maps".
+- The full-photo screen is cleaner: the floating share icon is gone (sharing now lives in the level menu).
+- The tip on the shared polaroid is now always the general one for the place — not the harder hint from whichever level you came from.
+
 ## 1.12.1+21 — 2026-04-25
 
 **ES**
