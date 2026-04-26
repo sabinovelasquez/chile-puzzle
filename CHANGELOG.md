@@ -8,6 +8,14 @@ emails to testers.
 New releases go on top. Each entry has an `**ES**` and `**EN**`
 sub-block with one bullet per line.
 
+## 1.12.3+23 — 2026-04-25
+
+**ES**
+- Arreglo: la recompensa por compartir ahora corresponde al nivel que efectivamente completaste, y solo se otorga si terminaste el nivel. Antes, compartir desde el menú podía dar más puntos de los que correspondían.
+
+**EN**
+- Fix: the share reward now matches the level you actually completed, and only credits points when the level was actually finished. Before, sharing from the menu could grant more points than earned.
+
 ## 1.12.2+22 — 2026-04-25
 
 **ES**

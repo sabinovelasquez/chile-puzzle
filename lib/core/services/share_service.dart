@@ -93,9 +93,15 @@ class ShareService {
         .replaceAll('{link}', share.link);
 
     final reward = rewardForDifficulty(difficulty);
-    final alreadyClaimed =
-        GameProgressService.puzzleResult(location.id, difficulty)?.hasShared ??
-            false;
+    // Only puzzles the player has actually completed are eligible for the
+    // share reward. If no PuzzleResult exists for this (location, difficulty)
+    // pair, the chip is hidden and addReward never runs — this also blocks
+    // the exploit where sharing from the difficulty dialog before completing
+    // the level would have minted free points.
+    final completed =
+        GameProgressService.puzzleResult(location.id, difficulty);
+    final eligible = completed != null;
+    final alreadyClaimed = completed?.hasShared ?? false;
 
     // 3. Preview + share.
     await navigator.push<void>(
@@ -108,8 +114,8 @@ class ShareService {
           pngPathFuture: pngPathFuture,
           croppedPhoto: cropped,
           tipText: tip,
-          rewardPoints: reward,
-          alreadyClaimed: alreadyClaimed,
+          rewardPoints: eligible ? reward : 0,
+          alreadyClaimed: !eligible || alreadyClaimed,
           onShare: (path) async {
             final result = await Share.shareXFiles(
               [XFile(path, mimeType: 'image/png')],
@@ -122,8 +128,15 @@ class ShareService {
             final ok = result.status == ShareResultStatus.success ||
                 (Platform.isAndroid &&
                     result.status == ShareResultStatus.unavailable);
-            if (!ok || alreadyClaimed) return false;
-            await GameProgressService.markShared(location.id, difficulty);
+            if (!ok || !eligible || alreadyClaimed) return false;
+            // markShared returns false when the puzzle isn't recorded yet —
+            // belt-and-suspenders: only credit points when the flag flips,
+            // so a missing PuzzleResult never mints free pts.
+            final flipped = await GameProgressService.markShared(
+              location.id,
+              difficulty,
+            );
+            if (!flipped) return false;
             await GameProgressService.addReward(reward);
             return true;
           },

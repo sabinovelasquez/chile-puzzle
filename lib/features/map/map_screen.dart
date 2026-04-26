@@ -522,9 +522,18 @@ class _MapScreenState extends State<MapScreen>
     final anyCompleted = difficulties.any(
       (d) => progress.completedPuzzles.containsKey('${loc.id}_$d'),
     );
-    // Highest completed difficulty — used when opening the photo overlay from
-    // the "Ver foto" button so the tip shown matches the hardest run.
+    // Highest difficulty available for this location (whether completed or
+    // not) — drives "Ver foto" so it loads the hardest crop.
     final topDiff = difficulties.reduce((a, b) => a > b ? a : b);
+    // Highest difficulty the player has actually completed. Falls back to
+    // topDiff only when nothing is finished (in which case the share button
+    // is hidden anyway by `anyCompleted`).
+    final completedDiffs = difficulties
+        .where((d) => progress.completedPuzzles.containsKey('${loc.id}_$d'))
+        .toList();
+    final topCompleted = completedDiffs.isEmpty
+        ? topDiff
+        : completedDiffs.reduce((a, b) => a > b ? a : b);
 
     // Per-session hint toggles — on the very first run (no puzzles completed
     // yet), start everything off so a new player doesn't get blindsided with
@@ -858,7 +867,7 @@ class _MapScreenState extends State<MapScreen>
                       ShareService.shareLocation(
                         context: context,
                         location: loc,
-                        difficulty: topDiff,
+                        difficulty: topCompleted,
                         langCode: langCode,
                       );
                     },
