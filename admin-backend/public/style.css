@@ -10,6 +10,10 @@
     --success: #238636;
 }
 
+/* Universal border-box so width:100% containers with padding don't blow
+   their parents (was causing horizontal overflow in the mobile sidebar). */
+*, *::before, *::after { box-sizing: border-box; }
+
 body {
     margin: 0;
     font-family: 'Outfit', sans-serif;
@@ -1891,17 +1895,18 @@ body.drawer-open .mobile-drawer { transform: translateX(0); }
     .loc-item-text strong { font-size: 0.86rem; }
     .loc-item-text small { font-size: 0.68rem; gap: 0.35rem; }
 
-    /* Slimmer sticky group headers, no count pill */
+    /* Slimmer sticky group headers, no count pill.
+       Background is fully opaque so prior items don't bleed through when
+       scrolled behind the sticky element. */
     .loc-group-header {
         position: sticky;
         top: 0;
-        z-index: 2;
-        padding: 0.45rem 0.7rem 0.3rem;
-        margin: 0.5rem 0 0.05rem;
-        background: linear-gradient(180deg, rgba(7,9,13,0.96) 0%, rgba(7,9,13,0.96) 70%, rgba(7,9,13,0));
-        backdrop-filter: blur(2px);
+        z-index: 3;
+        padding: 0.55rem 0.7rem 0.4rem;
+        margin: 0.4rem 0 0.05rem;
+        background: #07090d;
         border-left: none;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
+        border-bottom: 1px solid rgba(255,255,255,0.08);
         border-radius: 0;
         font-size: 0.62rem;
         font-weight: 800;
@@ -1920,10 +1925,13 @@ body.drawer-open .mobile-drawer { transform: translateX(0); }
     }
     .loc-group-header .loc-group-count::before { content: '· '; opacity: 0.5; }
 
-    /* ---------- Editor area: single scroll, comfortable padding ---------- */
+    /* ---------- Editor area: single scroll, comfortable padding ----------
+       padding-bottom is generous to clear the floating .lang-fab
+       (fixed at bottom: 24px, ~64px tall) without overlapping the
+       last action buttons (Save / Regenerate / Delete). */
     .editor-area {
         flex: 1;
-        padding: 1.5rem 2rem 3rem;
+        padding: 1.5rem 2rem 6rem;
         overflow-y: auto;
         overflow-x: hidden;
         scrollbar-width: thin;
