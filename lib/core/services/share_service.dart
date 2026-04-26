@@ -51,11 +51,26 @@ class ShareService {
     //    one stored; falls back to the per-difficulty pre-rendered crop or
     //    the standard image. The crop screen pans/zooms freely so a larger
     //    source means more detail under the lens.
+    //
+    //    Use a single slide-up transition (no fade/zoom layered on top) —
+    //    Material's default fullscreenDialog transition stacks fade+slide,
+    //    which read as "two animations at once". Slide-up alone matches
+    //    the modal-sheet metaphor and stays consistent across both entry
+    //    points (completion drawer + difficulty dialog).
     final imageUrl = location.getBestSourceImage(difficulty);
     final cropped = await navigator.push<ui.Image>(
-      MaterialPageRoute(
+      PageRouteBuilder<ui.Image>(
         fullscreenDialog: true,
-        builder: (_) => ShareCropScreen(imageUrl: imageUrl),
+        transitionDuration: const Duration(milliseconds: 280),
+        reverseTransitionDuration: const Duration(milliseconds: 220),
+        pageBuilder: (_, _, _) => ShareCropScreen(imageUrl: imageUrl),
+        transitionsBuilder: (_, anim, _, child) {
+          final tween = Tween<Offset>(
+            begin: const Offset(0, 1),
+            end: Offset.zero,
+          ).chain(CurveTween(curve: Curves.easeOutCubic));
+          return SlideTransition(position: anim.drive(tween), child: child);
+        },
       ),
     );
     if (cropped == null) return;
