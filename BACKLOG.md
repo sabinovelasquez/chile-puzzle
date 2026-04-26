@@ -2,6 +2,10 @@
 
 Things parked during a release to keep the envelope tight. Pull from here when starting a new dev cycle.
 
+## 🔥 Urgent
+
+- **Share reward doesn't always update the visible total immediately.** Reproduced on device 2026-04-25 with 1.12.3+23: after a successful share, the chip flips to "Recompensa recibida" but the points total in the profile / map doesn't refresh until a navigation event. Likely the surfaces showing `totalPoints` aren't being told to rebuild when `addReward` persists. Suspects to check first: profile screen reads `GameProgressService.totalPoints` once at build, no listener; map header pill same story; ranking submit happens lazily on next completion so server-side total can also lag. Fix needs a notifier on GameProgressService (ValueNotifier or stream) that surfaces re-subscribe to.
+
 ## Security / API hardening
 
 - ~~**Rate-limit POST endpoints.**~~ **Done in 792d869** — `express-rate-limit` on `/api/leaderboard` (10/min) and `/api/progress/backup/email` (3/min). `app.set('trust proxy', 1)` so buckets key on real client IP. Backup create/restore keep their existing in-memory sliding-window limiter.
