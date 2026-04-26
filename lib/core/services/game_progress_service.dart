@@ -252,32 +252,19 @@ class GameProgressService {
     await _prefs.setString(_initialsKey, initials);
   }
 
-  // --- Per-puzzle "unlockable" flags (drive the green pulsing dot) ---
-  // Idempotent helpers: first call flips the flag and persists; subsequent
-  // calls are no-ops. Callers don't need to check before invoking.
+  // --- One-shot share reward, gated per location ---
+  // The +50pts is awarded the first time a location is shared, regardless
+  // of which difficulty was chosen. After that, the reward is closed.
 
-  static Future<bool> markShared(String locationId, int difficulty) =>
-      _markFlag(locationId, difficulty, (r) => r.copyWith(hasShared: true),
-          isAlready: (r) => r.hasShared);
+  static bool hasSharedLocation(String locationId) =>
+      _progress.sharedLocationIds.contains(locationId);
 
-  static Future<bool> markPhotoViewed(String locationId, int difficulty) =>
-      _markFlag(locationId, difficulty, (r) => r.copyWith(photoViewed: true),
-          isAlready: (r) => r.photoViewed);
-
-  static Future<bool> markMapsOpened(String locationId, int difficulty) =>
-      _markFlag(locationId, difficulty, (r) => r.copyWith(mapsOpened: true),
-          isAlready: (r) => r.mapsOpened);
-
-  static Future<bool> _markFlag(
-    String locationId,
-    int difficulty,
-    PuzzleResult Function(PuzzleResult) update, {
-    required bool Function(PuzzleResult) isAlready,
-  }) async {
-    final key = '${locationId}_$difficulty';
-    final r = _progress.completedPuzzles[key];
-    if (r == null || isAlready(r)) return false;
-    _progress.completedPuzzles[key] = update(r);
+  /// Returns true when this call is the one that flipped the flag — false
+  /// if the location was already shared or doesn't have any completed
+  /// difficulty (callers can use that as an eligibility gate).
+  static Future<bool> markLocationShared(String locationId) async {
+    if (_progress.sharedLocationIds.contains(locationId)) return false;
+    _progress.sharedLocationIds.add(locationId);
     await _save();
     return true;
   }

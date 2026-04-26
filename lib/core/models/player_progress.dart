@@ -74,6 +74,9 @@ class PlayerProgress {
   List<String> earnedTrophyIds;
   List<String> favoriteLocationIds;
   int noHelpCompleted;
+  /// Locations the player has already claimed the +50pts share reward for.
+  /// One-shot per location — once it's in here, the reward is closed.
+  Set<String> sharedLocationIds;
 
   PlayerProgress({
     this.totalPoints = 0,
@@ -81,9 +84,11 @@ class PlayerProgress {
     List<String>? earnedTrophyIds,
     List<String>? favoriteLocationIds,
     this.noHelpCompleted = 0,
+    Set<String>? sharedLocationIds,
   })  : completedPuzzles = completedPuzzles ?? {},
         earnedTrophyIds = earnedTrophyIds ?? [],
-        favoriteLocationIds = favoriteLocationIds ?? [];
+        favoriteLocationIds = favoriteLocationIds ?? [],
+        sharedLocationIds = sharedLocationIds ?? <String>{};
 
   Map<String, dynamic> toJson() => {
         'totalPoints': totalPoints,
@@ -91,6 +96,7 @@ class PlayerProgress {
         'earnedTrophyIds': earnedTrophyIds,
         'favoriteLocationIds': favoriteLocationIds,
         'noHelpCompleted': noHelpCompleted,
+        'sharedLocationIds': sharedLocationIds.toList(),
       };
 
   String toJsonString() => jsonEncode(toJson());
@@ -100,12 +106,23 @@ class PlayerProgress {
           (k, v) => MapEntry(k, PuzzleResult.fromJson(v as Map<String, dynamic>)),
         ) ??
         {};
+    // Migrate legacy per-puzzle hasShared flags into the new per-location
+    // set. Closed-testing builds wrote hasShared on PuzzleResult; the new
+    // model tracks one-shot rewards by locationId, so fold any true flag
+    // into sharedLocationIds.
+    final shared = <String>{
+      ...List<String>.from(map['sharedLocationIds'] ?? const <String>[]),
+    };
+    for (final r in puzzles.values) {
+      if (r.hasShared) shared.add(r.locationId);
+    }
     return PlayerProgress(
       totalPoints: map['totalPoints'] as int? ?? 0,
       completedPuzzles: puzzles,
       earnedTrophyIds: List<String>.from(map['earnedTrophyIds'] ?? []),
       favoriteLocationIds: List<String>.from(map['favoriteLocationIds'] ?? []),
       noHelpCompleted: map['noHelpCompleted'] as int? ?? 0,
+      sharedLocationIds: shared,
     );
   }
 

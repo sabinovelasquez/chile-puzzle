@@ -17,25 +17,10 @@ import 'mock_backend.dart';
 
 class ShareService {
 
-  /// One-shot share reward by difficulty (column count). Easy/beginner = 50,
-  /// medium = 100, hard = 150, expert/master = 200. Awarded at most once
-  /// per puzzle (gated by [PuzzleResult.hasShared]).
-  static int rewardForDifficulty(int difficulty) {
-    switch (difficulty) {
-      case 3:
-      case 4:
-        return 50;
-      case 5:
-        return 100;
-      case 6:
-        return 150;
-      case 8:
-      case 10:
-        return 200;
-      default:
-        return 100;
-    }
-  }
+  /// Flat one-shot share reward, awarded once per location regardless of
+  /// which difficulty the player came from. Visualised in the preview chip
+  /// alongside the row of completed-difficulty icons.
+  static const int shareReward = 50;
 
   /// Full share flow. Opens crop UI, renders the shareable PNG, then shows a
   /// preview with a Share button that invokes the native share sheet.
@@ -92,16 +77,17 @@ class ShareService {
         .replaceAll('{name}', name)
         .replaceAll('{link}', share.link);
 
-    final reward = rewardForDifficulty(difficulty);
-    // Only puzzles the player has actually completed are eligible for the
-    // share reward. If no PuzzleResult exists for this (location, difficulty)
-    // pair, the chip is hidden and addReward never runs — this also blocks
-    // the exploit where sharing from the difficulty dialog before completing
-    // the level would have minted free points.
-    final completed =
-        GameProgressService.puzzleResult(location.id, difficulty);
-    final eligible = completed != null;
-    final alreadyClaimed = completed?.hasShared ?? false;
+    // Reward is one-shot per LOCATION, gated on at least one completed
+    // difficulty. The preview chip uses the per-difficulty completion list
+    // to render colored / gray icons; the reward number is always 50.
+    final completedDifficulties = location.difficultyLevels
+        .where((d) =>
+            GameProgressService.puzzleResult(location.id, d) != null)
+        .toList()
+      ..sort();
+    final eligible = completedDifficulties.isNotEmpty;
+    final alreadyClaimed =
+        GameProgressService.hasSharedLocation(location.id);
 
     // 3. Preview + share.
     await navigator.push<void>(
@@ -114,8 +100,10 @@ class ShareService {
           pngPathFuture: pngPathFuture,
           croppedPhoto: cropped,
           tipText: tip,
-          rewardPoints: eligible ? reward : 0,
+          rewardPoints: eligible ? shareReward : 0,
           alreadyClaimed: !eligible || alreadyClaimed,
+          allDifficulties: List<int>.from(location.difficultyLevels)..sort(),
+          completedDifficulties: completedDifficulties,
           onShare: (path) async {
             final result = await Share.shareXFiles(
               [XFile(path, mimeType: 'image/png')],
@@ -129,15 +117,13 @@ class ShareService {
                 (Platform.isAndroid &&
                     result.status == ShareResultStatus.unavailable);
             if (!ok || !eligible || alreadyClaimed) return false;
-            // markShared returns false when the puzzle isn't recorded yet —
-            // belt-and-suspenders: only credit points when the flag flips,
-            // so a missing PuzzleResult never mints free pts.
-            final flipped = await GameProgressService.markShared(
+            // markLocationShared returns true only when this call is the
+            // one that flips the flag — protects against double-credit.
+            final flipped = await GameProgressService.markLocationShared(
               location.id,
-              difficulty,
             );
             if (!flipped) return false;
-            await GameProgressService.addReward(reward);
+            await GameProgressService.addReward(shareReward);
             return true;
           },
         ),

@@ -8,6 +8,16 @@ emails to testers.
 New releases go on top. Each entry has an `**ES**` and `**EN**`
 sub-block with one bullet per line.
 
+## 1.12.5+25 — 2026-04-26
+
+**ES**
+- Compartir ahora da una recompensa única de +50 pts por ubicación, sin importar la dificultad.
+- En la pantalla de compartir, en lugar del mensaje de puntos, ahora se muestran los íconos de los niveles del lugar — los completados a color, los pendientes en gris.
+
+**EN**
+- Sharing now grants a one-time +50 pts per location, no matter the difficulty.
+- The share screen replaces the points message with a row of difficulty icons — completed levels in colour, pending ones in gray.
+
 ## 1.12.4+24 — 2026-04-26
 
 **ES**
