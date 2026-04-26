@@ -11,6 +11,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../core/services/audio_service.dart';
 import '../../core/theme/app_theme.dart';
+import 'share_flash.dart';
 
 /// Full-screen overlay that lets the user pan/zoom the FULL source photo and
 /// select any 1:1 square from it. On confirm, returns a [ui.Image] of the
@@ -209,8 +210,20 @@ class _ShareCropScreenState extends State<ShareCropScreen>
       // 3x so the crop has resolution for the 760px polaroid photo area.
       final image = await boundary.toImage(pixelRatio: 3.0);
       if (!mounted) return;
+      // Cover the screen with an opaque white scrim BEFORE popping, so the
+      // route swap from crop → preview happens behind the flash. The
+      // uncover happens in ShareService once the preview is mounted.
+      await ShareFlash.cover(context);
+      if (!mounted) {
+        await ShareFlash.uncover();
+        return;
+      }
       Navigator.of(context).pop<ui.Image>(image);
     } catch (_) {
+      if (ShareFlash.isActive) {
+        // ignore: discarded_futures
+        ShareFlash.uncover();
+      }
       if (mounted) setState(() => _capturing = false);
     }
   }

@@ -25,6 +25,7 @@ class SharePreviewOverlay extends StatefulWidget {
     required this.onShare,
     required this.rewardPoints,
     required this.alreadyClaimed,
+    this.slipStartTrigger,
   });
 
   final Future<String> pngPathFuture;
@@ -35,6 +36,10 @@ class SharePreviewOverlay extends StatefulWidget {
   final Future<bool> Function(String pngPath) onShare;
   final int rewardPoints;
   final bool alreadyClaimed;
+  /// Optional gate for the polaroid slip animation. When non-null, the
+  /// slip waits for this future before kicking off — used by ShareService
+  /// to delay entry until the camera-flash scrim has faded out.
+  final Future<void>? slipStartTrigger;
 
   @override
   State<SharePreviewOverlay> createState() => _SharePreviewOverlayState();
@@ -61,9 +66,14 @@ class _SharePreviewOverlayState extends State<SharePreviewOverlay>
       vsync: this,
     );
     _slipT = CurvedAnimation(parent: _slip, curve: Curves.easeOutCubic);
-    // Start animating immediately — the PNG render proceeds in parallel.
-    _slip.forward().whenComplete(() {
-      if (mounted) setState(() => _phase = _Phase.idle);
+    // Default: start immediately. When slipStartTrigger is provided
+    // (camera-flash flow), wait for the flash to clear first.
+    final start = widget.slipStartTrigger ?? Future<void>.value();
+    start.then((_) {
+      if (!mounted) return;
+      _slip.forward().whenComplete(() {
+        if (mounted) setState(() => _phase = _Phase.idle);
+      });
     });
     _attachPng();
   }

@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../features/share/share_crop_screen.dart';
+import '../../features/share/share_flash.dart';
 import '../../features/share/share_preview_overlay.dart';
 import '../../features/share/shareable_card.dart';
 import '../models/game_config.dart';
@@ -84,12 +85,23 @@ class ShareService {
     final alreadyClaimed =
         GameProgressService.hasSharedLocation(location.id);
 
-    // 3. Preview + share.
+    // 3. Preview + share. The flash scrim is currently fully opaque on top
+    //    of the navigator (set by ShareCropScreen._confirm before its pop),
+    //    so we mount the preview with zero transition — the flash hides
+    //    the swap. After the preview's first frame paints, fade the flash
+    //    out and only then signal the polaroid slip to begin.
+    final slipStartCompleter = Completer<void>();
+    // ignore: unawaited_futures
+    () async {
+      await WidgetsBinding.instance.endOfFrame;
+      await ShareFlash.uncover();
+      if (!slipStartCompleter.isCompleted) slipStartCompleter.complete();
+    }();
     await navigator.push<void>(
       PageRouteBuilder(
         opaque: false,
         barrierColor: Colors.black26,
-        transitionDuration: const Duration(milliseconds: 180),
+        transitionDuration: Duration.zero,
         reverseTransitionDuration: const Duration(milliseconds: 220),
         pageBuilder: (_, _, _) => SharePreviewOverlay(
           pngPathFuture: pngPathFuture,
@@ -97,6 +109,7 @@ class ShareService {
           tipText: tip,
           rewardPoints: eligible ? shareReward : 0,
           alreadyClaimed: !eligible || alreadyClaimed,
+          slipStartTrigger: slipStartCompleter.future,
           onShare: (path) async {
             final result = await Share.shareXFiles(
               [XFile(path, mimeType: 'image/png')],
@@ -120,10 +133,15 @@ class ShareService {
             return true;
           },
         ),
-        transitionsBuilder: (_, anim, _, child) =>
-            FadeTransition(opacity: anim, child: child),
+        transitionsBuilder: (_, _, _, child) => child,
       ),
     );
+    // If we exit the route before the uncover completed (rare crash path),
+    // make sure the flash isn't left covering the screen.
+    if (ShareFlash.isActive) {
+      // ignore: unawaited_futures
+      ShareFlash.uncover();
+    }
 
     // Cleanup the temp file on overlay dismiss.
     try {
