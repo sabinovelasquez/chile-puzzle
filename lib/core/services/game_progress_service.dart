@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chile_puzzle/core/models/player_progress.dart';
 import 'package:chile_puzzle/core/models/scoring_config.dart';
@@ -36,6 +37,14 @@ class GameProgressService {
   static late SharedPreferences _prefs;
   static late PlayerProgress _progress;
 
+  /// Watchable totalPoints — surfaces that show the running total (map
+  /// AppBar pill, profile stat card, etc.) wrap their text in a
+  /// [ValueListenableBuilder] so they refresh the moment any mutation
+  /// (puzzle completion, share reward, restore, reset) flips the count.
+  static final ValueNotifier<int> _totalPointsNotifier = ValueNotifier(0);
+  static ValueListenable<int> get totalPointsListenable =>
+      _totalPointsNotifier;
+
   static PlayerProgress get progress => _progress;
 
   static Future<void> initialize() async {
@@ -44,6 +53,7 @@ class GameProgressService {
     _progress = stored != null
         ? PlayerProgress.fromJsonString(stored)
         : PlayerProgress();
+    _totalPointsNotifier.value = _progress.totalPoints;
   }
 
   static Future<void> reset() async {
@@ -63,6 +73,10 @@ class GameProgressService {
 
   static Future<void> _save() async {
     await _prefs.setString(_key, _progress.toJsonString());
+    // Push the latest total into the notifier on every save — cheap
+    // (a no-op when unchanged) and ensures any mutation path stays in
+    // sync with the UI.
+    _totalPointsNotifier.value = _progress.totalPoints;
   }
 
   static Future<CompletionResult> recordCompletion({

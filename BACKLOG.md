@@ -4,7 +4,7 @@ Things parked during a release to keep the envelope tight. Pull from here when s
 
 ## 🔥 Urgent
 
-- **Share reward doesn't always update the visible total immediately.** Reproduced on device 2026-04-25 with 1.12.3+23: after a successful share, the chip flips to "Recompensa recibida" but the points total in the profile / map doesn't refresh until a navigation event. Likely the surfaces showing `totalPoints` aren't being told to rebuild when `addReward` persists. Suspects to check first: profile screen reads `GameProgressService.totalPoints` once at build, no listener; map header pill same story; ranking submit happens lazily on next completion so server-side total can also lag. Fix needs a notifier on GameProgressService (ValueNotifier or stream) that surfaces re-subscribe to.
+- ~~**Share reward doesn't always update the visible total immediately.**~~ **Done in 1.12.4+24** — `GameProgressService.totalPointsListenable` (ValueNotifier) bumped on every `_save()`. Map header pill and profile stat card now wrapped in `ValueListenableBuilder`, so the count refreshes the instant `addReward` persists.
 
 ## Security / API hardening
 

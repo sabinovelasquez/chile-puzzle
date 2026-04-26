@@ -1224,12 +1224,16 @@ class _MapScreenState extends State<MapScreen>
       appBar: AppBar(
         title: Image.asset('assets/zoom-in-chile-title.png', height: 36),
         actions: [
-          // Points pill
-          _AppBarPill(
-            icon: PhosphorIconsBold.star,
-            iconColor: AppTheme.trophyGold,
-            label: _compactNumber(progress.totalPoints),
-            labelColor: AppTheme.trophyGold,
+          // Points pill — listens to GameProgressService so it refreshes
+          // immediately on share rewards, completions, restore, etc.
+          ValueListenableBuilder<int>(
+            valueListenable: GameProgressService.totalPointsListenable,
+            builder: (_, total, __) => _AppBarPill(
+              icon: PhosphorIconsBold.star,
+              iconColor: AppTheme.trophyGold,
+              label: _compactNumber(total),
+              labelColor: AppTheme.trophyGold,
+            ),
           ),
           // Settings
           IconButton(

@@ -8,6 +8,14 @@ emails to testers.
 New releases go on top. Each entry has an `**ES**` and `**EN**`
 sub-block with one bullet per line.
 
+## 1.12.4+24 — 2026-04-26
+
+**ES**
+- Arreglo: el total de puntos ahora se actualiza al instante después de compartir y ganar la recompensa, sin esperar a navegar a otra pantalla.
+
+**EN**
+- Fix: the points total now refreshes instantly after a share reward, no need to navigate elsewhere first.
+
 ## 1.12.3+23 — 2026-04-25
 
 **ES**

@@ -113,11 +113,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisSpacing: 10,
             childAspectRatio: 1.4,
             children: [
-              _StatCard(
-                icon: PhosphorIconsFill.star,
-                iconColor: AppTheme.trophyGold,
-                value: '${progress.totalPoints}',
-                label: l10n?.totalPoints ?? 'Total Points',
+              ValueListenableBuilder<int>(
+                valueListenable: GameProgressService.totalPointsListenable,
+                builder: (_, total, __) => _StatCard(
+                  icon: PhosphorIconsFill.star,
+                  iconColor: AppTheme.trophyGold,
+                  value: '$total',
+                  label: l10n?.totalPoints ?? 'Total Points',
+                ),
               ),
               _StatCard(
                 icon: PhosphorIconsFill.puzzlePiece,
@@ -944,7 +947,7 @@ void _showAboutDialog(BuildContext context, AppLocalizations? l10n, String langC
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'v1.12.3',
+              'v1.12.4',
               style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade400),
             ),
           ),
