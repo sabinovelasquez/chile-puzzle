@@ -884,12 +884,20 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
 
     // Try to extract GPS coordinates from EXIF (works with JPEG, HEIC, TIFF).
     // Google Photos exports may have NaN values — isFinite() guards against that.
+    // gpsStripped: phone EXIF present + GPS IFD pointer present but values blank
+    // → Android's MediaStore redacts GPS for browsers without ACCESS_MEDIA_LOCATION.
+    // Surface that to the UI so the user knows to re-upload from desktop.
     let gps = null;
+    let gpsStripped = false;
     try {
       const exifr = require('exifr');
       const parsed = await exifr.parse(req.file.path, true);
       if (parsed && isFinite(parsed.latitude) && isFinite(parsed.longitude)) {
         gps = { lat: parsed.latitude, lng: parsed.longitude };
+      } else if (parsed && parsed.Make &&
+                 Array.isArray(parsed.GPSLatitude) &&
+                 !isFinite(parsed.latitude)) {
+        gpsStripped = true;
       }
     } catch (_) {}
 
@@ -925,6 +933,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
       width: meta.width || 0,
       height: meta.height || 0,
       gps,
+      gpsStripped,
     });
   } catch (e) {
     // Fallback: keep original

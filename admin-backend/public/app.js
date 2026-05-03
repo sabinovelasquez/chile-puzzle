@@ -681,6 +681,13 @@ async function uploadAndCreateLocations(files) {
     renderLocList();
     if (rows && rows.length) openLocEditor(rows[0].id);
     showToast(`${rows.length} location(s) created (inactive)`);
+    const stripped = uploaded.filter(u => u.gpsStripped).length;
+    if (stripped > 0) {
+      setTimeout(() => showToast(
+        `${stripped} sin GPS — Android strippea la ubicación al subir desde el navegador. Sube vía desktop si necesitas las coords automáticas.`,
+        true,
+      ), 1200);
+    }
   } catch (err) {
     showToast('Upload error: ' + err.message, true);
   } finally {
@@ -767,6 +774,8 @@ fReplaceUpload.addEventListener('change', async (e) => {
       fLng.value = d.gps.lng.toFixed(7);
       updateMapFromFields();
       showToast('Image replaced + GPS auto-filled — remember to Save');
+    } else if (d.gpsStripped) {
+      showToast('Imagen reemplazada, pero Android strippeó el GPS. Sube vía desktop para recuperar coords.', true);
     } else {
       showToast('Image replaced — remember to Save');
     }
