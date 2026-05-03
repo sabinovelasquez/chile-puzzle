@@ -404,6 +404,47 @@ app.delete('/api/locations/:id/original', (req, res) => {
   res.json({ success: true });
 });
 
+// Re-extract EXIF GPS from the stored original file and update lat/lng.
+// Use case: locations created before EXIF parsing was reliable, or images
+// uploaded without GPS that now need re-checking. Returns the new coords or
+// indicates no GPS was found in EXIF.
+app.post('/api/locations/:id/extract-metadata', async (req, res) => {
+  const row = db.prepare('SELECT original_image, image FROM locations WHERE id = ?')
+                .get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+
+  const origPath = row.original_image
+    ? path.join(uploadsDir, path.basename(row.original_image))
+    : null;
+  const fallbackPath = row.image
+    ? path.join(uploadsDir, path.basename(row.image))
+    : null;
+  const sourcePath = (origPath && fs.existsSync(origPath))
+    ? origPath
+    : (fallbackPath && fs.existsSync(fallbackPath) ? fallbackPath : null);
+  if (!sourcePath) {
+    return res.status(404).json({ error: 'No original file on disk for this location' });
+  }
+
+  try {
+    const exifr = require('exifr');
+    const parsed = await exifr.parse(sourcePath, true);
+    if (!parsed || !isFinite(parsed.latitude) || !isFinite(parsed.longitude)) {
+      return res.json({ success: false, reason: 'no-gps', source: path.basename(sourcePath) });
+    }
+    db.prepare('UPDATE locations SET latitude = @lat, longitude = @lng WHERE id = @id')
+      .run({ id: req.params.id, lat: parsed.latitude, lng: parsed.longitude });
+    res.json({
+      success: true,
+      latitude: parsed.latitude,
+      longitude: parsed.longitude,
+      source: path.basename(sourcePath),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Force-regenerate per-difficulty crops for a single location, regardless of
 // whether crops have changed. Useful to apply new server-side render fixes.
 app.post('/api/locations/:id/regenerate', async (req, res) => {
@@ -432,6 +473,71 @@ app.post('/api/regenerate-crops', async (req, res) => {
     }
   }
   res.json(results);
+});
+
+// Build the set of upload filenames currently referenced by any location.
+// Used by both orphan preview and orphan delete.
+function referencedUploadFilenames() {
+  const rows = db.prepare(`
+    SELECT image, thumbnail, original_image,
+           image_d3, image_d4, image_d5, image_d6
+    FROM locations
+  `).all();
+  const set = new Set();
+  for (const row of rows) {
+    for (const url of Object.values(row)) {
+      if (!url) continue;
+      set.add(path.basename(url));
+    }
+  }
+  return set;
+}
+
+// List orphan files in public/uploads — files not referenced by any location row.
+app.get('/api/uploads/orphans', (req, res) => {
+  try {
+    const referenced = referencedUploadFilenames();
+    const all = fs.readdirSync(uploadsDir);
+    const orphans = [];
+    let totalBytes = 0;
+    for (const name of all) {
+      if (referenced.has(name)) continue;
+      const full = path.join(uploadsDir, name);
+      let size = 0;
+      try { size = fs.statSync(full).size; } catch (_) {}
+      orphans.push({ name, size });
+      totalBytes += size;
+    }
+    res.json({ count: orphans.length, totalBytes, orphans });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Delete orphan files in public/uploads. Returns counts + freed bytes.
+app.delete('/api/uploads/orphans', (req, res) => {
+  try {
+    const referenced = referencedUploadFilenames();
+    const all = fs.readdirSync(uploadsDir);
+    let deleted = 0;
+    let freedBytes = 0;
+    const errors = [];
+    for (const name of all) {
+      if (referenced.has(name)) continue;
+      const full = path.join(uploadsDir, name);
+      try {
+        const size = fs.statSync(full).size;
+        fs.unlinkSync(full);
+        deleted++;
+        freedBytes += size;
+      } catch (e) {
+        errors.push({ name, error: e.message });
+      }
+    }
+    res.json({ deleted, freedBytes, errors });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── AI tip generation ──────────────────────────────────────────

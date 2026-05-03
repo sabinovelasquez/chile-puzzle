@@ -151,10 +151,12 @@ const fReplaceUpload = document.getElementById('locReplaceUpload');
 const uploadProgressEl = document.getElementById('uploadProgress');
 const pixelationWarningEl = document.getElementById('pixelationWarning');
 const deleteOrigBtn = document.getElementById('deleteOrigBtn');
+const extractMetaBtn = document.getElementById('extractMetaBtn');
 
 function refreshDeleteOrigBtn() {
   if (!deleteOrigBtn) return;
   deleteOrigBtn.hidden = !fOriginal.value;
+  if (extractMetaBtn) extractMetaBtn.hidden = !fOriginal.value;
 }
 
 // ============================================================
@@ -775,6 +777,44 @@ fReplaceUpload.addEventListener('change', async (e) => {
     fReplaceUpload.value = '';
   }
 });
+
+// Re-extract EXIF GPS from the stored original file and update lat/lng.
+// Useful for locations created before EXIF parsing was reliable, or those
+// stuck at 0/0 (which the form silently renders as Santiago).
+if (extractMetaBtn) {
+  extractMetaBtn.addEventListener('click', async () => {
+    if (!currentEditId) return;
+    const orig = extractMetaBtn.textContent;
+    extractMetaBtn.disabled = true;
+    extractMetaBtn.textContent = 'Procesando…';
+    try {
+      const r = await fetch(
+        API_BASE + '/api/locations/' + currentEditId + '/extract-metadata',
+        { method: 'POST' }
+      );
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+      if (!d.success) {
+        showToast('Sin GPS en EXIF (' + (d.source || 'archivo') + ')', true);
+        return;
+      }
+      fLat.value = d.latitude.toFixed(7);
+      fLng.value = d.longitude.toFixed(7);
+      updateMapFromFields();
+      const idx = locations.findIndex(l => l.id === currentEditId);
+      if (idx > -1) {
+        locations[idx].latitude = d.latitude;
+        locations[idx].longitude = d.longitude;
+      }
+      showToast('Coordenadas actualizadas desde EXIF');
+    } catch (err) {
+      showToast('Error: ' + err.message, true);
+    } finally {
+      extractMetaBtn.disabled = false;
+      extractMetaBtn.textContent = orig;
+    }
+  });
+}
 
 // Delete the raw original file for the current location.
 // Pre-rendered per-difficulty images stay intact; re-cropping later
@@ -1620,6 +1660,63 @@ if (appConfigForm) {
       showAppConfigMsg('Save failed: ' + err.message, false);
     }
   };
+}
+
+// ── Orphan upload cleanup ──────────────────────────────────────
+const scanOrphansBtn = document.getElementById('scanOrphansBtn');
+const deleteOrphansBtn = document.getElementById('deleteOrphansBtn');
+const orphansStatusEl = document.getElementById('orphansStatus');
+
+function fmtBytes(n) {
+  if (!n) return '0 B';
+  const u = ['B', 'KB', 'MB', 'GB'];
+  let i = 0; let v = n;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return v.toFixed(v >= 10 || i === 0 ? 0 : 1) + ' ' + u[i];
+}
+
+if (scanOrphansBtn) {
+  scanOrphansBtn.addEventListener('click', async () => {
+    scanOrphansBtn.disabled = true;
+    orphansStatusEl.textContent = 'Escaneando…';
+    try {
+      const r = await fetch(API_BASE + '/api/uploads/orphans');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      if (d.count === 0) {
+        orphansStatusEl.textContent = 'Sin archivos huérfanos.';
+        deleteOrphansBtn.disabled = true;
+      } else {
+        orphansStatusEl.textContent =
+          `${d.count} archivo(s) huérfano(s) — ${fmtBytes(d.totalBytes)}`;
+        deleteOrphansBtn.disabled = false;
+      }
+    } catch (err) {
+      orphansStatusEl.textContent = 'Error: ' + err.message;
+    } finally {
+      scanOrphansBtn.disabled = false;
+    }
+  });
+}
+
+if (deleteOrphansBtn) {
+  deleteOrphansBtn.addEventListener('click', async () => {
+    if (!confirm('¿Eliminar todos los archivos huérfanos de uploads?\n\nEsta acción no se puede deshacer.')) return;
+    deleteOrphansBtn.disabled = true;
+    orphansStatusEl.textContent = 'Eliminando…';
+    try {
+      const r = await fetch(API_BASE + '/api/uploads/orphans', { method: 'DELETE' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      orphansStatusEl.textContent =
+        `${d.deleted} archivo(s) eliminado(s) — ${fmtBytes(d.freedBytes)} liberados.` +
+        (d.errors?.length ? ` ${d.errors.length} error(es).` : '');
+      showToast(`${d.deleted} huérfano(s) eliminado(s)`);
+    } catch (err) {
+      orphansStatusEl.textContent = 'Error: ' + err.message;
+      showToast('Error: ' + err.message, true);
+    }
+  });
 }
 
 // ============================================================

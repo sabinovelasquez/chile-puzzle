@@ -145,6 +145,7 @@
                     <div class="form-group" style="margin:6px 0 0;display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
                         <label class="replace-image-label" for="locReplaceUpload" style="cursor:pointer;color:var(--accent);font-size:0.85rem;">↻ Replace image</label>
                         <input type="file" id="locReplaceUpload" accept="image/*" hidden>
+                        <button type="button" id="extractMetaBtn" class="link-btn" hidden style="background:none;border:none;padding:0;cursor:pointer;color:var(--accent);font-size:0.85rem;">📍 Procesar metadata</button>
                         <button type="button" id="deleteOrigBtn" class="link-btn danger" hidden style="background:none;border:none;padding:0;cursor:pointer;color:#f85149;font-size:0.85rem;">🗑 Delete original file</button>
                     </div>
 
@@ -572,6 +573,16 @@
                         <button type="submit" class="btn success">Save settings</button>
                     </div>
                 </form>
+
+                <section style="margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid var(--border, rgba(255,255,255,0.1));">
+                    <h2>Mantenimiento</h2>
+                    <p style="color:var(--text-secondary);margin-bottom:1rem;">Elimina archivos en <code>public/uploads</code> que no estén referenciados por ninguna ubicación. Útil tras subidas fallidas o reemplazos de imagen.</p>
+                    <div id="orphansStatus" style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:0.75rem;">—</div>
+                    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                        <button type="button" id="scanOrphansBtn" class="btn">Escanear huérfanos</button>
+                        <button type="button" id="deleteOrphansBtn" class="btn danger" disabled>Eliminar huérfanos</button>
+                    </div>
+                </section>
             </main>
         </div>
     </div>
